@@ -548,7 +548,7 @@ class ModelView extends GetView<ModelController> {
               if (providerId == 'custom') {
                 _showCustomProviderSheet(context, cloudModels);
               } else {
-                _openProviderFlow(context, cloudModels, provider);
+                _showProviderActionsSheet(context, cloudModels, provider);
               }
             },
             child: const Text('Change'),
@@ -947,7 +947,12 @@ class ModelView extends GetView<ModelController> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(Icons.chevron_right, size: 20),
+                    IconButton(
+                      tooltip: 'Provider settings',
+                      onPressed: () =>
+                          _showProviderActionsSheet(context, cloud, provider),
+                      icon: const Icon(Icons.more_vert, size: 20),
+                    ),
                   ],
                 ),
                 if (error != null) ...[
@@ -1434,6 +1439,52 @@ class ModelView extends GetView<ModelController> {
                 ),
                 const SizedBox(height: 18),
                 Obx(() {
+                  final profiles = cloud.customProfiles;
+                  if (profiles.isEmpty) return const SizedBox.shrink();
+                  final selected = cloud.customProfileIndex;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<int>(
+                            key: ValueKey(selected),
+                            initialValue: selected >= 0 ? selected : null,
+                            decoration: const InputDecoration(
+                              labelText: 'Saved provider',
+                              prefixIcon: Icon(Icons.bookmarks_outlined),
+                            ),
+                            items: [
+                              for (var i = 0; i < profiles.length; i++)
+                                DropdownMenuItem(
+                                  value: i,
+                                  child: Text(
+                                    profiles[i]['name']?.isNotEmpty == true
+                                        ? profiles[i]['name']!
+                                        : profiles[i]['baseUrl'] ??
+                                            'Custom API',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                            ],
+                            onChanged: (index) {
+                              if (index != null) {
+                                cloud.selectCustomProfile(index);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filledTonal(
+                          tooltip: 'Add another provider',
+                          onPressed: cloud.beginNewCustomProfile,
+                          icon: const Icon(Icons.add),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                Obx(() {
                   final error = cloud.customProviderError.value;
                   if (error.isEmpty) return const SizedBox.shrink();
                   return Padding(
@@ -1520,14 +1571,16 @@ class ModelView extends GetView<ModelController> {
                     onPressed: () async {
                       await cloud.clearCustomProvider();
                     },
-                    child: Text(
-                      'Clear custom provider',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.error,
-                      ),
-                    ),
+                    child: Obx(() => Text(
+                          cloud.customProfileIndex >= 0
+                              ? 'Remove selected provider'
+                              : 'Clear form',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.error,
+                          ),
+                        )),
                   ),
                 ),
               ],
@@ -2144,6 +2197,33 @@ class ModelView extends GetView<ModelController> {
     );
   }
 
+  Future<void> _confirmDeleteModel(
+      BuildContext context, String filename) async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Delete model?'),
+            content:
+                Text('$filename will be permanently removed from this device.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                ),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (confirmed) await controller.deleteModel(filename);
+  }
+
   Widget _buildModelCard(BuildContext context, AiModel model) {
     return Obx(() {
       final isDownloaded = controller.isDownloaded(model.filename);
@@ -2268,8 +2348,8 @@ class ModelView extends GetView<ModelController> {
                                 ? null
                                 : isActive
                                     ? () => controller.unloadModel()
-                                    : () =>
-                                        controller.deleteModel(model.filename),
+                                    : () => _confirmDeleteModel(
+                                        context, model.filename),
                             icon: Icon(
                               isActive
                                   ? Icons.eject_outlined

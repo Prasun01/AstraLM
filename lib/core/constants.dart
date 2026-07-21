@@ -22,6 +22,8 @@ class AppConstants {
   static const String keyCustomCloudName = 'custom_cloud_name';
   static const String keyCustomCloudBaseUrl = 'custom_cloud_base_url';
   static const String keyCustomCloudKey = 'custom_cloud_api_key';
+  static const String keyCustomCloudProfiles = 'custom_cloud_profiles';
+  static const String keyCustomCloudProfileIndex = 'custom_cloud_profile_index';
   static const String keyOpenaiModel = 'openai_model';
   static const String keyAnthropicModel = 'anthropic_model';
   static const String keyGoogleModel = 'google_model';
@@ -48,12 +50,6 @@ class AppConstants {
   static const String keyContextSize = 'context_size';
   static const String keyServerApiKey = 'server_api_key';
   static const String keyServerUseApiKey = 'server_use_api_key';
-  static const String keyServerUseTunnel = 'server_use_tunnel';
-  static const String keyServerTunnelProvider = 'server_tunnel_provider';
-  static const String keyServerCloudflareToken = 'server_cloudflare_token';
-  static const String keyServerCloudflareUrl = 'server_cloudflare_url';
-  static const String keyServerNgrokToken = 'server_ngrok_token';
-  static const String keyServerNgrokDomain = 'server_ngrok_domain';
   static const String keyImageSteps = 'image_steps';
   static const String keyImageGenForceCpu = 'image_gen_force_cpu';
   static const String keyImageGenBackend = 'image_gen_backend';
@@ -71,7 +67,8 @@ class AppConstants {
   static const bool defaultImageGenForceCpu = true;
   static const int defaultImageGenGpuGuardMb = 1843; // 1.8 GB
   static const int defaultImageGenSize = 0; // 0 = Auto recommended
-  static const double defaultFontScale = 0.95; // 4th slider stop, "Small" default
+  static const double defaultFontScale =
+      0.95; // 4th slider stop, "Small" default
 
   // System Prompt (compact for small context models)
   static const String systemPrompt =

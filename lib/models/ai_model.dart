@@ -3,6 +3,14 @@ class AiModel {
   static const runtimeLiteRt = 'litert';
   static const runtimeSd = 'sd';
 
+  static bool hasVisionMarker(String value) {
+    final lower = value.toLowerCase();
+    return lower.contains('vl-') ||
+        lower.contains('-vl') ||
+        lower.contains('llava') ||
+        lower.contains('vision');
+  }
+
   final String name;
   final String filename;
   final String url;

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import '../core/constants.dart';
 import '../services/hive_service.dart';
 import '../services/app_log_service.dart';
@@ -29,6 +30,8 @@ class SettingsController extends GetxController {
   final customCloudName = 'Custom API'.obs;
   final customCloudBaseUrl = ''.obs;
   final customCloudKey = ''.obs;
+  final customCloudProfiles = <Map<String, String>>[].obs;
+  final customCloudProfileIndex = (-1).obs;
   final openaiModel = 'gpt-5.2'.obs;
   final anthropicModel = 'claude-sonnet-4-6'.obs;
   final googleModel = 'gemini-2.5-flash'.obs;
@@ -52,6 +55,7 @@ class SettingsController extends GetxController {
   final imageGenGpuGuardMb = AppConstants.defaultImageGenGpuGuardMb.obs;
   final imageGenSize = AppConstants.defaultImageGenSize.obs;
   final fontScale = AppConstants.defaultFontScale.obs;
+  final appVersion = ''.obs;
 
   // Persistent text controllers for settings fields
   final openaiKeyController = TextEditingController();
@@ -84,6 +88,16 @@ class SettingsController extends GetxController {
   void onInit() {
     super.onInit();
     _loadSettings();
+    unawaited(_loadAppVersion());
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      appVersion.value = packageInfo.version;
+    } catch (_) {
+      appVersion.value = '';
+    }
   }
 
   @override
@@ -164,6 +178,7 @@ class SettingsController extends GetxController {
         'deepseek-v4-flash';
     customCloudModel.value =
         _hive.getSetting(AppConstants.keyCustomCloudModel) ?? '';
+    _loadCustomCloudProfiles();
     globalSystemPrompt.value = _hive.getSetting(
             AppConstants.keyGlobalSystemPrompt,
             defaultValue: AppConstants.systemPrompt) ??
@@ -185,8 +200,7 @@ class SettingsController extends GetxController {
     imageSteps.value = _hive.getSetting(AppConstants.keyImageSteps,
             defaultValue: AppConstants.defaultImageSteps) ??
         AppConstants.defaultImageSteps;
-    imageGenForceCpu.value = _hive.getSetting(
-            AppConstants.keyImageGenForceCpu,
+    imageGenForceCpu.value = _hive.getSetting(AppConstants.keyImageGenForceCpu,
             defaultValue: AppConstants.defaultImageGenForceCpu) ??
         AppConstants.defaultImageGenForceCpu;
     imageGenGpuGuardMb.value = _hive.getSetting(
@@ -443,6 +457,20 @@ class SettingsController extends GetxController {
     customCloudKey.value = apiKey.trim();
     customCloudModel.value = model.trim();
 
+    final profile = <String, String>{
+      'name': customCloudName.value,
+      'baseUrl': customCloudBaseUrl.value,
+      'apiKey': customCloudKey.value,
+      'model': customCloudModel.value,
+    };
+    final index = customCloudProfileIndex.value;
+    if (index >= 0 && index < customCloudProfiles.length) {
+      customCloudProfiles[index] = profile;
+    } else {
+      customCloudProfiles.add(profile);
+      customCloudProfileIndex.value = customCloudProfiles.length - 1;
+    }
+
     customCloudNameController.text = customCloudName.value;
     customCloudBaseUrlController.text = customCloudBaseUrl.value;
     customCloudKeyController.text = customCloudKey.value;
@@ -456,9 +484,19 @@ class SettingsController extends GetxController {
         AppConstants.keyCustomCloudKey, customCloudKey.value);
     await _hive.setSetting(
         AppConstants.keyCustomCloudModel, customCloudModel.value);
+    await _saveCustomCloudProfiles();
   }
 
   Future<void> clearCustomCloudConfig() async {
+    final index = customCloudProfileIndex.value;
+    if (index >= 0 && index < customCloudProfiles.length) {
+      customCloudProfiles.removeAt(index);
+    }
+    if (customCloudProfiles.isNotEmpty) {
+      await selectCustomCloudProfile(
+          index.clamp(0, customCloudProfiles.length - 1).toInt());
+      return;
+    }
     customCloudName.value = 'Custom API';
     customCloudBaseUrl.value = '';
     customCloudKey.value = '';
@@ -474,6 +512,79 @@ class SettingsController extends GetxController {
     await _hive.setSetting(AppConstants.keyCustomCloudBaseUrl, '');
     await _hive.setSetting(AppConstants.keyCustomCloudKey, '');
     await _hive.setSetting(AppConstants.keyCustomCloudModel, '');
+    customCloudProfileIndex.value = -1;
+    await _saveCustomCloudProfiles();
+  }
+
+  void beginNewCustomCloudProfile() {
+    customCloudProfileIndex.value = -1;
+    customCloudName.value = 'Custom API';
+    customCloudBaseUrl.value = '';
+    customCloudKey.value = '';
+    customCloudModel.value = '';
+    customCloudNameController.text = customCloudName.value;
+    customCloudBaseUrlController.clear();
+    customCloudKeyController.clear();
+    customCloudModelController.clear();
+  }
+
+  Future<void> selectCustomCloudProfile(int index) async {
+    if (index < 0 || index >= customCloudProfiles.length) return;
+    customCloudProfileIndex.value = index;
+    final profile = customCloudProfiles[index];
+    customCloudName.value = profile['name'] ?? 'Custom API';
+    customCloudBaseUrl.value = profile['baseUrl'] ?? '';
+    customCloudKey.value = profile['apiKey'] ?? '';
+    customCloudModel.value = profile['model'] ?? '';
+    customCloudNameController.text = customCloudName.value;
+    customCloudBaseUrlController.text = customCloudBaseUrl.value;
+    customCloudKeyController.text = customCloudKey.value;
+    customCloudModelController.text = customCloudModel.value;
+    await _hive.setSetting(
+        AppConstants.keyCustomCloudName, customCloudName.value);
+    await _hive.setSetting(
+        AppConstants.keyCustomCloudBaseUrl, customCloudBaseUrl.value);
+    await _hive.setSetting(
+        AppConstants.keyCustomCloudKey, customCloudKey.value);
+    await _hive.setSetting(
+        AppConstants.keyCustomCloudModel, customCloudModel.value);
+    await _hive.setSetting(AppConstants.keyCustomCloudProfileIndex, index);
+  }
+
+  void _loadCustomCloudProfiles() {
+    final raw = _hive.getSetting<List>(AppConstants.keyCustomCloudProfiles);
+    if (raw != null) {
+      customCloudProfiles.assignAll(raw.whereType<Map>().map((profile) =>
+          profile.map((key, value) =>
+              MapEntry(key.toString(), value?.toString() ?? ''))));
+    }
+    if (customCloudProfiles.isEmpty && customCloudBaseUrl.value.isNotEmpty) {
+      customCloudProfiles.add({
+        'name': customCloudName.value,
+        'baseUrl': customCloudBaseUrl.value,
+        'apiKey': customCloudKey.value,
+        'model': customCloudModel.value,
+      });
+    }
+    if (customCloudProfiles.isEmpty) return;
+    final savedIndex = _hive.getSetting<int>(
+            AppConstants.keyCustomCloudProfileIndex,
+            defaultValue: 0) ??
+        0;
+    final index = savedIndex.clamp(0, customCloudProfiles.length - 1).toInt();
+    customCloudProfileIndex.value = index;
+    final profile = customCloudProfiles[index];
+    customCloudName.value = profile['name'] ?? 'Custom API';
+    customCloudBaseUrl.value = profile['baseUrl'] ?? '';
+    customCloudKey.value = profile['apiKey'] ?? '';
+    customCloudModel.value = profile['model'] ?? '';
+  }
+
+  Future<void> _saveCustomCloudProfiles() async {
+    await _hive.setSetting(
+        AppConstants.keyCustomCloudProfiles, customCloudProfiles.toList());
+    await _hive.setSetting(
+        AppConstants.keyCustomCloudProfileIndex, customCloudProfileIndex.value);
   }
 
   Future<void> setGlobalSystemPrompt(String prompt) async {
@@ -579,8 +690,11 @@ class SettingsController extends GetxController {
   }
 
   Future<void> setImageGenSize(int value) async {
-    final allowed =
-        value == 0 || value == 256 || value == 320 || value == 384 || value == 512;
+    final allowed = value == 0 ||
+        value == 256 ||
+        value == 320 ||
+        value == 384 ||
+        value == 512;
     final normalized = allowed ? value : AppConstants.defaultImageGenSize;
     imageGenSize.value = normalized;
     await _hive.setSetting(AppConstants.keyImageGenSize, normalized);

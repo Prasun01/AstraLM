@@ -53,10 +53,12 @@ void main() {
       appLog.error('[Firebase] Initialization failed', details: e);
     }
 
-    // Lock to portrait (mobile only)
+    // Support phones and tablets in portrait or landscape.
     if (!kIsWeb) {
       await SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
       ]);
     }
 
