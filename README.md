@@ -125,25 +125,21 @@ The iPad release is distributed as a standalone ZIP package for sideloading. Dow
 
 ```bash
 flutter pub get
-cd android
-./gradlew assembleDebug   # or assembleRelease
+flutter build apk --debug
 ```
 
-For release builds you should configure your own signing in `android/app/build.gradle.kts`:
+Release APKs require a stable signing key. Copy
+`android/key.properties.example` to `android/key.properties`, fill in the
+keystore values, and keep both the key and its backup. Android accepts an APK
+upgrade only when it is signed with the same key as the installed APK.
 
-```kotlin
-buildTypes {
-    release {
-        signingConfig = signingConfigs.getByName("release")
-        isMinifyEnabled = true
-        isShrinkResources = true
-        proguardFiles(
-            getDefaultProguardFile("proguard-android-optimize.txt"),
-            "proguard-rules.pro"
-        )
-    }
-}
+```bash
+cp android/key.properties.example android/key.properties
+flutter build apk --release --split-per-abi
 ```
+
+Never rotate the signing key between GitHub releases. The per-ABI APKs must
+also keep increasing the build number in `pubspec.yaml`.
 
 ### iOS
 

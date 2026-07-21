@@ -74,7 +74,8 @@ class OpenAiServerService {
       }
 
       if (path.startsWith('/v1/') && !_isAuthorized(request)) {
-        await _json(request, {'error': 'Unauthorized'}, status: HttpStatus.unauthorized);
+        await _json(request, {'error': 'Unauthorized'},
+            status: HttpStatus.unauthorized);
         return;
       }
 
@@ -119,12 +120,11 @@ class OpenAiServerService {
 
   Future<void> _handleModels(HttpRequest request) async {
     final inference = Get.find<InferenceService>();
-    final isLiteRt = inference.isModelLoaded.value &&
-        inference.loadedModelRuntime.value == 'litert';
+    final hasModel = inference.isModelLoaded.value;
     await _json(request, {
       'object': 'list',
       'data': [
-        if (isLiteRt)
+        if (hasModel)
           {
             'id': inference.loadedModelName.value,
             'object': 'model',
@@ -137,20 +137,20 @@ class OpenAiServerService {
 
   Future<void> _handleCapabilities(HttpRequest request) async {
     final inference = Get.find<InferenceService>();
-    final isLiteRt = inference.isModelLoaded.value &&
-        inference.loadedModelRuntime.value == 'litert';
+    final hasModel = inference.isModelLoaded.value;
+    final isLiteRt = hasModel && inference.loadedModelRuntime.value == 'litert';
     await _json(request, {
       'server': 'AI Chat Local OpenAI API',
       'running': true,
-      'model': isLiteRt ? inference.loadedModelName.value : null,
+      'model': hasModel ? inference.loadedModelName.value : null,
       'runtime': inference.loadedModelRuntime.value,
-      'requires_litert': true,
+      'requires_litert': false,
       'capabilities': {
-        'text': isLiteRt,
-        'image': isLiteRt,
+        'text': hasModel,
+        'image': isLiteRt && inference.isVisionLoaded.value,
         'audio': isLiteRt,
-        'streaming': isLiteRt,
-        'gguf': false,
+        'streaming': hasModel,
+        'gguf': hasModel && !isLiteRt,
       },
     });
   }
@@ -158,9 +158,10 @@ class OpenAiServerService {
   Future<void> _handleChatCompletions(HttpRequest request) async {
     final body = await _readJson(request);
     final inference = Get.find<InferenceService>();
-    final liteRtError = _liteRtError(inference);
-    if (liteRtError != null) {
-      await _json(request, {'error': liteRtError}, status: HttpStatus.badRequest);
+    final modelError = _localModelError(inference);
+    if (modelError != null) {
+      await _json(request, {'error': modelError},
+          status: HttpStatus.badRequest);
       return;
     }
     if (_busy) {
@@ -170,13 +171,17 @@ class OpenAiServerService {
 
     final parsed = await _parseChatRequest(body);
     if (parsed.error != null) {
-      await _json(request, {'error': parsed.error}, status: HttpStatus.badRequest);
+      await _json(request, {'error': parsed.error},
+          status: HttpStatus.badRequest);
       return;
     }
 
     final model = (body['model'] as String?)?.trim();
-    if (model != null && model.isNotEmpty && model != inference.loadedModelName.value) {
-      await _json(request, {'error': 'Model not found or not loaded'}, status: HttpStatus.notFound);
+    if (model != null &&
+        model.isNotEmpty &&
+        model != inference.loadedModelName.value) {
+      await _json(request, {'error': 'Model not found or not loaded'},
+          status: HttpStatus.notFound);
       return;
     }
 
@@ -195,7 +200,8 @@ class OpenAiServerService {
           imagePath: parsed.imagePath,
           audioPath: parsed.audioPath,
         );
-        await _json(request, _chatResponse(inference.loadedModelName.value, text));
+        await _json(
+            request, _chatResponse(inference.loadedModelName.value, text));
       }
     } finally {
       _busy = false;
@@ -206,9 +212,10 @@ class OpenAiServerService {
   Future<void> _handleCompletions(HttpRequest request) async {
     final body = await _readJson(request);
     final inference = Get.find<InferenceService>();
-    final liteRtError = _liteRtError(inference);
-    if (liteRtError != null) {
-      await _json(request, {'error': liteRtError}, status: HttpStatus.badRequest);
+    final modelError = _localModelError(inference);
+    if (modelError != null) {
+      await _json(request, {'error': modelError},
+          status: HttpStatus.badRequest);
       return;
     }
     if (_busy) {
@@ -218,7 +225,8 @@ class OpenAiServerService {
 
     final prompt = body['prompt'];
     if (prompt is! String || prompt.trim().isEmpty) {
-      await _json(request, {'error': 'prompt is required'}, status: HttpStatus.badRequest);
+      await _json(request, {'error': 'prompt is required'},
+          status: HttpStatus.badRequest);
       return;
     }
 
@@ -248,17 +256,15 @@ class OpenAiServerService {
     }
   }
 
-  String? _liteRtError(InferenceService inference) {
+  String? _localModelError(InferenceService inference) {
     if (!inference.isModelLoaded.value) {
-      return 'No local model loaded. Load a LiteRT-LM model first.';
-    }
-    if (inference.loadedModelRuntime.value != 'litert') {
-      return 'The API server exposes LiteRT-LM models only in this version. Load a .litertlm model.';
+      return 'No local model loaded. Load a GGUF or LiteRT-LM model first.';
     }
     return null;
   }
 
-  Future<_ParsedChatRequest> _parseChatRequest(Map<String, dynamic> body) async {
+  Future<_ParsedChatRequest> _parseChatRequest(
+      Map<String, dynamic> body) async {
     final rawMessages = body['messages'];
     if (rawMessages is! List || rawMessages.isEmpty) {
       return _ParsedChatRequest.error('messages must be a non-empty array');
@@ -273,19 +279,22 @@ class OpenAiServerService {
 
     for (var i = 0; i < rawMessages.length; i++) {
       final raw = rawMessages[i];
-      if (raw is! Map) return _ParsedChatRequest.error('message[$i] must be an object');
+      if (raw is! Map)
+        return _ParsedChatRequest.error('message[$i] must be an object');
       final role = '${raw['role'] ?? ''}';
       if (role != 'system' && role != 'user' && role != 'assistant') {
         return _ParsedChatRequest.error('message[$i].role is unsupported');
       }
       final contentResult = await _parseContent(raw['content']);
-      if (contentResult.error != null) return _ParsedChatRequest.error(contentResult.error!);
+      if (contentResult.error != null)
+        return _ParsedChatRequest.error(contentResult.error!);
       tempFiles.addAll(contentResult.tempFiles);
       imagePath ??= contentResult.imagePath;
       audioPath ??= contentResult.audioPath;
 
       if (role == 'system') {
-        if (contentResult.text.trim().isNotEmpty) systemParts.add(contentResult.text.trim());
+        if (contentResult.text.trim().isNotEmpty)
+          systemParts.add(contentResult.text.trim());
         continue;
       }
       if (i == rawMessages.length - 1 && role == 'user') {
@@ -296,7 +305,8 @@ class OpenAiServerService {
     }
 
     if (lastUserText.isEmpty && imagePath == null && audioPath == null) {
-      return _ParsedChatRequest.error('last user message must contain text, image, or audio');
+      return _ParsedChatRequest.error(
+          'last user message must contain text, image, or audio');
     }
 
     return _ParsedChatRequest(
@@ -311,7 +321,9 @@ class OpenAiServerService {
 
   Future<_ContentResult> _parseContent(dynamic content) async {
     if (content is String) return _ContentResult(text: content);
-    if (content is! List) return _ContentResult.error('message.content must be a string or content array');
+    if (content is! List)
+      return _ContentResult.error(
+          'message.content must be a string or content array');
 
     final text = StringBuffer();
     String? imagePath;
@@ -319,12 +331,15 @@ class OpenAiServerService {
     final tempFiles = <File>[];
 
     for (final part in content) {
-      if (part is! Map) return _ContentResult.error('content part must be an object');
+      if (part is! Map)
+        return _ContentResult.error('content part must be an object');
       final type = '${part['type'] ?? ''}';
       if (type == 'text') {
         text.write('${part['text'] ?? ''}');
       } else if (type == 'image_url') {
-        if (imagePath != null) return _ContentResult.error('only one image is supported per request');
+        if (imagePath != null)
+          return _ContentResult.error(
+              'only one image is supported per request');
         final imageUrl = part['image_url'];
         final url = imageUrl is Map ? '${imageUrl['url'] ?? ''}' : '';
         final file = await _dataUrlToTempFile(url, 'image');
@@ -332,7 +347,9 @@ class OpenAiServerService {
         imagePath = file.path;
         tempFiles.add(file.file!);
       } else if (type == 'input_audio' || type == 'audio_url') {
-        if (audioPath != null) return _ContentResult.error('only one audio file is supported per request');
+        if (audioPath != null)
+          return _ContentResult.error(
+              'only one audio file is supported per request');
         final raw = part[type == 'input_audio' ? 'input_audio' : 'audio_url'];
         final data = raw is Map ? '${raw['data'] ?? raw['url'] ?? ''}' : '';
         final file = await _dataUrlToTempFile(data, 'audio');
@@ -354,7 +371,8 @@ class OpenAiServerService {
 
   Future<_TempFileResult> _dataUrlToTempFile(String value, String kind) async {
     if (!value.startsWith('data:')) {
-      return _TempFileResult.error('Only base64 data URLs are accepted for $kind input');
+      return _TempFileResult.error(
+          'Only base64 data URLs are accepted for $kind input');
     }
     final comma = value.indexOf(',');
     if (comma <= 0 || !value.substring(0, comma).contains(';base64')) {
@@ -399,7 +417,8 @@ class OpenAiServerService {
     final response = request.response;
     _addCorsHeaders(response);
     response.statusCode = HttpStatus.ok;
-    response.headers.contentType = ContentType('text', 'event-stream', charset: 'utf-8');
+    response.headers.contentType =
+        ContentType('text', 'event-stream', charset: 'utf-8');
     response.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
     final id = 'chatcmpl-${_id()}';
     final created = DateTime.now().millisecondsSinceEpoch ~/ 1000;
@@ -446,7 +465,8 @@ class OpenAiServerService {
     final response = request.response;
     _addCorsHeaders(response);
     response.statusCode = HttpStatus.ok;
-    response.headers.contentType = ContentType('text', 'event-stream', charset: 'utf-8');
+    response.headers.contentType =
+        ContentType('text', 'event-stream', charset: 'utf-8');
     response.headers.set(HttpHeaders.cacheControlHeader, 'no-cache');
     final id = 'cmpl-${_id()}';
     final created = DateTime.now().millisecondsSinceEpoch ~/ 1000;
@@ -522,10 +542,11 @@ class OpenAiServerService {
 
   void _addCorsHeaders(HttpResponse response) {
     response.headers.set(HttpHeaders.accessControlAllowOriginHeader, '*');
-    response.headers.set(HttpHeaders.accessControlAllowMethodsHeader, 'GET,POST,OPTIONS');
+    response.headers
+        .set(HttpHeaders.accessControlAllowMethodsHeader, 'GET,POST,OPTIONS');
     response.headers.set(
       HttpHeaders.accessControlAllowHeadersHeader,
-      'Content-Type, Authorization, ngrok-skip-browser-warning',
+      'Content-Type, Authorization',
     );
   }
 

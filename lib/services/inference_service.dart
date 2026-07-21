@@ -110,9 +110,11 @@ class InferenceService extends GetxService {
           ) ??
           AppConstants.defaultContextSize;
 
-      final finalContextSize = isLiteRt ? contextSize.clamp(512, 4096) : contextSize;
+      final finalContextSize =
+          isLiteRt ? contextSize.clamp(512, 4096) : contextSize;
 
-      final lastLoadedContext = _hive.getSetting<int>('last_loaded_context_size') ?? 0;
+      final lastLoadedContext =
+          _hive.getSetting<int>('last_loaded_context_size') ?? 0;
       final contextChanged = isLiteRt && lastLoadedContext != finalContextSize;
 
       final deviceTier = _getDeviceTier();
@@ -128,7 +130,9 @@ class InferenceService extends GetxService {
         isTensorSoC: isTensorSoC,
         liteRtPerformanceMode: liteRtMode,
         forceLiteRtCpu: forceLiteRtCpu,
-        clearLiteRtCache: hadPendingGpuLoad || (isLiteRt && gpuCrashDetected) || contextChanged,
+        clearLiteRtCache: hadPendingGpuLoad ||
+            (isLiteRt && gpuCrashDetected) ||
+            contextChanged,
         markLiteRtGpuPending: shouldTryLiteRtGpu,
         enableLiteRtVision: enableLiteRtVision,
       );
@@ -426,7 +430,7 @@ class InferenceService extends GetxService {
       if (markLiteRtGpuPending) {
         await _hive.setSetting(AppConstants.keyLiteRtGpuLoadPending, true);
       }
-      return await _engine!.loadModel(
+      final result = await _engine!.loadModel(
         modelPath: modelPath,
         modelRuntime: modelRuntime,
         contextSize: contextSize,
@@ -435,6 +439,27 @@ class InferenceService extends GetxService {
         liteRtPerformanceMode: liteRtPerformanceMode,
         forceLiteRtCpu: forceLiteRtCpu,
         clearLiteRtCache: clearLiteRtCache,
+        enableLiteRtVision: enableLiteRtVision,
+        onProgress: (p) => modelLoadProgress.value = _normalizeProgress(p),
+      );
+      if (result.success ||
+          !markLiteRtGpuPending ||
+          liteRtPerformanceMode != 'auto_fast') {
+        return result;
+      }
+
+      await _hive.setSetting(AppConstants.keyLiteRtGpuLoadPending, false);
+      await _hive.setSetting(AppConstants.keyLiteRtGpuCrashDetected, true);
+      modelLoadProgress.value = 0.0;
+      return await _engine!.loadModel(
+        modelPath: modelPath,
+        modelRuntime: modelRuntime,
+        contextSize: contextSize,
+        deviceTier: deviceTier,
+        isTensorSoC: isTensorSoC,
+        liteRtPerformanceMode: liteRtPerformanceMode,
+        forceLiteRtCpu: true,
+        clearLiteRtCache: true,
         enableLiteRtVision: enableLiteRtVision,
         onProgress: (p) => modelLoadProgress.value = _normalizeProgress(p),
       );

@@ -18,6 +18,13 @@ class HiveService extends GetxService {
     _messagesBox = await Hive.openBox(AppConstants.chatMessagesBox);
     _tasksBox = await Hive.openBox(AppConstants.tasksBox);
     _settingsBox = await Hive.openBox(AppConstants.settingsBox);
+    // Preserve current local-server settings and purge obsolete provider data.
+    final obsoleteServerKeys = _settingsBox.keys.where((key) =>
+        key is String &&
+        key.startsWith('server_') &&
+        key != AppConstants.keyServerApiKey &&
+        key != AppConstants.keyServerUseApiKey);
+    await _settingsBox.deleteAll(obsoleteServerKeys);
     return this;
   }
 
@@ -34,7 +41,9 @@ class HiveService extends GetxService {
   // ─── Chat Sessions ─────────────────────────────
 
   List<Map<dynamic, dynamic>> getAllSessions() {
-    return _sessionsBox.values.map((v) => Map<dynamic, dynamic>.from(v)).toList();
+    return _sessionsBox.values
+        .map((v) => Map<dynamic, dynamic>.from(v))
+        .toList();
   }
 
   Future<void> saveSession(String id, Map<String, dynamic> data) async {

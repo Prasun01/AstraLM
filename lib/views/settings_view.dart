@@ -181,7 +181,10 @@ class SettingsView extends GetView<SettingsController> {
                               style: GoogleFonts.inter(
                                   fontSize: 17, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 2),
-                          Text('v1.0.2 · by orailnoor',
+                          Text(
+                              controller.appVersion.value.isEmpty
+                                  ? 'Version unavailable · by orailnoor'
+                                  : 'v${controller.appVersion.value} · by orailnoor',
                               style: GoogleFonts.inter(
                                   fontSize: 13,
                                   color: Theme.of(context).hintColor)),

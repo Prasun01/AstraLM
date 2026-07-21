@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import '../controllers/model_controller.dart';
 
@@ -32,7 +32,7 @@ class DownloadProgress {
 
 /// Service for downloading GGUF model files with progress tracking.
 /// On web: downloads are not supported (models are too large for browser).
-class DownloadService extends GetxService {
+class DownloadService extends GetxService with WidgetsBindingObserver {
   /// Currently active downloads.
   final activeDownloads = <String, DownloadProgress>{}.obs;
   final _nativeDownloadIds = <String, int>{};
@@ -71,21 +71,16 @@ class DownloadService extends GetxService {
   @override
   void onInit() {
     super.onInit();
-    
+
     if (!kIsWeb && Platform.isAndroid) {
-      // Listen to OS system lifecycle to reconcile active downloads upon app resume!
-      SystemChannels.lifecycle.setMessageHandler((msg) async {
-        if (msg == AppLifecycleState.resumed.toString()) {
-          reconcileActiveDownloads();
-        }
-        return null;
-      });
+      WidgetsBinding.instance.addObserver(this);
 
       // Initial reconciliation on startup
       reconcileActiveDownloads();
 
       // Permanent channel progress listener
-      const MethodChannel('com.aichat.ai_chat/model_import').setMethodCallHandler((call) async {
+      const MethodChannel('com.aichat.ai_chat/model_import')
+          .setMethodCallHandler((call) async {
         if (call.method == 'importProgress') {
           final data = Map<String, dynamic>.from(call.arguments as Map);
           final filename = data['filename'] as String;
@@ -95,7 +90,10 @@ class DownloadService extends GetxService {
           final status = data['status'] as String;
 
           var progress = activeDownloads[filename];
-          if (progress == null && (status == 'Downloading...' || status == 'Downloading to phone...' || status.startsWith('Importing'))) {
+          if (progress == null &&
+              (status == 'Downloading...' ||
+                  status == 'Downloading to phone...' ||
+                  status.startsWith('Importing'))) {
             progress = DownloadProgress(filename: filename);
             activeDownloads[filename] = progress;
           }
@@ -106,7 +104,7 @@ class DownloadService extends GetxService {
             if (total > 0) {
               progress.progress.value = downloaded / total;
             }
-            
+
             if (status == 'Download complete') {
               activeDownloads.remove(filename);
               _nativeDownloadIds.remove(filename);
@@ -114,7 +112,8 @@ class DownloadService extends GetxService {
               try {
                 Get.find<ModelController>().refreshDownloaded();
               } catch (_) {}
-            } else if (status.startsWith('Download failed') || status == 'Download cancelled') {
+            } else if (status.startsWith('Download failed') ||
+                status == 'Download cancelled') {
               activeDownloads.remove(filename);
               _nativeDownloadIds.remove(filename);
             }
@@ -124,14 +123,16 @@ class DownloadService extends GetxService {
           try {
             final modelCtrl = Get.find<ModelController>();
             if (modelCtrl.isImporting.value) {
-              final isPhoneDownload = modelCtrl.importStatus.value.contains('phone') || modelCtrl.importStatus.value.contains('Starting');
-              
+              final isPhoneDownload =
+                  modelCtrl.importStatus.value.contains('phone') ||
+                      modelCtrl.importStatus.value.contains('Starting');
+
               modelCtrl.importFileName.value = filename;
               modelCtrl.importStatus.value = status;
               modelCtrl.importCopiedBytes.value = downloaded;
               modelCtrl.importTotalBytes.value = total;
               modelCtrl.importBytesPerSecond.value = speed;
-              
+
               if (status == 'Download complete' ||
                   status.startsWith('Download failed') ||
                   status == 'Download cancelled') {
@@ -159,31 +160,55 @@ class DownloadService extends GetxService {
     }
   }
 
+  @override
+  void onClose() {
+    if (!kIsWeb && Platform.isAndroid) {
+      WidgetsBinding.instance.removeObserver(this);
+    }
+    super.onClose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      reconcileActiveDownloads();
+    }
+  }
+
   Future<void> reconcileActiveDownloads() async {
     if (kIsWeb || !Platform.isAndroid) return;
     try {
       final list = await platform_dl.getActiveNativeDownloads();
+      final recoveredFilenames = <String>{};
       for (final item in list) {
         final id = item['downloadId'] as int;
         final filename = item['filename'] as String;
         final downloaded = item['downloaded'] as int;
         final total = item['total'] as int;
         final status = item['status'] as String;
+        recoveredFilenames.add(filename);
 
         _nativeDownloadIds[filename] = id;
 
+        final progress =
+            activeDownloads[filename] ?? DownloadProgress(filename: filename);
+        progress.downloadedBytes.value = downloaded;
+        progress.totalBytes.value = total;
+        progress.bytesPerSecond.value = 0;
+        progress.progress.value = total > 0 ? downloaded / total : 0;
+        progress.isPaused.value = status == 'Paused';
         if (!activeDownloads.containsKey(filename)) {
-          final progress = DownloadProgress(filename: filename);
-          progress.downloadedBytes.value = downloaded;
-          progress.totalBytes.value = total;
-          if (total > 0) {
-            progress.progress.value = downloaded / total;
-          }
-          if (status == 'Paused') {
-            progress.isPaused.value = true;
-          }
           activeDownloads[filename] = progress;
         }
+      }
+
+      // Remove UI entries whose native DownloadManager jobs no longer exist.
+      final staleFilenames = _nativeDownloadIds.keys
+          .where((filename) => !recoveredFilenames.contains(filename))
+          .toList();
+      for (final filename in staleFilenames) {
+        _nativeDownloadIds.remove(filename);
+        activeDownloads.remove(filename);
       }
     } catch (e) {
       print('[DownloadService] Failed to reconcile active downloads: $e');
@@ -233,7 +258,8 @@ class DownloadService extends GetxService {
                 .difference(downloadProgress.startedAt)
                 .inMilliseconds;
             if (elapsed > 0) {
-              downloadProgress.bytesPerSecond.value = received / (elapsed / 1000);
+              downloadProgress.bytesPerSecond.value =
+                  received / (elapsed / 1000);
             }
             if (total > 0) {
               downloadProgress.progress.value = received / total;
@@ -252,7 +278,8 @@ class DownloadService extends GetxService {
   void pauseDownload(String filename) {
     final nativeId = _nativeDownloadIds[filename];
     if (nativeId != null && Platform.isAndroid) {
-      platform_dl.cancelNativeDownload(downloadId: nativeId, filename: filename);
+      platform_dl.cancelNativeDownload(
+          downloadId: nativeId, filename: filename);
       activeDownloads.remove(filename);
       _nativeDownloadIds.remove(filename);
     } else {
@@ -265,7 +292,8 @@ class DownloadService extends GetxService {
     if (kIsWeb) return;
     final nativeId = _nativeDownloadIds[filename];
     if (nativeId != null && Platform.isAndroid) {
-      await platform_dl.cancelNativeDownload(downloadId: nativeId, filename: filename);
+      await platform_dl.cancelNativeDownload(
+          downloadId: nativeId, filename: filename);
       _nativeDownloadIds.remove(filename);
     }
     await platform_dl.deleteModel(await modelPath(filename));

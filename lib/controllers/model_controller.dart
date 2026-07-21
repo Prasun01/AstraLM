@@ -156,13 +156,7 @@ class ModelController extends GetxController {
         final lower = file.toLowerCase();
         final runtime = AiModel.runtimeFromFilename(file);
         final isLiteRt = runtime == AiModel.runtimeLiteRt;
-        final isVision = isLiteRt &&
-            (lower.contains('vl-') ||
-                lower.contains('llava') ||
-                lower.contains('vision') ||
-                lower.contains('-vl') ||
-                lower.contains('gemma-4') ||
-                lower.contains('gemma4'));
+        final isVision = isLiteRt && AiModel.hasVisionMarker(lower);
 
         availableModels.add(AiModel(
           name: file,
@@ -235,13 +229,7 @@ class ModelController extends GetxController {
     if (!isLiteRtModel(model)) return false;
     final lower =
         '${model.name} ${model.filename} ${model.description}'.toLowerCase();
-    return model.isVision ||
-        lower.contains('vl-') ||
-        lower.contains('-vl') ||
-        lower.contains('llava') ||
-        lower.contains('gemma-4') ||
-        lower.contains('gemma4') ||
-        lower.contains('vision');
+    return model.isVision || AiModel.hasVisionMarker(lower);
   }
 
   bool isUncensoredModel(AiModel model) {
@@ -1398,8 +1386,18 @@ class ModelController extends GetxController {
 
   String _getFriendlyErrorMessage(String rawError) {
     final lower = rawError.toLowerCase();
+    if (lower.contains('unknown model architecture') ||
+        lower.contains('unsupported model architecture')) {
+      return 'This GGUF uses a model architecture that is not supported by the bundled llama.cpp runtime. Update the app runtime or try a GGUF exported for a supported architecture.';
+    }
+    if (lower.contains('missing key') ||
+        lower.contains('failed to load gguf split')) {
+      return 'This appears to be a split GGUF model, but one or more required model files are missing. Import every split into the same folder before loading it.';
+    }
     if (lower.contains('failed to load model from buffer') ||
         lower.contains('invalid_argument') ||
+        lower.contains('invalid gguf') ||
+        lower.contains('missing or unreadable') ||
         lower.contains('incomplete') ||
         lower.contains('corrupt')) {
       return 'The model file appears to be incomplete or corrupted. This usually happens when the download is interrupted or the file is invalid.';

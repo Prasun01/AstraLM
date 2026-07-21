@@ -22,7 +22,7 @@ class LocalImageService extends GetxService {
   final isUsingGpu = false.obs;
   final latestLog = ''.obs;
   final currentBackend = Backend.cpu.obs;
-  final currentQuantization = QuantizationType.q4_0.obs;
+  final currentQuantization = QuantizationType.f16.obs;
 
   SdIsolateProcessor? _processor;
 
@@ -115,7 +115,7 @@ class LocalImageService extends GetxService {
         defaultValue: Backend.cpu.index);
     final savedQuantIndex = _hive.getSetting<int>(
         AppConstants.keyImageGenQuantization,
-        defaultValue: QuantizationType.q4_0.index);
+        defaultValue: QuantizationType.f16.index);
     if (savedBackendIndex != null &&
         savedBackendIndex >= 0 &&
         savedBackendIndex < Backend.values.length) {
@@ -126,8 +126,6 @@ class LocalImageService extends GetxService {
         savedQuantIndex < QuantizationType.values.length) {
       currentQuantization.value = QuantizationType.values[savedQuantIndex];
     }
-    // Force Q4_0 for speed — override any saved FP16 setting
-    currentQuantization.value = QuantizationType.q4_0;
   }
 
   Future<String> loadModel(String modelPath,
@@ -173,8 +171,7 @@ class LocalImageService extends GetxService {
         }
       }
 
-      final forceCpu = _hive.getSetting<bool>(
-              AppConstants.keyImageGenForceCpu,
+      final forceCpu = _hive.getSetting<bool>(AppConstants.keyImageGenForceCpu,
               defaultValue: AppConstants.defaultImageGenForceCpu) ??
           AppConstants.defaultImageGenForceCpu;
       if (forceCpu) {
@@ -259,8 +256,7 @@ class LocalImageService extends GetxService {
       isModelLoaded.value = false;
       isLoadingModel.value = false;
       Get.find<AppLogService>().error('Image model load exception',
-          details:
-              'model=${modelName ?? modelPath.split('/').last}, error=$e');
+          details: 'model=${modelName ?? modelPath.split('/').last}, error=$e');
       return 'Could not load this model. Try CyberRealistic, Realistic Vision, or AbsoluteReality - these work reliably on most devices.\n\nTechnical detail: $e';
     }
   }

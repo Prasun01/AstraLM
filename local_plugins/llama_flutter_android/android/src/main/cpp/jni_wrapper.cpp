@@ -4,6 +4,8 @@
 #include <atomic>
 #include <ctime>
 #include <cstring>
+#include <fstream>
+#include <mutex>
 #include <android/log.h>
 #include "llama.cpp/include/llama.h"
 #define LOG_TAG "LlamaJNI"
@@ -16,6 +18,49 @@ static const llama_vocab* g_vocab = nullptr;
 static llama_sampler* g_sampler = nullptr;
 static std::atomic<bool> g_stop_flag{false};
 static int g_n_past = 0;  // Track the number of tokens already in KV cache
+static std::mutex g_load_log_mutex;
+static std::string g_load_error;
+static bool g_capture_load_error = false;
+
+static void androidLlamaLog(ggml_log_level level, const char* text, void*) {
+    if (!text) return;
+
+    const int priority = level >= GGML_LOG_LEVEL_ERROR
+        ? ANDROID_LOG_ERROR
+        : level == GGML_LOG_LEVEL_WARN
+            ? ANDROID_LOG_WARN
+            : level == GGML_LOG_LEVEL_DEBUG
+                ? ANDROID_LOG_DEBUG
+                : ANDROID_LOG_INFO;
+    __android_log_write(priority, LOG_TAG, text);
+
+    std::lock_guard<std::mutex> lock(g_load_log_mutex);
+    if (!g_capture_load_error) return;
+    if (level == GGML_LOG_LEVEL_ERROR) {
+        g_load_error.assign(text);
+    } else if (level == GGML_LOG_LEVEL_CONT && !g_load_error.empty()) {
+        g_load_error.append(text);
+    }
+    if (g_load_error.size() > 4096) {
+        g_load_error.erase(0, g_load_error.size() - 4096);
+    }
+}
+
+static std::string consumeLoadError() {
+    std::lock_guard<std::mutex> lock(g_load_log_mutex);
+    g_capture_load_error = false;
+    while (!g_load_error.empty() &&
+           (g_load_error.back() == '\n' || g_load_error.back() == '\r')) {
+        g_load_error.pop_back();
+    }
+    return g_load_error;
+}
+
+static void throwLoadError(JNIEnv* env, const std::string& message) {
+    LOGE("%s", message.c_str());
+    jclass exception = env->FindClass("java/lang/RuntimeException");
+    env->ThrowNew(exception, message.c_str());
+}
 
 // Helper function to validate UTF-8 strings
 static bool isValidUTF8(const char* str, size_t len) {
@@ -167,23 +212,64 @@ Java_com_write4me_llama_1flutter_1android_LlamaFlutterAndroidPlugin_nativeLoadMo
     jstring path, jlong n_threads, jlong ctx_size, jlong n_gpu_layers,
     jobject progress_callback) {
     
+    if (!path) {
+        throwLoadError(env, "GGUF model path is missing");
+        return;
+    }
+
     const char* model_path = env->GetStringUTFChars(path, nullptr);
+    if (!model_path) {
+        throwLoadError(env, "Could not read the GGUF model path");
+        return;
+    }
     LOGI("Loading model: %s", model_path);
+
+    std::ifstream model_file(model_path, std::ios::binary | std::ios::ate);
+    if (!model_file) {
+        env->ReleaseStringUTFChars(path, model_path);
+        throwLoadError(env, "GGUF model file is missing or unreadable");
+        return;
+    }
+    const std::streamsize model_size = model_file.tellg();
+    if (model_size < 4) {
+        env->ReleaseStringUTFChars(path, model_path);
+        throwLoadError(env, "GGUF model file is empty or incomplete");
+        return;
+    }
+    model_file.seekg(0, std::ios::beg);
+    char magic[4] = {};
+    model_file.read(magic, sizeof(magic));
+    if (!model_file || std::memcmp(magic, "GGUF", sizeof(magic)) != 0) {
+        env->ReleaseStringUTFChars(path, model_path);
+        throwLoadError(env, "Invalid GGUF model header");
+        return;
+    }
+    model_file.close();
 
     // Model parameters
     llama_model_params model_params = llama_model_default_params();
     model_params.n_gpu_layers = n_gpu_layers;
+
+    llama_log_set(androidLlamaLog, nullptr);
+    {
+        std::lock_guard<std::mutex> lock(g_load_log_mutex);
+        g_load_error.clear();
+        g_capture_load_error = true;
+    }
     
     // Load model
     g_model = llama_model_load_from_file(model_path, model_params);
     env->ReleaseStringUTFChars(path, model_path);
     
     if (!g_model) {
-        LOGE("Failed to load model");
-        jclass exception = env->FindClass("java/lang/RuntimeException");
-        env->ThrowNew(exception, "Failed to load model");
+        const std::string detail = consumeLoadError();
+        const std::string message = detail.empty()
+            ? "Failed to load GGUF model; check model compatibility and available RAM"
+            : "Failed to load GGUF model: " + detail;
+        throwLoadError(env, message);
         return;
     }
+    consumeLoadError();
 
     // Context parameters with memory optimizations for low-end devices
     llama_context_params ctx_params = llama_context_default_params();

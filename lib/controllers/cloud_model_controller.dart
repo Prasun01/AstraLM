@@ -331,6 +331,22 @@ class CloudModelController extends GetxController {
     _syncCustomControllers();
   }
 
+  List<Map<String, String>> get customProfiles => _settings.customCloudProfiles;
+
+  int get customProfileIndex => _settings.customCloudProfileIndex.value;
+
+  Future<void> selectCustomProfile(int index) async {
+    await _settings.selectCustomCloudProfile(index);
+    _syncCustomControllers();
+    customProviderError.value = '';
+  }
+
+  void beginNewCustomProfile() {
+    _settings.beginNewCustomCloudProfile();
+    _syncCustomControllers();
+    customProviderError.value = '';
+  }
+
   String? validateCustomProvider() {
     final baseUrl = customBaseUrlController.text.trim();
     final apiKey = customApiKeyController.text.trim();

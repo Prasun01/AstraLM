@@ -16,23 +16,20 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
+import java.util.concurrent.ConcurrentHashMap
 import org.json.JSONObject
 
 class MainActivity : FlutterActivity() {
     private val importChannelName = "com.aichat.ai_chat/model_import"
-    private val tunnelChannelName = "com.aichat.ai_chat/tunnel"
     private val importRequestCode = 4207
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private var importChannel: MethodChannel? = null
-    private var tunnelChannel: MethodChannel? = null
     private var pendingImportResult: MethodChannel.Result? = null
     private var pendingModelsDir: String? = null
-    private var tunnelProcess: Process? = null
+    private val monitoredInAppDownloads = ConcurrentHashMap.newKeySet<Long>()
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -102,6 +99,7 @@ class MainActivity : FlutterActivity() {
                         try {
                             val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                             manager.remove(downloadId)
+                            removeInAppDownload(downloadId)
                             val filename = call.argument<String>("filename")
                             if (!filename.isNullOrBlank()) {
                                 val destFile = File(File(getExternalFilesDir(null), "temp_downloads"), sanitizeFilename(filename))
@@ -116,47 +114,15 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "getActiveDownloads" -> {
-                    try {
-                        val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                        val query = DownloadManager.Query().setFilterByStatus(
-                            DownloadManager.STATUS_RUNNING or 
-                            DownloadManager.STATUS_PAUSED or 
-                            DownloadManager.STATUS_PENDING
-                        )
-                        val activeList = mutableListOf<Map<String, Any>>()
-                        manager.query(query)?.use { cursor ->
-                            val idIndex = cursor.getColumnIndex(DownloadManager.COLUMN_ID)
-                            val titleIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TITLE)
-                            val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                            val bytesDownloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
-                            val bytesTotalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
-
-                            if (idIndex >= 0 && titleIndex >= 0 && statusIndex >= 0 && bytesDownloadedIndex >= 0 && bytesTotalIndex >= 0) {
-                                while (cursor.moveToNext()) {
-                                    val id = cursor.getLong(idIndex)
-                                    val title = cursor.getString(titleIndex)
-                                    val status = cursor.getInt(statusIndex)
-                                    val downloaded = cursor.getLong(bytesDownloadedIndex)
-                                    val total = cursor.getLong(bytesTotalIndex)
-                                    val statusStr = when (status) {
-                                        DownloadManager.STATUS_RUNNING -> "Downloading..."
-                                        DownloadManager.STATUS_PAUSED -> "Paused"
-                                        DownloadManager.STATUS_PENDING -> "Pending"
-                                        else -> "Unknown"
-                                    }
-                                    activeList.add(mapOf(
-                                        "downloadId" to id,
-                                        "filename" to title,
-                                        "downloaded" to downloaded,
-                                        "total" to total,
-                                        "status" to statusStr
-                                    ))
-                                }
+                    thread(name = "download-inapp-reconcile") {
+                        try {
+                            val activeList = reconcileInAppDownloads()
+                            mainHandler.post { result.success(activeList) }
+                        } catch (e: java.lang.Exception) {
+                            mainHandler.post {
+                                result.error("QUERY_FAILED", e.message ?: e.toString(), null)
                             }
                         }
-                        result.success(activeList)
-                    } catch (e: java.lang.Exception) {
-                        result.error("QUERY_FAILED", e.message ?: e.toString(), null)
                     }
                 }
                 "restartApp" -> {
@@ -167,265 +133,7 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        tunnelChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, tunnelChannelName)
-        tunnelChannel?.setMethodCallHandler { call, result ->
-            when (call.method) {
-                "startTunnel" -> {
-                    val provider = call.argument<String>("provider") ?: "cloudflare"
-                    val port = call.argument<Int>("port") ?: 8080
-                    val cloudflareToken = call.argument<String>("cloudflareToken") ?: ""
-                    val cloudflarePublicUrl = call.argument<String>("cloudflarePublicUrl") ?: ""
-                    val ngrokAuthToken = call.argument<String>("ngrokAuthToken") ?: ""
-                    val ngrokDomain = call.argument<String>("ngrokDomain") ?: ""
-                    startTunnelAsync(
-                        provider = provider,
-                        port = port,
-                        cloudflareToken = cloudflareToken,
-                        cloudflarePublicUrl = cloudflarePublicUrl,
-                        ngrokAuthToken = ngrokAuthToken,
-                        ngrokDomain = ngrokDomain,
-                        result = result
-                    )
-                }
-                "stopTunnel" -> {
-                    stopTunnel()
-                    result.success(null)
-                }
-                else -> result.notImplemented()
-            }
-        }
     }
-
-    private fun startTunnelAsync(
-        provider: String,
-        port: Int,
-        cloudflareToken: String,
-        cloudflarePublicUrl: String,
-        ngrokAuthToken: String,
-        ngrokDomain: String,
-        result: MethodChannel.Result,
-    ) {
-        thread(name = "ai-chat-tunnel-start") {
-            try {
-                stopTunnel()
-                val tunnelResult = if (provider == "ngrok") {
-                    startNgrokTunnel(port, ngrokAuthToken, ngrokDomain)
-                } else {
-                    startCloudflareTunnel(port, cloudflareToken, cloudflarePublicUrl)
-                }
-                mainHandler.post {
-                    result.success(
-                        mapOf(
-                            "success" to tunnelResult.success,
-                            "publicUrl" to tunnelResult.publicUrl,
-                            "error" to tunnelResult.error
-                        )
-                    )
-                }
-            } catch (e: Exception) {
-                mainHandler.post {
-                    result.success(
-                        mapOf(
-                            "success" to false,
-                            "publicUrl" to null,
-                            "error" to (e.message ?: e.toString())
-                        )
-                    )
-                }
-            }
-        }
-    }
-
-    private fun startCloudflareTunnel(
-        port: Int,
-        token: String,
-        configuredUrl: String,
-    ): TunnelResult {
-        val binary = resolveNativeBinary("libcloudflared.so")
-            ?: return TunnelResult(false, null, "cloudflared binary is missing for this ABI.")
-        val args = mutableListOf(
-            binary.absolutePath,
-            "tunnel",
-            "--no-autoupdate",
-            "--protocol",
-            "http2",
-        )
-        val normalizedConfiguredUrl = normalizeHttpsUrl(configuredUrl)
-        if (token.isNotBlank()) {
-            args += listOf("run", "--token", token.trim())
-        } else {
-            args += listOf("--url", "http://localhost:$port")
-        }
-        val process = startTunnelProcess(args)
-        tunnelProcess = process
-
-        val deadline = System.currentTimeMillis() + 45000L
-        var publicUrl = normalizedConfiguredUrl
-        val reader = process.inputStream.bufferedReader()
-        while (System.currentTimeMillis() < deadline) {
-            if (processHasExited(process)) {
-                return TunnelResult(false, null, "cloudflared exited before the tunnel was ready.")
-            }
-            val line = readLineWithTimeout(reader) ?: continue
-            Log.d("AIChatTunnel", "cloudflared: $line")
-            publicUrl = publicUrl ?: Regex("""https://[A-Za-z0-9.-]+\.trycloudflare\.com""")
-                .find(line)
-                ?.value
-            if (line.contains("Registered tunnel connection") && publicUrl != null) {
-                startLogReader(reader, "cloudflared")
-                return TunnelResult(true, publicUrl, null)
-            }
-        }
-        return TunnelResult(false, null, "Cloudflare tunnel did not become ready in time.")
-    }
-
-    private fun startNgrokTunnel(
-        port: Int,
-        authToken: String,
-        domain: String,
-    ): TunnelResult {
-        if (authToken.isBlank()) {
-            return TunnelResult(false, null, "ngrok auth token is required.")
-        }
-        val binary = resolveNativeBinary("libngrok.so")
-            ?: return TunnelResult(false, null, "ngrok binary is missing for this ABI.")
-        val configFile = writeNgrokConfig(authToken)
-        val args = mutableListOf(
-            binary.absolutePath,
-            "http",
-            port.toString(),
-            "--config",
-            configFile.absolutePath,
-            "--log",
-            "stdout",
-            "--log-format",
-            "json",
-        )
-        val requestedUrl = normalizeHttpsUrl(domain)
-        if (requestedUrl != null) {
-            args += listOf("--url", requestedUrl)
-        }
-        val process = startTunnelProcess(args)
-        tunnelProcess = process
-        startLogReader(process.inputStream.bufferedReader(), "ngrok")
-        val deadline = System.currentTimeMillis() + 30000L
-        while (System.currentTimeMillis() < deadline) {
-            if (processHasExited(process)) {
-                return TunnelResult(false, null, "ngrok exited before the tunnel was ready.")
-            }
-            queryNgrokPublicUrl()?.let { url ->
-                if (requestedUrl == null || requestedUrl == url) {
-                    return TunnelResult(true, url, null)
-                }
-            }
-            Thread.sleep(500L)
-        }
-        return TunnelResult(false, null, "ngrok tunnel did not become ready in time.")
-    }
-
-    private fun startTunnelProcess(args: List<String>): Process {
-        return ProcessBuilder(args).apply {
-            directory(filesDir)
-            environment()["HOME"] = filesDir.parentFile?.absolutePath ?: filesDir.absolutePath
-            redirectErrorStream(true)
-        }.start()
-    }
-
-    private fun resolveNativeBinary(name: String): File? {
-        val nativeDir = applicationInfo.nativeLibraryDir ?: return null
-        return File(nativeDir, name).takeIf { it.exists() }
-    }
-
-    private fun stopTunnel() {
-        try {
-            tunnelProcess?.destroy()
-        } catch (_: Exception) {}
-        tunnelProcess = null
-    }
-
-    private fun processHasExited(process: Process): Boolean {
-        return try {
-            process.exitValue()
-            true
-        } catch (_: IllegalThreadStateException) {
-            false
-        }
-    }
-
-    private fun readLineWithTimeout(reader: java.io.BufferedReader): String? {
-        val started = System.currentTimeMillis()
-        while (System.currentTimeMillis() - started < 500L) {
-            if (reader.ready()) return reader.readLine()
-            Thread.sleep(50L)
-        }
-        return null
-    }
-
-    private fun startLogReader(reader: java.io.BufferedReader, label: String) {
-        thread(name = "ai-chat-$label-log", isDaemon = true) {
-            try {
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    Log.d("AIChatTunnel", "$label: ${line.orEmpty()}")
-                }
-            } catch (_: Exception) {}
-        }
-    }
-
-    private fun writeNgrokConfig(authToken: String): File {
-        val dir = File(filesDir, "ngrok")
-        if (!dir.exists()) dir.mkdirs()
-        val file = File(dir, "ngrok.yml")
-        file.writeText(
-            """
-            version: 3
-            agent:
-              authtoken: ${authToken.trim()}
-              dns_resolver_ips:
-                - 1.1.1.1
-                - 8.8.8.8
-              update_check: false
-              crl_noverify: true
-            """.trimIndent()
-        )
-        return file
-    }
-
-    private fun queryNgrokPublicUrl(): String? {
-        val connection = (URL("http://127.0.0.1:4040/api/tunnels").openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 4000
-            readTimeout = 4000
-            doInput = true
-            setRequestProperty("Accept", "application/json")
-        }
-        return try {
-            if (connection.responseCode !in 200..299) return null
-            val body = connection.inputStream.bufferedReader().use { it.readText() }
-            val tunnels = JSONObject(body).optJSONArray("tunnels") ?: return null
-            for (i in 0 until tunnels.length()) {
-                val url = tunnels.optJSONObject(i)?.optString("public_url").orEmpty()
-                if (url.startsWith("https://")) return url.trimEnd('/')
-            }
-            null
-        } catch (_: Exception) {
-            null
-        } finally {
-            connection.disconnect()
-        }
-    }
-
-    private fun normalizeHttpsUrl(value: String): String? {
-        val trimmed = value.trim().trimEnd('/').trimStart('.')
-        if (trimmed.isBlank()) return null
-        return if (trimmed.startsWith("https://") || trimmed.startsWith("http://")) trimmed else "https://$trimmed"
-    }
-
-    private data class TunnelResult(
-        val success: Boolean,
-        val publicUrl: String?,
-        val error: String?,
-    )
 
     private fun restartApp() {
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
@@ -542,7 +250,15 @@ class MainActivity : FlutterActivity() {
         }
         val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadId = manager.enqueue(request)
+        persistInAppDownload(downloadId, safeName, modelsDir)
+        monitorInAppDownload(downloadId, safeName, modelsDir)
+        return downloadId
+    }
 
+    private fun monitorInAppDownload(downloadId: Long, safeName: String, modelsDir: String) {
+        if (!monitoredInAppDownloads.add(downloadId)) return
+        val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val destFile = File(File(getExternalFilesDir(null), "temp_downloads"), safeName)
         thread(name = "download-inapp-monitor-$downloadId") {
             var isFinished = false
             var lastBytes = 0L
@@ -581,26 +297,10 @@ class MainActivity : FlutterActivity() {
 
                             if (status == DownloadManager.STATUS_SUCCESSFUL) {
                                 isFinished = true
-                                try {
-                                    Log.d("MainActivity", "Download successful for $safeName. Temp file size: ${destFile.length()} bytes, expected: $total bytes")
-                                    emitProgress(safeName, downloaded, total, 0.0, "Importing to app storage...")
-                                    val targetFile = File(modelsDir, safeName)
-                                    val partFile = File(targetFile.parentFile, "${targetFile.name}.part")
-                                    if (partFile.exists()) partFile.delete()
-                                    if (destFile.exists()) {
-                                        destFile.copyTo(partFile, overwrite = true)
-                                        if (targetFile.exists()) targetFile.delete()
-                                        partFile.renameTo(targetFile)
-                                        destFile.delete()
-                                        Log.d("MainActivity", "Model copy successful for $safeName. Final size: ${targetFile.length()} bytes")
-                                    }
-                                    emitProgress(safeName, total, total, 0.0, "Download complete")
-                                } catch (e: Exception) {
-                                    Log.e("MainActivity", "Failed to copy downloaded model: ${e.message}", e)
-                                    emitProgress(safeName, downloaded, total, 0.0, "Download failed: import error")
-                                }
+                                finalizeInAppDownload(downloadId, safeName, modelsDir, downloaded, total)
                             } else if (status == DownloadManager.STATUS_FAILED) {
                                 isFinished = true
+                                removeInAppDownload(downloadId)
                                 emitProgress(safeName, downloaded, total, 0.0, "Download failed")
                             } else {
                                 emitProgress(safeName, downloaded, total, bytesPerSecond, "Downloading...")
@@ -608,14 +308,117 @@ class MainActivity : FlutterActivity() {
                         }
                     } else {
                         isFinished = true
+                        removeInAppDownload(downloadId)
                         emitProgress(safeName, 0, 0, 0.0, "Download cancelled")
                     }
                 } ?: run {
                     isFinished = true
                 }
             }
+            monitoredInAppDownloads.remove(downloadId)
         }
-        return downloadId
+    }
+
+    private fun finalizeInAppDownload(
+        downloadId: Long,
+        safeName: String,
+        modelsDir: String,
+        downloaded: Long,
+        total: Long,
+    ) {
+        val destFile = File(File(getExternalFilesDir(null), "temp_downloads"), safeName)
+        try {
+            emitProgress(safeName, downloaded, total, 0.0, "Importing to app storage...")
+            val targetFile = File(modelsDir, safeName)
+            targetFile.parentFile?.mkdirs()
+            val partFile = File(targetFile.parentFile, "${targetFile.name}.part")
+            if (partFile.exists()) partFile.delete()
+            if (!destFile.exists()) {
+                if (targetFile.exists() && targetFile.length() > 0L) {
+                    removeInAppDownload(downloadId)
+                    emitProgress(safeName, total, total, 0.0, "Download complete")
+                    return
+                }
+                throw IllegalStateException("Downloaded temporary file is missing.")
+            }
+            destFile.copyTo(partFile, overwrite = true)
+            if (targetFile.exists()) targetFile.delete()
+            if (!partFile.renameTo(targetFile)) {
+                throw IllegalStateException("Unable to finalize downloaded model.")
+            }
+            destFile.delete()
+            removeInAppDownload(downloadId)
+            emitProgress(safeName, total, total, 0.0, "Download complete")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to import downloaded model: ${e.message}", e)
+            emitProgress(safeName, downloaded, total, 0.0, "Download failed: import error")
+        }
+    }
+
+    private fun persistInAppDownload(downloadId: Long, filename: String, modelsDir: String) {
+        val record = JSONObject()
+            .put("filename", filename)
+            .put("modelsDir", modelsDir)
+        getSharedPreferences("in_app_downloads", Context.MODE_PRIVATE)
+            .edit()
+            .putString(downloadId.toString(), record.toString())
+            .apply()
+    }
+
+    private fun removeInAppDownload(downloadId: Long) {
+        getSharedPreferences("in_app_downloads", Context.MODE_PRIVATE)
+            .edit()
+            .remove(downloadId.toString())
+            .apply()
+    }
+
+    private fun reconcileInAppDownloads(): List<Map<String, Any>> {
+        val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val preferences = getSharedPreferences("in_app_downloads", Context.MODE_PRIVATE)
+        val activeList = mutableListOf<Map<String, Any>>()
+        for ((idText, rawRecord) in preferences.all) {
+            val downloadId = idText.toLongOrNull() ?: continue
+            val record = runCatching { JSONObject(rawRecord as String) }.getOrNull() ?: continue
+            val safeName = record.optString("filename")
+            val modelsDir = record.optString("modelsDir")
+            if (safeName.isBlank() || modelsDir.isBlank()) {
+                removeInAppDownload(downloadId)
+                continue
+            }
+            manager.query(DownloadManager.Query().setFilterById(downloadId))?.use { cursor ->
+                if (!cursor.moveToFirst()) {
+                    removeInAppDownload(downloadId)
+                    return@use
+                }
+                val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                val downloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                val total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                when (status) {
+                    DownloadManager.STATUS_SUCCESSFUL ->
+                        finalizeInAppDownload(downloadId, safeName, modelsDir, downloaded, total)
+                    DownloadManager.STATUS_FAILED -> {
+                        removeInAppDownload(downloadId)
+                        emitProgress(safeName, downloaded, total, 0.0, "Download failed")
+                    }
+                    else -> {
+                        val statusText = when (status) {
+                            DownloadManager.STATUS_PAUSED -> "Paused"
+                            DownloadManager.STATUS_PENDING -> "Pending"
+                            else -> "Downloading..."
+                        }
+                        activeList.add(mapOf(
+                            "downloadId" to downloadId,
+                            "filename" to safeName,
+                            "downloaded" to downloaded,
+                            "total" to total,
+                            "status" to statusText,
+                        ))
+                        monitorInAppDownload(downloadId, safeName, modelsDir)
+                    }
+                }
+            }
+        }
+        return activeList
     }
 
     private fun openModelPicker() {
