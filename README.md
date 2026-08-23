@@ -131,7 +131,7 @@ The `InferenceService` exposes `supportsLocalInference` so the UI can hide local
 
 ### iOS / iPad
 
-The iPad release is distributed as a standalone ZIP package for sideloading. Download the latest `PrivateLM-iOS.zip` from the [Releases](https://github.com/orailnoor/cross-platform-llm-client/releases) page, extract it, and install the `.ipa` via AltStore, Sideloadly, or Xcode. iPhone support is experimental — iPad is the recommended iOS target due to RAM requirements for local models.
+The iPad release is distributed as a standalone ZIP package for sideloading. Download the latest `AstraLM-iOS.zip` from the [Releases](https://github.com/Prasun01/AstraLM/releases) page, extract it, and install the `.ipa` via AltStore, Sideloadly, or Xcode. iPhone support is experimental — iPad is the recommended iOS target due to RAM requirements for local models.
 
 ---
 

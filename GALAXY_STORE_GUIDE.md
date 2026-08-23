@@ -15,7 +15,7 @@ The **Samsung Galaxy Store** (Samsung Developer Seller Portal) is **100% free** 
 Samsung Galaxy Store accepts either **signed APK** or **signed AAB**:
 - **Signed Release APK:** `build/app/outputs/flutter-apk/app-release.apk` *(Recommended)*
 - **Signed Release AAB:** `build/app/outputs/bundle/release/app-release.aab`
-- Both files are signed with your production keystore (`android/privatelm-release.jks`).
+- Both files are signed with your production keystore (`android/astralm-release.jks`).
 
 ---
 
