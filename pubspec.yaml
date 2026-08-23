@@ -1,5 +1,5 @@
 name: privatelm
-description: AI Chat — Local/Cloud LLM Assistant
+description: AstraLM — Private On-Device AI Assistant (built upon PrivateLM)
 publish_to: "none"
 version: 1.0.5+5
 

@@ -1,39 +1,30 @@
-# PrivateLM
+# AstraLM — Private On-Device AI
 
-[![Live Web App](https://img.shields.io/badge/Live_Demo-Try_Web_App-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://ai-chat-orailnoor.web.app/)
+![AstraLM Feature Banner](store_assets/feature_graphic.jpg)
 
-A production-ready, cross-platform AI chat client built with Flutter. It unifies local on-device LLM inference (Android) with cloud API access, giving users full control over how their models run.
+[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+[![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://android.com)
+[![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device-blueviolet?style=for-the-badge)](PRIVACY_POLICY.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-![Image generation tested on Moto G71 (Snapdragon), Oneplus 10r (Mediatek), Pixel 6A (Tensor), Poco F1 (Snapdragon), Samsung s23 (Snapdragon) 4 steps fast](PrivateLM.png)
-_Image generation tested on Moto G71 (Snapdragon), Oneplus 10r (Mediatek), Pixel 6A (Tensor), Poco F1 (Snapdragon), Samsung s23 (Snapdragon) 4 steps fast_
-
-![Generated on pixel 6 with 20 step](IMG_2390.png)
-_Generated on pixel 6 with 20 step_
-
----
-
-## What It Does
-
-- **Local Inference on Android** — Download and run GGUF models directly on your phone using GPU-accelerated inference (Vulkan). No internet required after download.
-- **Cloud API Fallback** — Seamlessly switch to OpenAI, Anthropic, Google Gemini, or Kimi (Moonshot AI) when you need more power or are on unsupported platforms.
-- **Multimodal Chat** — Send text and images in conversations. Vision support works with both local models (Qwen2-VL) and cloud providers.
-- **Persistent Sessions** — All chats, tasks, and settings are stored locally via Hive. Nothing leaves your device unless you explicitly choose cloud mode.
-- **Background Services** — Firebase Cloud Messaging integration for push updates and background task handling.
-- **Smart Auto-Configuration** — On first launch, the app detects your device's RAM and recommends optimal context size and token limits automatically.
-- **Task Management** — A dedicated task view for structured AI-assisted workflows alongside free-form chat.
+A high-performance, private, on-device AI chat client built with Flutter. AstraLM runs Large Language Models (LLMs) and Vision models 100% locally on device hardware (CPU & GPU) with zero data leaving your phone.
 
 ---
 
-## Technical Architecture
+## ✨ Features
 
-### Stack
+- **100% Offline & Private** — All conversations, photos, and document analyses stay on your device.
+- **Dual High-Performance Engines** — 
+  - **GGUF Runtime (`llama.cpp`)**: Accelerated quantized inference (Llama 3, Qwen 2.5, Gemma, Mistral, Phi-3, DeepSeek).
+  - **LiteRT-LM (Google LiteRT)**: Hardware-accelerated OpenCL GPU & CPU inference for mobile models.
+- **Multimodal Vision** — Analyze photos, documents, and screenshots directly using compatible local vision models.
+- **Fluid & Minimalist UI** — 120Hz smooth scrolling, dynamic attached attachment popouts, Open Sans / Manrope typography, and refined dark/light themes.
+- **Voice Input** — On-device speech-to-text recognition.
+- **Optional Cloud Mode** — Connect your own API keys for OpenAI, Anthropic, Gemini, Groq, OpenRouter, and Stability AI.
 
-- **Framework:** Flutter 3.x (Dart >=3.3.0)
-- **State Management:** GetX
-- **Local Storage:** Hive
-- **Networking:** Dio + `package:http`
-- **Background Execution:** `flutter_background_service` + `flutter_local_notifications`
-- **Push Notifications:** Firebase Core + Firebase Messaging
+---
+
+## 🛠️ Technical Architecture
 
 ### Inference Pipeline
 
@@ -53,15 +44,47 @@ _Generated on pixel 6 with 20 step_
 │                      Services                                │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
 │  │ InferenceService│  │  CloudService   │  │DownloadSvc  │ │
-│  │  (local GGUF)   │  │ (OpenAI/Claude/ │  │ (model dl)  │ │
-│  │                 │  │  Gemini/Kimi)   │  │             │ │
+│  │(GGUF + LiteRT)  │  │(OpenAI/Claude/  │  │ (model dl)  │ │
+│  │                 │  │ Gemini/Groq)    │  │             │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────┘ │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
+│  ┌─────────────────┐  ┌─────────────────┐  └─────────────┐ │
 │  │  HiveService    │  │ DeviceInfoSvc   │  │ExecutionSvc │ │
-│  │  ( persistence) │  │  (RAM/GPU tier) │  │ (bg tasks)  │ │
+│  │  (persistence)  │  │ (RAM/GPU tier)  │  │ (bg tasks)  │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 🚀 Building & Running
+
+### Android Build
+```bash
+# Debug Build & Run
+flutter run
+
+# Production Signed APK
+flutter build apk --release
+
+# Production Signed App Bundle (Google Play / Stores)
+flutter build appbundle --release
+```
+
+---
+
+## 🙏 Credits & Acknowledgments
+
+- **Special Thanks & Credit:** AstraLM is built upon and inspired by the original **[PrivateLM](https://github.com/orailnoor/cross-platform-llm-client)** project by [@orailnoor](https://github.com/orailnoor).
+- **Core Engine Credits:**
+  - [llama.cpp](https://github.com/ggerganov/llama.cpp) by Georgi Gerganov & contributors.
+  - [Google LiteRT (TensorFlow Lite)](https://ai.google.dev/edge/litert).
+
+---
+
+## 📄 License & Privacy
+
+- **License:** MIT License — see [LICENSE](./LICENSE) for details.
+- **Privacy Policy:** See [PRIVACY_POLICY.md](./PRIVACY_POLICY.md).
 
 ### Local Inference (Android)
 
