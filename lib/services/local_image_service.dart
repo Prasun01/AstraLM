@@ -39,13 +39,12 @@ class LocalImageService extends GetxService {
         // Adreno: OpenCL is best — Vulkan is blacklisted due to GGML shader compiler crashes
         return [Backend.opencl, Backend.cpu];
       case 'mali':
-      // Mali: Vulkan is generally more stable and faster than OpenCL
       case 'xclipse':
-        return [Backend.vulkan, Backend.cpu];
+        // Mali/Xclipse: Vulkan GGML causes driver SIGSEGV crashes on Exynos; CPU with NEON is rock-solid
+        return [Backend.cpu];
       case 'powervr':
       case 'imagination':
-        // PowerVR / Imagination: try Vulkan
-        return [Backend.vulkan, Backend.cpu];
+        return [Backend.cpu];
       case 'nvidia':
         // NVIDIA Tegra: Vulkan preferred, OpenCL fallback
         return [Backend.vulkan, Backend.opencl, Backend.cpu];
@@ -54,7 +53,7 @@ class LocalImageService extends GetxService {
       case 'amd':
         return [Backend.vulkan, Backend.opencl, Backend.cpu];
       default:
-        return [Backend.vulkan, Backend.opencl, Backend.cpu];
+        return [Backend.cpu];
     }
   }
 
@@ -77,12 +76,13 @@ class LocalImageService extends GetxService {
     required double maxVramGb,
   }) async {
     final isGpuBackend = backend != Backend.cpu;
+    final numThreads = Platform.isAndroid ? 4 : 0;
     print(
-        '[LocalImageService] Creating SdIsolateProcessor (backend=${backend.displayName}, quant=${currentQuantization.value.displayName})...');
+        '[LocalImageService] Creating SdIsolateProcessor (backend=${backend.displayName}, threads=$numThreads, quant=${currentQuantization.value.displayName})...');
     _processor = SdIsolateProcessor(
       modelPath: modelPath,
-      nThreads: 0,
-      flashAttn: !isGpuBackend,
+      nThreads: numThreads,
+      flashAttn: false,
       vaeTiling: true,
       taesdPath: taesdPath,
       backend: backend,
@@ -189,14 +189,16 @@ class LocalImageService extends GetxService {
             '[LocalImageService] Model ${modelSizeMb}MB exceeds GPU safety ${gpuGuardMb}MB; using CPU for mobile stability');
       }
 
-      final requestedBackend = currentBackend.value;
-      if (!useGpu && requestedBackend != Backend.cpu) {
-        print(
-            '[LocalImageService] Ignoring saved GPU backend ${requestedBackend.displayName} for this model/device');
+      // Enforce safe backend on Mali/Exynos/unknown GPUs to prevent native driver aborts
+      if (vendor == 'mali' ||
+          vendor == 'xclipse' ||
+          vendor == 'powervr' ||
+          vendor == 'unknown' ||
+          !useGpu) {
+        currentBackend.value = Backend.cpu;
       }
-      final candidateBackends = requestedBackend == Backend.cpu || !useGpu
-          ? _availableBackendsFor(vendor, useGpu)
-          : <Backend>[requestedBackend, Backend.cpu];
+
+      final candidateBackends = _availableBackendsFor(vendor, useGpu);
       print(
           '[LocalImageService] Backend candidates for $vendor: ${candidateBackends.map((b) => b.displayName).join(' -> ')}');
 

@@ -8,6 +8,10 @@ import 'model_view.dart';
 import 'server_view.dart';
 import 'settings_view.dart';
 
+import '../core/constants.dart';
+import '../services/hive_service.dart';
+import 'welcome_guide_view.dart';
+
 class HomeView extends GetView<HomeController> {
   const HomeView({super.key});
 
@@ -16,10 +20,6 @@ class HomeView extends GetView<HomeController> {
         icon: Icons.bubble_chart_outlined,
         activeIcon: Icons.bubble_chart,
         label: 'Chat'),
-    _NavItem(
-        icon: Icons.arrow_downward_rounded,
-        activeIcon: Icons.arrow_downward_rounded,
-        label: 'Models'),
     _NavItem(
         icon: Icons.dns_outlined,
         activeIcon: Icons.dns_rounded,
@@ -37,91 +37,134 @@ class HomeView extends GetView<HomeController> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.checkResumeModel(context);
+      final hive = Get.find<HiveService>();
+      final hasSeen =
+          hive.getSetting<bool>(AppConstants.keyHasSeenWelcomeGuide, defaultValue: false) ?? false;
+      if (!hasSeen && context.mounted) {
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            opaque: false,
+            pageBuilder: (_, __, ___) => const WelcomeGuideView(),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 320),
+          ),
+        );
+      } else {
+        controller.checkResumeModel(context);
+      }
     });
     return Scaffold(
-      backgroundColor: isDark ? Colors.black : Colors.white,
-      body: Obx(() {
-        final content = IndexedStack(
-          index: controller.currentTab.value,
-          children: const [
-            ChatView(),
-            ModelView(),
-            ServerView(),
-            SettingsView()
-          ],
-        );
-        if (_isWide) {
-          return Row(children: [
-            _buildSidebar(context, isDark),
-            VerticalDivider(
-                width: 0.5,
-                thickness: 0.5,
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.08)),
-            Expanded(child: content),
-          ]);
-        }
-        return content;
-      }),
-      bottomNavigationBar:
-          _isWide ? null : Obx(() => _buildBottomNav(context, isDark)),
+      backgroundColor: scheme.surface,
+      body: const ChatView(),
     );
   }
 
-  Widget _buildBottomNav(BuildContext context, bool isDark) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? Colors.black : Colors.white,
-        border: Border(
-            top: BorderSide(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.08),
-          width: 0.5,
-        )),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: controller.currentTab.value,
-        onTap: controller.changeTab,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        items: [
-          for (final tab in _tabs)
-            BottomNavigationBarItem(
-              icon: Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Icon(tab.icon, size: 22),
-              ),
-              activeIcon: Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Icon(tab.activeIcon, size: 22),
-              ),
-              label: tab.label,
+  Widget _buildBottomNav(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final current = controller.currentTab.value;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: Container(
+          height: 66,
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: isDark ? 0.25 : 0.4),
+              width: 1,
             ),
-        ],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+                blurRadius: 16,
+                spreadRadius: 0,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              for (int i = 0; i < _tabs.length; i++) ...[
+                Builder(builder: (ctx) {
+                  final tab = _tabs[i];
+                  final isSelected = current == i;
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 6),
+                      child: InkWell(
+                        onTap: () => controller.changeTab(i),
+                        borderRadius: BorderRadius.circular(18),
+                        child: Center(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeInOut,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? scheme.primary.withValues(
+                                      alpha: isDark ? 0.24 : 0.12)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  isSelected ? tab.activeIcon : tab.icon,
+                                  size: 20,
+                                  color: isSelected
+                                      ? scheme.primary
+                                      : scheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  tab.label,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? scheme.primary
+                                        : scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildSidebar(BuildContext context, bool isDark) {
-    final accent = isDark ? const Color(0xFF0A84FF) : const Color(0xFF007AFF);
-    final muted = Theme.of(context).hintColor;
+  Widget _buildSidebar(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
 
     return Container(
       width: 76,
-      color: isDark ? Colors.black : Colors.white,
+      color: scheme.surfaceContainerLow,
       child: Column(children: [
-        // const SizedBox(height: 20),
-        // Image.asset(
-        //   'assets/icons/appicon.png',
-        //   width: 40,
-        //   height: 40,
-        // ),
-        // const SizedBox(height: 20),
         Expanded(child: Obx(() {
           final current = controller.currentTab.value;
           return ListView.builder(
@@ -133,8 +176,9 @@ class HomeView extends GetView<HomeController> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 child: Material(
-                  color:
-                      sel ? accent.withValues(alpha: 0.12) : Colors.transparent,
+                  color: sel
+                      ? scheme.primary.withValues(alpha: 0.12)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(12),
@@ -145,14 +189,20 @@ class HomeView extends GetView<HomeController> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(sel ? tab.activeIcon : tab.icon,
-                                color: sel ? accent : muted, size: 20),
+                                color: sel
+                                    ? scheme.primary
+                                    : scheme.onSurfaceVariant,
+                                size: 20),
                             const SizedBox(height: 3),
                             Text(tab.label,
-                                style: GoogleFonts.inter(
+                                style: TextStyle(
                                     fontSize: 10,
-                                    fontWeight:
-                                        sel ? FontWeight.w600 : FontWeight.w400,
-                                    color: sel ? accent : muted)),
+                                    fontWeight: sel
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                    color: sel
+                                        ? scheme.primary
+                                        : scheme.onSurfaceVariant)),
                           ]),
                     ),
                   ),

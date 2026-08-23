@@ -149,7 +149,7 @@ class ImageGenerationNotificationService {
     await _notifications.show(
       _progressNotificationId,
       'Image generation failed',
-      'Open PrivateLM to check the error and try again.',
+      'Open AstraLM to check the error and try again.',
       const NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,

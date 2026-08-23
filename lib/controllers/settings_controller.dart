@@ -600,7 +600,8 @@ class SettingsController extends GetxController {
     final hasCustomPrompt =
         prompt.isNotEmpty && prompt != AppConstants.systemPrompt;
     if (hasCustomPrompt) return prompt;
-    if (AppConstants.isUncensoredModelName(modelName)) {
+    final isUncensored = AppConstants.isUncensoredModelName(modelName);
+    if (isUncensored) {
       return AppConstants.uncensoredSystemPrompt;
     }
     return AppConstants.systemPrompt;

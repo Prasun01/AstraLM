@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import '../controllers/chat_controller.dart';
 import '../controllers/settings_controller.dart';
 import '../controllers/model_controller.dart';
-import '../controllers/home_controller.dart';
+import '../models/chat_session.dart';
+import '../services/hive_service.dart';
 import '../services/inference_service.dart';
 import '../services/local_image_service.dart';
 import '../ffi/sd_ffi_bindings.dart';
@@ -15,103 +17,188 @@ import '../utils/thought_parser.dart';
 import '../widgets/attachment_preview.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/thought_disclosure.dart';
-
-// ── Apple-style color helpers ──
-Color _appleBlue(BuildContext c) => Theme.of(c).brightness == Brightness.dark
-    ? const Color(0xFF0A84FF)
-    : const Color(0xFF007AFF);
-
-Color _aiBubble(BuildContext c) => Theme.of(c).brightness == Brightness.dark
-    ? const Color(0xFF1C1C1E)
-    : const Color(0xFFF2F2F7);
-
-Color _sep(BuildContext c) => Theme.of(c).brightness == Brightness.dark
-    ? Colors.white.withValues(alpha: 0.08)
-    : Colors.black.withValues(alpha: 0.08);
+import '../widgets/pressable_scale.dart';
+import 'model_view.dart';
+import 'settings_view.dart';
 
 class ChatView extends GetView<ChatController> {
   const ChatView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? Colors.black : Colors.white,
-      appBar: _appBar(context, isDark),
+      drawer: _buildSidebarDrawer(context),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: _appBar(context),
       body: Column(
         children: [
-          _modelLoadingBar(context, isDark),
-          _contextBar(context, isDark),
-          Expanded(child: Obx(() {
-            if (controller.currentSessionId.value.isEmpty ||
-                controller.messages.isEmpty)
-              return _emptyState(context, isDark);
-            final streaming = controller.isStreaming.value;
-            final text = controller.streamingResponse.value;
-            final n = controller.messages.length;
-            return NotificationListener<ScrollUpdateNotification>(
-              onNotification: (note) {
-                if (note.dragDetails != null && streaming) {
-                  if ((note.scrollDelta ?? 0) < 0)
-                    controller.pauseStreamingFollow();
-                  else
-                    controller.resumeStreamingFollowIfNearBottom();
-                }
-                return false;
-              },
-              child: ListView.builder(
-                controller: controller.scrollController,
-                padding: const EdgeInsets.only(top: 8, bottom: 8),
-                itemCount: n + (streaming ? 1 : 0),
-                itemBuilder: (_, i) {
-                  if (i == n && streaming) {
-                    return _streamBubble(context, text, isDark);
-                  }
-                  return ChatBubble(message: controller.messages[i]);
-                },
-              ),
-            );
-          })),
-          _inputBar(context, isDark),
+          _modelLoadingBar(context),
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Obx(() {
+                    if (controller.currentSessionId.value.isEmpty ||
+                        controller.messages.isEmpty) {
+                      return _emptyState(context);
+                    }
+                    final streaming = controller.isStreaming.value;
+                    final text = controller.streamingResponse.value;
+                    final n = controller.messages.length;
+                    return NotificationListener<ScrollUpdateNotification>(
+                      onNotification: (note) {
+                        if (note.dragDetails != null && streaming) {
+                          if ((note.scrollDelta ?? 0) < 0) {
+                            controller.pauseStreamingFollow();
+                          } else {
+                            controller.resumeStreamingFollowIfNearBottom();
+                          }
+                        }
+                        return false;
+                      },
+                      child: ListView.builder(
+                        controller: controller.scrollController,
+                        padding: const EdgeInsets.only(top: 14, bottom: 20),
+                        itemCount: n + (streaming ? 1 : 0),
+                        itemBuilder: (_, i) {
+                          if (i == n && streaming) {
+                            return _streamBubble(context, text);
+                          }
+                          return ChatBubble(
+                            message: controller.messages[i],
+                          );
+                        },
+                      ),
+                    );
+                  }),
+                ),
+                // Slight top gradient fade
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 24,
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Theme.of(context).scaffoldBackgroundColor,
+                            Theme.of(context)
+                                .scaffoldBackgroundColor
+                                .withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Slight bottom gradient fade behind floating input bar
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 36,
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Theme.of(context)
+                                .scaffoldBackgroundColor
+                                .withValues(alpha: 0.9),
+                            Theme.of(context)
+                                .scaffoldBackgroundColor
+                                .withValues(alpha: 0.0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _inputBar(context),
         ],
       ),
     );
   }
 
   // ── AppBar ──
-  PreferredSizeWidget _appBar(BuildContext context, bool isDark) {
+  PreferredSizeWidget _appBar(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return AppBar(
-      backgroundColor: isDark ? Colors.black : Colors.white,
+      backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(0.5),
-        child: Container(height: 0.5, color: _sep(context)),
+      centerTitle: true,
+      toolbarHeight: 64,
+      leadingWidth: 58,
+      leading: Padding(
+        padding: const EdgeInsets.only(left: 14),
+        child: Center(
+          child: Builder(
+            builder: (ctx) => PressableScale(
+              onTap: () => Scaffold.of(ctx).openDrawer(),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF141620) : const Color(0xFFE9EDF5),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.notes_rounded,
+                    size: 20,
+                    color: isDark ? const Color(0xFFE2E6F2) : const Color(0xFF161822),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
-      titleSpacing: 0,
       title: Obx(() {
-        final sid = controller.currentSessionId.value;
         final settings = Get.find<SettingsController>();
         final inf = Get.find<InferenceService>();
+        final localImage = Get.find<LocalImageService>();
         final isLocal = settings.inferenceMode.value == 'local';
         String model;
+        bool isModelActive = false;
+
         if (isLocal) {
-          final localImage = Get.find<LocalImageService>();
           if (inf.isModelLoaded.value) {
+            isModelActive = true;
             model = inf.loadedModelName.value
                 .replaceAll('.gguf', '')
                 .replaceAll('.GGUF', '');
           } else if (localImage.isModelLoaded.value) {
+            isModelActive = true;
             final backend = localImage.currentBackend.value;
-            final backendEmoji = backend == Backend.cpu ? '🖥' : '⚡';
             final backendName = backend.displayName.split(' ').first;
             model =
-                '$backendEmoji $backendName · ${localImage.loadedModelName.value.replaceAll('.gguf', '').replaceAll('.GGUF', '')}';
+                '$backendName · ${localImage.loadedModelName.value.replaceAll('.gguf', '').replaceAll('.GGUF', '')}';
           } else {
             model = 'No model loaded';
           }
           if (model.length > 24) model = '${model.substring(0, 24)}…';
         } else {
+          isModelActive = true;
           final p = settings.cloudProvider.value;
           model = p == 'openai'
               ? settings.openaiModel.value
@@ -128,724 +215,1551 @@ class ChatView extends GetView<ChatController> {
                                   : p == 'custom'
                                       ? settings.customCloudModel.value
                                       : settings.kimiModel.value;
-          if (p == 'custom' && model.isNotEmpty)
+          if (p == 'custom' && model.isNotEmpty) {
             model = '${settings.customCloudName.value}: $model';
+          }
+          if (model.length > 24) model = '${model.substring(0, 24)}…';
         }
-        final title = sid.isEmpty
-            ? 'PrivateLM'
-            : controller.sessions.firstWhereOrNull((s) => s.id == sid)?.title ??
-                'Chat';
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title,
-                style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 17,
-                    color: isDark ? Colors.white : Colors.black),
-                overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 2),
-            Row(children: [
-              Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isLocal
-                          ? (inf.isModelLoaded.value
-                              ? const Color(0xFF34C759)
-                              : const Color(0xFFFF9500))
-                          : _appleBlue(context))),
-              const SizedBox(width: 5),
-              Flexible(
-                  child: Text('$model · ${isLocal ? "Local" : "Cloud"}',
-                      style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: Theme.of(context).hintColor,
-                          fontWeight: FontWeight.w400),
-                      overflow: TextOverflow.ellipsis)),
-              if (isLocal && inf.isGpuAccelerated.value) ...[
-                const SizedBox(width: 4),
-                const Icon(Icons.bolt, size: 11, color: Color(0xFFFF9500)),
-                Text('GPU',
-                    style: GoogleFonts.inter(
-                        fontSize: 10,
-                        color: const Color(0xFFFF9500),
-                        fontWeight: FontWeight.w600)),
+
+        return PressableScale(
+          onTap: () => Navigator.of(context).push(
+            _topFillTransitionRoute(const ModelView()),
+          ),
+          child: Container(
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            alignment: Alignment.center,
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.62,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF141620) : const Color(0xFFE9EDF5),
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
               ],
-            ]),
-          ]),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 7.5,
+                  height: 7.5,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isModelActive
+                        ? const Color(0xFF34C759)
+                        : const Color(0xFF8E95A8),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    model,
+                    style: GoogleFonts.manrope(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: isDark ? Colors.white : const Color(0xFF12141D),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (isLocal && inf.isGpuAccelerated.value) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color:
+                          isDark ? const Color(0xFF222634) : const Color(0xFFDCE2EC),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'GPU',
+                      style: GoogleFonts.manrope(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF12141D),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         );
       }),
       actions: [
-        IconButton(
-            icon: Icon(Icons.history_rounded,
-                size: 20, color: Theme.of(context).hintColor),
-            onPressed: () => _showHistory(context)),
-        IconButton(
-            tooltip: 'New Chat',
-            icon: Icon(Icons.edit_note, size: 22, color: _appleBlue(context)),
-            onPressed: () => controller.createNewChat()),
+        Padding(
+          padding: const EdgeInsets.only(right: 14),
+          child: Center(
+            child: PressableScale(
+              onTap: () => Navigator.of(context).push(
+                _smoothTransitionRoute(const SettingsView()),
+              ),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF141620) : const Color(0xFFE9EDF5),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.settings_outlined,
+                    size: 19,
+                    color: isDark ? const Color(0xFFE2E6F2) : const Color(0xFF161822),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  // ── Model Loading ──
-  Widget _modelLoadingBar(BuildContext context, bool isDark) {
+  // ── Model Loading Top Island ──
+  Widget _modelLoadingBar(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Obx(() {
       final inf = Get.find<InferenceService>();
-      if (!inf.isLoadingModel.value) return const SizedBox.shrink();
-      final pct = (inf.modelLoadProgress.value * 100).toStringAsFixed(0);
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-        color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                    strokeWidth: 1.5, color: _appleBlue(context))),
-            const SizedBox(width: 8),
-            Text('Loading model… $pct%',
-                style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: Theme.of(context).hintColor,
-                    fontWeight: FontWeight.w500)),
-          ]),
-          const SizedBox(height: 8),
-          ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: LinearProgressIndicator(
-                  value: inf.modelLoadProgress.value,
-                  backgroundColor: _sep(context),
-                  color: _appleBlue(context),
-                  minHeight: 3)),
-        ]),
-      );
-    });
-  }
+      final localImage = Get.find<LocalImageService>();
+      final isLoading =
+          inf.isLoadingModel.value || localImage.isLoadingModel.value;
+      if (!isLoading) return const SizedBox.shrink();
 
-  // ── Context Bar ──
-  Widget _contextBar(BuildContext context, bool isDark) {
-    return Obx(() {
-      final settings = Get.find<SettingsController>();
-      final inf = Get.find<InferenceService>();
-      final active = controller.currentSessionId.value.isNotEmpty &&
-          controller.messages.isNotEmpty;
-      if (!active || settings.inferenceMode.value != 'local')
-        return const SizedBox.shrink();
-      final total = inf.contextTokensTotal.value > 0
-          ? inf.contextTokensTotal.value
-          : settings.contextSize.value;
-      final est =
-          controller.messages.fold<int>(0, (s, m) => s + m.content.length);
-      final used = (inf.contextTokensUsed.value > 0
-              ? inf.contextTokensUsed.value
-              : (est / 4).ceil())
-          .clamp(0, total)
-          .toInt();
-      final pct = total == 0 ? 0.0 : (used / total).clamp(0.0, 1.0).toDouble();
-      final warn = pct >= 0.75;
-      final accent = warn ? const Color(0xFFFF9500) : _appleBlue(context);
+      final modelName = inf.isLoadingModel.value
+          ? inf.loadingModelName.value
+              .replaceAll('.gguf', '')
+              .replaceAll('.GGUF', '')
+          : (localImage.loadedModelName.value.isNotEmpty
+              ? localImage.loadedModelName.value
+              : 'Image Model');
+      final progressVal =
+          inf.isLoadingModel.value ? inf.modelLoadProgress.value : 0.0;
+      final pct = (progressVal * 100).toStringAsFixed(0);
+
       return Container(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        margin: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-            border:
-                Border(bottom: BorderSide(color: _sep(context), width: 0.5))),
-        child: Row(children: [
-          Icon(Icons.memory_rounded, size: 14, color: accent),
-          const SizedBox(width: 6),
-          Text('${_fmtK(used)} / ${_fmtK(total)}',
-              style: GoogleFonts.inter(
-                  fontSize: 11,
-                  color: Theme.of(context).hintColor,
-                  fontWeight: FontWeight.w500)),
-          const SizedBox(width: 8),
-          Expanded(
-              child: ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                      value: pct,
-                      backgroundColor: _sep(context),
-                      color: accent,
-                      minHeight: 3))),
-          const SizedBox(width: 8),
-          Text('${(pct * 100).toStringAsFixed(0)}%',
-              style: GoogleFonts.inter(
-                  fontSize: 11, color: accent, fontWeight: FontWeight.w600)),
-        ]),
+          color: isDark ? const Color(0xFF1B1D25) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? const Color(0xFF2E3240) : const Color(0xFFD6DBE5),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                value: progressVal > 0 ? progressVal : null,
+                color: scheme.primary,
+                backgroundColor: scheme.primary.withValues(alpha: 0.2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    modelName.isNotEmpty ? modelName : 'Loading Model',
+                    style: GoogleFonts.manrope(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    progressVal > 0
+                        ? 'Allocating memory · $pct%'
+                        : 'Initializing model runtime...',
+                    style: GoogleFonts.openSans(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (progressVal > 0)
+              Text(
+                '$pct%',
+                style: GoogleFonts.manrope(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: scheme.primary,
+                ),
+              ),
+          ],
+        ),
       );
     });
   }
 
   // ── Empty State ──
-  Widget _emptyState(BuildContext context, bool isDark) {
+  Widget _emptyState(BuildContext context) {
     final suggestions = [
-      'Explain quantum computing simply',
-      'Write a short poem about time',
-      'Help me debug my code',
-      'Summarize a complex topic'
+      'Write a poem',
+      'Explain quantum physics',
+      'Summarize a complex text',
+      'Help me debug my code'
     ];
+    final scheme = Theme.of(context).colorScheme;
     return Center(
-        child: SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Image.asset(
-          'assets/icons/appicon.png',
-          width: 120,
-          height: 120,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: const Duration(milliseconds: 380),
+        curve: Curves.easeOutCubic,
+        builder: (context, anim, child) => Opacity(
+          opacity: anim,
+          child: Transform.translate(
+            offset: Offset(0, (1 - anim) * 14),
+            child: child,
+          ),
         ),
-        const SizedBox(height: 20),
-        Text('Hello.',
-            style: GoogleFonts.inter(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : Colors.black)),
-        const SizedBox(height: 6),
-        Text('How can I help you today?',
-            style: GoogleFonts.inter(
-                fontSize: 16,
-                color: Theme.of(context).hintColor,
-                fontWeight: FontWeight.w400)),
-        const SizedBox(height: 32),
-        Obx(() {
-          final settings = Get.find<SettingsController>();
-          final models = Get.find<ModelController>();
-          final isLocal = settings.inferenceMode.value == 'local';
-          if (isLocal && models.downloadedCount == 0) {
-            return Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF9500).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(children: [
-                const Icon(Icons.download_rounded,
-                    color: Color(0xFFFF9500), size: 36),
-                const SizedBox(height: 14),
-                Text('No Local Models',
-                    style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : Colors.black)),
-                const SizedBox(height: 6),
-                Text(
-                    'You need to download a model to use local inference on your device.',
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+            Obx(() {
+              final inf = Get.find<InferenceService>();
+              final loadedName = inf.loadedModelName.value;
+              final modelTitle = loadedName.isNotEmpty
+                  ? loadedName.replaceAll('.gguf', '').replaceAll('.GGUF', '')
+                  : 'AstraLM';
+              return Column(
+                children: [
+                  const _RotatingAppLogo(size: 84),
+                  const SizedBox(height: 20),
+                  Text(
+                    modelTitle,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                        fontSize: 14, color: Theme.of(context).hintColor)),
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  onPressed: () => Get.find<HomeController>().changeTab(1),
-                  icon: const Icon(Icons.arrow_downward_rounded, size: 18),
-                  label: const Text('Go to Models'),
-                  style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF9500),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
-                      textStyle: GoogleFonts.inter(
-                          fontSize: 15, fontWeight: FontWeight.w600)),
-                ),
-              ]),
-            );
-          }
-          return Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: WrapAlignment.center,
-            children: suggestions
-                .map((s) => _suggestionChip(context, s, isDark))
-                .toList(),
-          );
-        }),
-      ]),
-    ));
+                    style: GoogleFonts.playfairDisplay(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'How can I help you today?',
+                    style: GoogleFonts.openSans(
+                      fontSize: 16.5,
+                      color: scheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              );
+            }),
+            const SizedBox(height: 32),
+            Obx(() {
+              final settings = Get.find<SettingsController>();
+              final models = Get.find<ModelController>();
+              final isLocal = settings.inferenceMode.value == 'local';
+              if (isLocal && models.downloadedCount == 0) {
+                return Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(children: [
+                    Icon(Icons.download_rounded,
+                        color: scheme.primary, size: 36),
+                    const SizedBox(height: 14),
+                    Text('No Local Models',
+                        style: GoogleFonts.playfairDisplay(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: scheme.onSurface)),
+                    const SizedBox(height: 6),
+                    Text(
+                        'You need to download a model to use local inference on your device.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.openSans(
+                            fontSize: 14.5, color: scheme.onSurfaceVariant)),
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const ModelView())),
+                      icon: const Icon(Icons.arrow_downward_rounded, size: 18),
+                      label: const Text('Go to Models'),
+                      style: FilledButton.styleFrom(
+                          backgroundColor: scheme.primary,
+                          foregroundColor: scheme.onPrimary,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          textStyle: GoogleFonts.manrope(
+                              fontSize: 15, fontWeight: FontWeight.w700)),
+                    ),
+                  ]),
+                );
+              }
+              return Column(
+                children: suggestions
+                    .map((s) => _suggestionChip(context, s))
+                    .toList(),
+              );
+            }),
+          ],
+        ),
+      ),
+    ),
+    );
   }
 
-  Widget _suggestionChip(BuildContext context, String text, bool isDark) {
-    return GestureDetector(
-      onTap: () {
-        controller.createNewChat();
-        controller.textController.text = text;
-        controller.inputText.value = text;
-        controller.sendMessage();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        constraints: const BoxConstraints(maxWidth: 200),
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.06)
-              : Colors.black.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _sep(context)),
+  Widget _suggestionChip(BuildContext context, String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? const Color(0xFFD0D5E4) : const Color(0xFF2C3140);
+    final iconColor = isDark ? const Color(0xFF6B7285) : const Color(0xFF9AA0B0);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: PressableScale(
+        pressedScale: 0.97,
+        onTap: () {
+          controller.createNewChat();
+          controller.textController.text = text;
+          controller.inputText.value = text;
+          controller.sendMessage();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  text,
+                  style: GoogleFonts.openSans(
+                    fontSize: 15,
+                    color: textColor,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_rounded,
+                size: 16,
+                color: iconColor,
+              ),
+            ],
+          ),
         ),
-        child: Text(text,
-            style: GoogleFonts.inter(
-                fontSize: 13,
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.8)
-                    : Colors.black.withValues(alpha: 0.7),
-                fontWeight: FontWeight.w400,
-                height: 1.3)),
       ),
     );
   }
 
-  // ── Streaming Bubble ──
-  Widget _streamBubble(BuildContext context, String text, bool isDark) {
+  // ── Streaming message (assistant: no bubble — text on scaffold) ──
+  Widget _streamBubble(BuildContext context, String text) {
+    final scheme = Theme.of(context).colorScheme;
     final attType = controller.streamingAttachmentType.value;
     final isImageGen = controller.imageGenTotal.value > 0;
     final clean = _cleanStream(text).trimLeft();
-    final parts = splitThoughtTags(clean);
+    final parts = splitThoughtTags(clean, isStreaming: true);
     final answer = parts.answer.trimLeft();
-    final hasText = parts.hasThought || _hasPrintable(answer);
+    final hasThought = parts.hasThought;
+    final hasAnswer = _hasPrintable(answer);
+    final hasText = hasThought || hasAnswer;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.78),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: _aiBubble(context),
-            borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-                bottomLeft: Radius.circular(6)),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isImageGen)
+                  _ImageGenIndicator(controller: controller)
+                else if (!hasText)
+                  _typingHint(context, attachmentType: attType)
+                else ...[
+                  if (hasThought)
+                    ThoughtDisclosure(
+                      thought: parts.thought,
+                      isThinking: parts.isThinking,
+                      styleSheet: _thoughtMd(context),
+                    ),
+                  if (hasAnswer)
+                    MarkdownBody(
+                      data: answer,
+                      selectable: true,
+                      styleSheet: _streamMd(context),
+                    ),
+                ],
+                if (hasText && !isImageGen)
+                  Obx(() {
+                    final inf = Get.find<InferenceService>();
+                    if (inf.tokensPerSecond.value <= 0) {
+                      return const SizedBox.shrink();
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 3),
+                        decoration: ShapeDecoration(
+                          color: scheme.surfaceContainer,
+                          shape: const StadiumBorder(),
+                        ),
+                        child: Text(
+                          '${inf.tokensPerSecond.value.toStringAsFixed(1)} tok/s',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: scheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+              ],
+            ),
           ),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (isImageGen)
-              _ImageGenIndicator(controller: controller, isDark: isDark)
-            else if (!hasText)
-              _typingHint(context, isDark, attachmentType: attType)
-            else ...[
-              if (parts.hasThought)
-                ThoughtDisclosure(
-                    thought: parts.thought,
-                    isThinking: parts.isThinking,
-                    styleSheet: _thoughtMd(context, isDark)),
-              if (_hasPrintable(answer))
-                Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Expanded(
-                      child: MarkdownBody(
-                          data: answer,
-                          selectable: true,
-                          styleSheet: _streamMd(context, isDark))),
-                  _BlinkingCursor(color: Theme.of(context).hintColor),
-                ]),
-            ],
-            if (hasText && !isImageGen)
-              Obx(() {
-                final inf = Get.find<InferenceService>();
-                if (inf.tokensPerSecond.value <= 0)
-                  return const SizedBox.shrink();
-                return Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                        '${inf.tokensPerSecond.value.toStringAsFixed(1)} tok/s',
-                        style: GoogleFonts.inter(
-                            fontSize: 10,
-                            color: _appleBlue(context),
-                            fontWeight: FontWeight.w500)));
-              }),
-          ]),
         ),
       ),
     );
   }
 
-  Widget _typingHint(BuildContext context, bool isDark,
-      {String? attachmentType}) {
+  Widget _typingHint(BuildContext context, {String? attachmentType}) {
+    final scheme = Theme.of(context).colorScheme;
     final msg = attachmentType == 'image'
         ? 'Reading image…'
         : attachmentType == 'audio'
             ? 'Listening to audio…'
             : null;
-    if (msg == null) return _TypingDots(isDark: isDark);
+    if (msg == null) return _TypingDots(isDark: false);
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      _TypingDots(isDark: isDark),
+      _TypingDots(isDark: false),
       const SizedBox(width: 10),
       Flexible(
           child: Text(msg,
               style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: Theme.of(context).hintColor,
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                  color: scheme.onSurfaceVariant,
                   fontWeight: FontWeight.w400))),
     ]);
   }
 
-  // ── Input Bar ──
-  Widget _inputBar(BuildContext context, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.black : Colors.white,
-        border: Border(top: BorderSide(color: _sep(context), width: 0.5)),
-      ),
-      child: SafeArea(
-          top: false,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            // Attachment preview
-            Obx(() {
-              final name = controller.selectedFileName.value;
-              if (name == null) return const SizedBox.shrink();
-              return Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-                  child: AttachmentPreview(
-                    fileName: name,
-                    fileType: controller.selectedFileType.value,
-                    fileSize: controller.selectedFileSize.value > 0
-                        ? controller.selectedFileSize.value
-                        : null,
-                    imagePath: controller.selectedImagePath.value,
-                    imageBase64: controller.selectedImageBase64.value,
-                    onRemove: () {
-                      controller.clearImage();
-                      controller.clearFile();
-                    },
-                  ));
-            }),
-            // STT listening indicator
-            Obx(() {
-              if (!controller.isListening.value) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF3B30).withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: const Color(0xFFFF3B30).withValues(alpha: 0.3)),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const _PulsingDot(),
-                    const SizedBox(width: 8),
-                    Text('Listening… tap mic to stop',
-                        style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: const Color(0xFFFF3B30),
-                            fontWeight: FontWeight.w500)),
-                  ]),
+  // ── Input Bar (Floating Space Gray Island) ──
+  Widget _inputBar(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Attachment preview
+          Obx(() {
+            final name = controller.selectedFileName.value;
+            if (name == null) return const SizedBox.shrink();
+            return Padding(
+                padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+                child: AttachmentPreview(
+                  fileName: name,
+                  fileType: controller.selectedFileType.value,
+                  fileSize: controller.selectedFileSize.value > 0
+                      ? controller.selectedFileSize.value
+                      : null,
+                  imagePath: controller.selectedImagePath.value,
+                  imageBase64: controller.selectedImageBase64.value,
+                  onRemove: () {
+                    controller.clearImage();
+                    controller.clearFile();
+                  },
+                ));
+          }),
+          // STT listening indicator
+          Obx(() {
+            if (!controller.isListening.value) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: scheme.error.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              );
-            }),
-            Obx(() {
-              final settings = Get.find<SettingsController>();
-              final localImage = Get.find<LocalImageService>();
-              if (settings.inferenceMode.value != 'local' ||
-                  !localImage.isModelLoaded.value) {
-                return const SizedBox.shrink();
-              }
-              final steps = settings.imageSteps.value;
-              final size = settings.imageGenSize.value;
-              final sizeLabel = size == 0 ? 'Auto' : '${size}px';
-              final backend = localImage.currentBackend.value;
-              final backendLabel = backend == Backend.cpu
-                  ? 'CPU'
-                  : backend.displayName.split(' ').first.toUpperCase();
-              final accent = backend == Backend.cpu
-                  ? const Color(0xFFFF9500)
-                  : const Color(0xFF34C759);
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: accent.withValues(alpha: 0.24),
-                            width: 0.5,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.auto_awesome_rounded,
-                                size: 13, color: accent),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                'Image gen · $steps ${steps == 1 ? "step" : "steps"} · $sizeLabel · $backendLabel',
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: accent,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      height: 30,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const _PulsingDot(),
+                  const SizedBox(width: 8),
+                  Text('Listening… tap mic to stop',
+                      style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: scheme.error,
+                          fontWeight: FontWeight.w500)),
+                ]),
+              ),
+            );
+          }),
+          Obx(() {
+            final settings = Get.find<SettingsController>();
+            final localImage = Get.find<LocalImageService>();
+            if (settings.inferenceMode.value != 'local' ||
+                !localImage.isModelLoaded.value) {
+              return const SizedBox.shrink();
+            }
+            final steps = settings.imageSteps.value;
+            final size = settings.imageGenSize.value;
+            final sizeLabel = size == 0 ? 'Auto' : '${size}px';
+            final backend = localImage.currentBackend.value;
+            final backendLabel = backend == Backend.cpu
+                ? 'CPU'
+                : backend.displayName.split(' ').first.toUpperCase();
+            final accent =
+                backend == Backend.cpu ? scheme.tertiary : scheme.primary;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.06)
-                            : Colors.black.withValues(alpha: 0.04),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: _sep(context), width: 0.5),
+                        color: accent.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          _StepButton(
-                            icon: Icons.remove_rounded,
-                            enabled: steps > 1,
-                            onTap: () => settings.setImageSteps(steps - 1),
-                          ),
-                          Text(
-                            steps.toString(),
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: isDark ? Colors.white : Colors.black,
-                              fontWeight: FontWeight.w600,
+                          Icon(Icons.auto_awesome_rounded,
+                              size: 13, color: accent),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Image gen · $steps ${steps == 1 ? "step" : "steps"} · $sizeLabel · $backendLabel',
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: accent,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          _StepButton(
-                            icon: Icons.add_rounded,
-                            enabled: steps < 20,
-                            onTap: () => settings.setImageSteps(steps + 1),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              );
-            }),
-            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              // Attach button (image + file) — shown for cloud & local vision
-              Obx(() {
-                final s = Get.find<SettingsController>();
-                final inf = Get.find<InferenceService>();
-                final isCloud = s.inferenceMode.value == 'cloud';
-                final isLocalVision = s.inferenceMode.value == 'local' &&
-                    inf.loadedModelRuntime.value == 'litert' &&
-                    inf.isVisionLoaded.value;
-                if (!isCloud && !isLocalVision) return const SizedBox.shrink();
-                return _AttachButton(
-                  isDark: isDark,
-                  isCloud: isCloud,
-                  onImage: controller.pickImage,
-                  onFile: controller.pickFile,
-                  context: context,
-                );
-              }),
-              // Text field
-              Expanded(
-                  child: Container(
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF1C1C1E)
-                      : const Color(0xFFF2F2F7),
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: TextField(
-                  controller: controller.textController,
-                  onChanged: (v) => controller.inputText.value = v,
-                  maxLines: 5,
-                  minLines: 1,
-                  style: GoogleFonts.inter(
-                      fontSize: 15,
-                      color: isDark ? Colors.white : Colors.black),
-                  decoration: InputDecoration(
-                    hintText: 'Message…',
-                    hintStyle: GoogleFonts.inter(
-                        fontSize: 15, color: Theme.of(context).hintColor),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 10),
-                    isDense: true,
                   ),
-                  onSubmitted: (_) => controller.sendMessage(),
-                ),
-              )),
-              const SizedBox(width: 6),
-              // Unified mic / send / stop button
-              Obx(() {
-                final loading = controller.isLoading.value;
-                final listening = controller.isListening.value;
-                final hasContent = controller.inputText.value.isNotEmpty ||
-                    controller.selectedFileName.value != null ||
-                    controller.selectedImagePath.value != null;
-
-                // Determine state
-                final Color bgColor;
-                final IconData iconData;
-                final VoidCallback? onTap;
-
-                if (loading) {
-                  // AI generating → red stop
-                  bgColor = const Color(0xFFFF3B30);
-                  iconData = Icons.stop_rounded;
-                  onTap = controller.stopGenerating;
-                } else if (listening) {
-                  // STT active → red stop
-                  bgColor = const Color(0xFFFF3B30);
-                  iconData = Icons.stop_rounded;
-                  onTap = controller.toggleListening;
-                } else if (hasContent) {
-                  // Has text or attachment → blue send
-                  bgColor = _appleBlue(context);
-                  iconData = Icons.arrow_upward_rounded;
-                  onTap = controller.sendMessage;
-                } else {
-                  // Empty → grey mic
-                  bgColor = isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.06);
-                  iconData = Icons.mic_none_rounded;
-                  onTap = controller.toggleListening;
-                }
-
-                return GestureDetector(
-                  onTap: onTap,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeInOut,
-                    width: 34,
-                    height: 34,
-                    decoration:
-                        BoxDecoration(color: bgColor, shape: BoxShape.circle),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      transitionBuilder: (child, anim) =>
-                          ScaleTransition(scale: anim, child: child),
-                      child: Icon(iconData,
-                          key: ValueKey(iconData),
-                          color: (loading || listening || hasContent)
-                              ? Colors.white
-                              : Theme.of(context).hintColor,
-                          size: iconData == Icons.mic_none_rounded ? 18 : 20),
+                  const SizedBox(width: 8),
+                  Container(
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _StepButton(
+                          icon: Icons.remove_rounded,
+                          enabled: steps > 1,
+                          onTap: () => settings.setImageSteps(steps - 1),
+                        ),
+                        Text(
+                          steps.toString(),
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: scheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        _StepButton(
+                          icon: Icons.add_rounded,
+                          enabled: steps < 20,
+                          onTap: () => settings.setImageSteps(steps + 1),
+                        ),
+                      ],
                     ),
                   ),
-                );
-              }),
-            ]),
-          ])),
-    );
-  }
-
-  // ── Chat History ──
-  void _showHistory(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (_) => Container(
-        constraints:
-            BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-              margin: const EdgeInsets.only(top: 8),
-              width: 36,
-              height: 5,
-              decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.2)
-                      : Colors.black.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(3))),
-          Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text('Conversations',
-                  style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : Colors.black))),
-          Divider(height: 0.5, color: _sep(context)),
-          Flexible(child: Obx(() {
-            if (controller.sessions.isEmpty)
-              return Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Text('No conversations yet',
-                      style: GoogleFonts.inter(
-                          color: Theme.of(context).hintColor)));
-            return ListView.separated(
-              shrinkWrap: true,
-              itemCount: controller.sessions.length,
-              separatorBuilder: (_, __) =>
-                  Divider(height: 0.5, indent: 56, color: _sep(context)),
-              itemBuilder: (ctx, i) {
-                final s = controller.sessions[i];
-                final active = controller.currentSessionId.value == s.id;
-                return ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                  leading: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                          color: active
-                              ? _appleBlue(ctx).withValues(alpha: 0.12)
-                              : (isDark
-                                  ? Colors.white.withValues(alpha: 0.06)
-                                  : Colors.black.withValues(alpha: 0.04)),
-                          borderRadius: BorderRadius.circular(10)),
-                      child: Icon(
-                          active
-                              ? Icons.chat_bubble_rounded
-                              : Icons.chat_bubble_outline_rounded,
-                          size: 16,
-                          color: active
-                              ? _appleBlue(ctx)
-                              : Theme.of(ctx).hintColor)),
-                  title: Text(s.title,
-                      style: GoogleFonts.inter(
-                          fontSize: 15,
-                          fontWeight:
-                              active ? FontWeight.w600 : FontWeight.w400,
-                          color: isDark ? Colors.white : Colors.black),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  subtitle: Text(_fmtDate(s.updatedAt),
-                      style: GoogleFonts.inter(
-                          fontSize: 12, color: Theme.of(ctx).hintColor)),
-                  trailing: IconButton(
-                      icon: Icon(Icons.delete_outline_rounded,
-                          size: 18, color: Theme.of(ctx).hintColor),
-                      onPressed: () => controller.deleteChat(s.id)),
-                  onTap: () {
-                    controller.openChat(s.id);
-                    Navigator.pop(ctx);
-                  },
-                );
-              },
+                ],
+              ),
             );
-          })),
+          }),
+          // Floating pill container
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF12141A) : const Color(0xFFF3F5F9),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.08),
+                  blurRadius: 20,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Attach button (image, camera, file)
+                _AttachButton(
+                  isDark: isDark,
+                  isCloud: Get.find<SettingsController>().inferenceMode.value == 'cloud',
+                  onImage: controller.pickImage,
+                  onCamera: controller.pickCamera,
+                  onFile: controller.pickFile,
+                ),
+                const SizedBox(width: 2),
+                // Text field with Open Sans font, matching single-line button height
+                Expanded(
+                  child: TextField(
+                    controller: controller.textController,
+                    onChanged: (v) => controller.inputText.value = v,
+                    maxLines: 5,
+                    minLines: 1,
+                    style: GoogleFonts.openSans(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white : Colors.black,
+                      height: 1.35,
+                    ),
+                    cursorColor: isDark ? Colors.white : Colors.black,
+                    decoration: InputDecoration(
+                      filled: false,
+                      fillColor: Colors.transparent,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      hintText: 'Message…',
+                      hintStyle: GoogleFonts.openSans(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w400,
+                        color: isDark
+                            ? const Color(0xFF888E9E)
+                            : const Color(0xFF6E7484),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 9,
+                      ),
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) => controller.sendMessage(),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Floating Models Icon Button on the Right
+                PressableScale(
+                  onTap: () => _showQuickAvailableModelSelector(context),
+                  pressedScale: 0.90,
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.auto_awesome_mosaic_rounded,
+                        size: 17,
+                        color: isDark ? Colors.white : const Color(0xFF12141D),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                // High-contrast unified mic / send / stop button
+                Obx(() {
+                  final loading = controller.isLoading.value;
+                  final listening = controller.isListening.value;
+                  final hasContent = controller.inputText.value.isNotEmpty ||
+                      controller.selectedFileName.value != null ||
+                      controller.selectedImagePath.value != null;
+
+                  final Color bgColor;
+                  final Color fgColor;
+                  final IconData iconData;
+                  final VoidCallback? onTap;
+
+                  if (loading || listening) {
+                    bgColor = scheme.error;
+                    fgColor = scheme.onError;
+                    iconData = Icons.stop_rounded;
+                    onTap = loading
+                        ? controller.stopGenerating
+                        : controller.toggleListening;
+                  } else if (hasContent) {
+                    bgColor = isDark ? Colors.white : Colors.black;
+                    fgColor = isDark ? Colors.black : Colors.white;
+                    iconData = Icons.arrow_upward_rounded;
+                    onTap = controller.sendMessage;
+                  } else {
+                    bgColor = isDark
+                        ? const Color(0xFF1E212A)
+                        : const Color(0xFFE4E8F0);
+                    fgColor = isDark ? Colors.white : Colors.black;
+                    iconData = Icons.mic_none_rounded;
+                    onTap = controller.toggleListening;
+                  }
+
+                  final button = PressableScale(
+                    onTap: onTap,
+                    pressedScale: 0.90,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.1),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        transitionBuilder: (child, anim) =>
+                            ScaleTransition(scale: anim, child: child),
+                        child: Icon(
+                          iconData,
+                          key: ValueKey(iconData),
+                          color: fgColor,
+                          size: iconData == Icons.mic_none_rounded ? 19 : 20,
+                        ),
+                      ),
+                    ),
+                  );
+
+                  final enabled = loading || listening || hasContent;
+                  return Opacity(
+                    opacity: enabled ? 1.0 : 0.85,
+                    child: button,
+                  );
+                }),
+              ],
+            ),
+          ),
         ]),
       ),
     );
   }
 
+  // ── Chat History & Sidebar Drawer ──
+  Widget _buildSidebarDrawer(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final searchFilter = ''.obs;
+
+    return Drawer(
+      width: math.min(MediaQuery.of(context).size.width * 0.85, 340),
+      backgroundColor: isDark ? const Color(0xFF0C0E14) : const Color(0xFFF5F7FA),
+      surfaceTintColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Top Header: App Branding & Close Button
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset(
+                      'assets/icons/appicon.png',
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Conversations',
+                    style: GoogleFonts.manrope(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                      color: isDark ? Colors.white : const Color(0xFF0E1017),
+                    ),
+                  ),
+                  const Spacer(),
+                  PressableScale(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 17,
+                        color: isDark ? const Color(0xFFBAC0D0) : const Color(0xFF5A6074),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // "+ New Chat" Button
+              PressableScale(
+                onTap: () {
+                  Navigator.pop(context);
+                  controller.createNewChat();
+                },
+                child: Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white : const Color(0xFF141620),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.add_rounded,
+                        size: 18,
+                        color: isDark ? const Color(0xFF090A0E) : Colors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'New Chat',
+                        style: GoogleFonts.manrope(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFF090A0E) : Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Search past conversations
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF141722) : const Color(0xFFE9EDF5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.search_rounded,
+                      size: 17,
+                      color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        onChanged: (v) => searchFilter.value = v.trim().toLowerCase(),
+                        cursorColor: isDark ? Colors.white : const Color(0xFF141620),
+                        decoration: InputDecoration(
+                          hintText: 'Search chats…',
+                          hintStyle: GoogleFonts.openSans(
+                            fontSize: 13,
+                            color: isDark ? const Color(0xFF6A7185) : const Color(0xFF8E95A8),
+                          ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          focusedErrorBorder: InputBorder.none,
+                          filled: false,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        style: GoogleFonts.openSans(
+                          fontSize: 13,
+                          color: isDark ? Colors.white : const Color(0xFF141620),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // List of conversations with top and bottom fade
+              Expanded(
+                child: Obx(() {
+                  final query = searchFilter.value;
+                  final filtered = controller.sessions.where((s) {
+                    if (query.isEmpty) return true;
+                    return s.title.toLowerCase().contains(query);
+                  }).toList();
+
+                  if (filtered.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Text(
+                          'No conversations found',
+                          style: GoogleFonts.manrope(
+                            fontSize: 13,
+                            color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ShaderMask(
+                    shaderCallback: (Rect bounds) {
+                      return const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.white,
+                          Colors.white,
+                          Colors.transparent,
+                        ],
+                        stops: [0.0, 0.03, 0.96, 1.0],
+                      ).createShader(bounds);
+                    },
+                    blendMode: BlendMode.dstIn,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 2),
+                      itemBuilder: (c, i) {
+                        final s = filtered[i];
+                        final active = controller.currentSessionId.value == s.id;
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: active
+                                ? (isDark ? const Color(0xFF191D2A) : const Color(0xFFE5EAF3))
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ListTile(
+                            dense: true,
+                            contentPadding:
+                                const EdgeInsets.only(left: 12, right: 4),
+                            title: Text(
+                              s.title,
+                              style: GoogleFonts.manrope(
+                                fontSize: 13.5,
+                                fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                                color: isDark ? Colors.white : const Color(0xFF0E1017),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              _fmtDate(s.updatedAt),
+                              style: GoogleFonts.openSans(
+                                fontSize: 11.5,
+                                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                              ),
+                            ),
+                            trailing: PopupMenuButton<String>(
+                              icon: Icon(
+                                Icons.more_vert_rounded,
+                                size: 18,
+                                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                              ),
+                              color: isDark ? const Color(0xFF181B26) : Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              onSelected: (value) {
+                                if (value == 'share') {
+                                  _shareConversation(s);
+                                } else if (value == 'delete') {
+                                  _confirmDeleteChat(context, s);
+                                }
+                              },
+                              itemBuilder: (BuildContext ctx) => [
+                                PopupMenuItem<String>(
+                                  value: 'share',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.share_rounded,
+                                          size: 16,
+                                          color: isDark ? Colors.white : const Color(0xFF141620)),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        'Share',
+                                        style: GoogleFonts.manrope(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white : const Color(0xFF141620),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem<String>(
+                                  value: 'delete',
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.delete_outline_rounded,
+                                          size: 16, color: Colors.redAccent),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        'Delete',
+                                        style: GoogleFonts.manrope(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            onTap: () {
+                              controller.openChat(s.id);
+                              Navigator.pop(context);
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteChat(BuildContext context, ChatSession session) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF141724) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.delete_outline_rounded,
+                  color: Colors.redAccent, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Delete Chat?',
+              style: GoogleFonts.manrope(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : const Color(0xFF0E1017),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to delete "${session.title}"? This conversation history cannot be recovered.',
+          style: GoogleFonts.openSans(
+            fontSize: 13.5,
+            color: isDark ? const Color(0xFFB5BACB) : const Color(0xFF555B6E),
+            height: 1.5,
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              controller.deleteChat(session.id);
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.manrope(
+                  fontWeight: FontWeight.w700, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _shareConversation(ChatSession session) {
+    final hive = Get.find<HiveService>();
+    final rawMsgs = hive.getMessagesForChat(session.id);
+    if (rawMsgs.isEmpty) {
+      Share.share('AstraLM Conversation: ${session.title}');
+      return;
+    }
+    rawMsgs.sort((a, b) => (a['createdAt'] ?? '').compareTo(b['createdAt'] ?? ''));
+    final sb = StringBuffer();
+    sb.writeln('# ${session.title}\n');
+    for (final m in rawMsgs) {
+      final role = (m['role'] ?? 'user') == 'user' ? 'User' : 'Assistant';
+      final text = m['content'] ?? '';
+      sb.writeln('**$role:**\n$text\n');
+    }
+    Share.share(sb.toString().trim(), subject: session.title);
+  }
+
+  // ── Quick Available Model Selector (Only Downloaded & Available Online) ──
+  void _showQuickAvailableModelSelector(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final settings = Get.find<SettingsController>();
+    final modelCtrl = Get.find<ModelController>();
+    final inf = Get.find<InferenceService>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? const Color(0xFF0E1016) : const Color(0xFFF6F8FA),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Obx(() {
+        final downloaded = modelCtrl.downloadedFiles;
+
+        final availableCloud = <Map<String, dynamic>>[];
+        if (settings.openaiKey.value.trim().isNotEmpty) {
+          availableCloud.add({
+            'provider': 'openai',
+            'name': 'OpenAI',
+            'model': settings.openaiModel.value.isNotEmpty
+                ? settings.openaiModel.value
+                : 'gpt-4o',
+            'icon': Icons.cloud_outlined,
+          });
+        }
+        if (settings.anthropicKey.value.trim().isNotEmpty) {
+          availableCloud.add({
+            'provider': 'anthropic',
+            'name': 'Anthropic Claude',
+            'model': settings.anthropicModel.value.isNotEmpty
+                ? settings.anthropicModel.value
+                : 'claude-3-7-sonnet-latest',
+            'icon': Icons.cloud_outlined,
+          });
+        }
+        if (settings.googleKey.value.trim().isNotEmpty) {
+          availableCloud.add({
+            'provider': 'google',
+            'name': 'Google Gemini',
+            'model': settings.googleModel.value.isNotEmpty
+                ? settings.googleModel.value
+                : 'gemini-2.0-flash',
+            'icon': Icons.cloud_outlined,
+          });
+        }
+        if (settings.deepSeekKey.value.trim().isNotEmpty) {
+          availableCloud.add({
+            'provider': 'deepseek',
+            'name': 'DeepSeek',
+            'model': settings.deepSeekModel.value.isNotEmpty
+                ? settings.deepSeekModel.value
+                : 'deepseek-chat',
+            'icon': Icons.psychology_outlined,
+          });
+        }
+        if (settings.openRouterKey.value.trim().isNotEmpty) {
+          availableCloud.add({
+            'provider': 'openrouter',
+            'name': 'OpenRouter',
+            'model': settings.openRouterModel.value,
+            'icon': Icons.hub_outlined,
+          });
+        }
+        if (settings.nvidiaKey.value.trim().isNotEmpty) {
+          availableCloud.add({
+            'provider': 'nvidia',
+            'name': 'NVIDIA NIM',
+            'model': settings.nvidiaModel.value,
+            'icon': Icons.memory_rounded,
+          });
+        }
+        if (settings.kimiKey.value.trim().isNotEmpty) {
+          availableCloud.add({
+            'provider': 'kimi',
+            'name': 'Moonshot Kimi',
+            'model': settings.kimiModel.value,
+            'icon': Icons.auto_awesome_rounded,
+          });
+        }
+        if (settings.customCloudKey.value.trim().isNotEmpty) {
+          availableCloud.add({
+            'provider': 'custom',
+            'name': settings.customCloudName.value.isNotEmpty
+                ? settings.customCloudName.value
+                : 'Custom Cloud',
+            'model': settings.customCloudModel.value,
+            'icon': Icons.dns_outlined,
+          });
+        }
+
+        final hasAnyAvailable = downloaded.isNotEmpty || availableCloud.isNotEmpty;
+
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.52,
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Compact Header
+              Row(
+                children: [
+                  Icon(
+                    Icons.auto_awesome_mosaic_rounded,
+                    size: 16,
+                    color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF2A50C0),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Quick Model Select',
+                    style: GoogleFonts.manrope(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF0E1017),
+                    ),
+                  ),
+                  const Spacer(),
+                  PressableScale(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 14,
+                        color: isDark ? const Color(0xFFBAC0D0) : const Color(0xFF5A6074),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              if (!hasAnyAvailable)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  child: Column(
+                    children: [
+                      Icon(Icons.inventory_2_outlined,
+                          size: 32,
+                          color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284)),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No downloaded models or active API keys',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.openSans(
+                          fontSize: 12.5,
+                          color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          Navigator.of(context).push(_topFillTransitionRoute(const ModelView()));
+                        },
+                        icon: const Icon(Icons.download_rounded, size: 14),
+                        label: const Text('Download Models / Add Keys', style: TextStyle(fontSize: 12)),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: isDark ? Colors.white : const Color(0xFF141620),
+                          foregroundColor: isDark ? const Color(0xFF0E1016) : Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    children: [
+                      if (downloaded.isNotEmpty) ...[
+                        Text(
+                          'DOWNLOADED LOCAL',
+                          style: GoogleFonts.firaCode(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        ...downloaded.map((file) {
+                          final isLoaded = settings.inferenceMode.value == 'local' &&
+                              inf.loadedModelName.value == file;
+                          final cleanName = file.replaceAll('.gguf', '').replaceAll('.GGUF', '');
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 4),
+                            decoration: BoxDecoration(
+                              color: isLoaded
+                                  ? (isDark ? const Color(0xFF1E2436) : const Color(0xFFE2E7F4))
+                                  : (isDark ? const Color(0xFF13151E) : Colors.white),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: ListTile(
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                              leading: Icon(
+                                Icons.memory_rounded,
+                                size: 16,
+                                color: isLoaded
+                                    ? (isDark ? const Color(0xFF38BDF8) : const Color(0xFF1E2230))
+                                    : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284)),
+                              ),
+                              title: Text(
+                                cleanName,
+                                style: GoogleFonts.manrope(
+                                  fontSize: 12.5,
+                                  fontWeight: isLoaded ? FontWeight.w700 : FontWeight.w600,
+                                  color: isDark ? Colors.white : const Color(0xFF0E1017),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: isLoaded
+                                  ? Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF34C759).withValues(alpha: 0.18),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        'ACTIVE',
+                                        style: GoogleFonts.firaCode(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF34C759),
+                                        ),
+                                      ),
+                                    )
+                                  : null,
+                              onTap: () async {
+                                Navigator.pop(ctx);
+                                settings.setInferenceMode('local');
+                                await modelCtrl.loadModel(file);
+                              },
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 8),
+                      ],
+                      if (availableCloud.isNotEmpty) ...[
+                        Text(
+                          'CONFIGURED CLOUD',
+                          style: GoogleFonts.firaCode(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        ...availableCloud.map((item) {
+                          final provider = item['provider'] as String;
+                          final isCurrent = settings.inferenceMode.value == 'cloud' &&
+                              settings.cloudProvider.value == provider;
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 4),
+                            decoration: BoxDecoration(
+                              color: isCurrent
+                                  ? (isDark ? const Color(0xFF1E2436) : const Color(0xFFE2E7F4))
+                                  : (isDark ? const Color(0xFF13151E) : Colors.white),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: ListTile(
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                              leading: Icon(
+                                item['icon'] as IconData,
+                                size: 16,
+                                color: isCurrent
+                                    ? (isDark ? const Color(0xFF38BDF8) : const Color(0xFF1E2230))
+                                    : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284)),
+                              ),
+                              title: Text(
+                                '${item['name']} · ${item['model']}',
+                                style: GoogleFonts.manrope(
+                                  fontSize: 12.5,
+                                  fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
+                                  color: isDark ? Colors.white : const Color(0xFF0E1017),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: isCurrent
+                                  ? Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF34C759).withValues(alpha: 0.18),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        'ACTIVE',
+                                        style: GoogleFonts.firaCode(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF34C759),
+                                        ),
+                                      ),
+                                    )
+                                  : null,
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                settings.setInferenceMode('cloud');
+                                settings.setCloudProvider(provider);
+                              },
+                            ),
+                          );
+                        }),
+                      ],
+                    ],
+                  ),
+                ),
+
+              const SizedBox(height: 6),
+              // Link to Full Model Center
+              InkWell(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(_topFillTransitionRoute(const ModelView()));
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Open Full Models Catalog',
+                        style: GoogleFonts.manrope(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFF88A4EE) : const Color(0xFF2A50C0),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 13,
+                        color: isDark ? const Color(0xFF88A4EE) : const Color(0xFF2A50C0),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
   // ── Markdown styles ──
-  MarkdownStyleSheet _streamMd(BuildContext c, bool isDark) {
-    final clr = Theme.of(c).colorScheme.onSurface;
-    final base = GoogleFonts.inter(fontSize: 15, color: clr, height: 1.5);
-    final codeBg = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA);
+  MarkdownStyleSheet _streamMd(BuildContext c) {
+    final scheme = Theme.of(c).colorScheme;
+    final clr = scheme.onSurface;
+    final base = GoogleFonts.openSans(fontSize: 16, color: clr, height: 1.55);
+    final codeBg = scheme.surfaceContainerHighest;
     return MarkdownStyleSheet.fromTheme(Theme.of(c)).copyWith(
         p: base,
-        strong: base.copyWith(fontWeight: FontWeight.w600),
+        strong: base.copyWith(fontWeight: FontWeight.w700),
         em: base.copyWith(fontStyle: FontStyle.italic),
         listBullet: base,
         code: GoogleFonts.firaCode(
@@ -854,13 +1768,15 @@ class ChatView extends GetView<ChatController> {
             color: codeBg, borderRadius: BorderRadius.circular(12)));
   }
 
-  MarkdownStyleSheet _thoughtMd(BuildContext c, bool isDark) {
-    final muted = Theme.of(c).hintColor;
-    final base = GoogleFonts.inter(fontSize: 13, color: muted, height: 1.4);
-    final codeBg = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA);
+  MarkdownStyleSheet _thoughtMd(BuildContext c) {
+    final scheme = Theme.of(c).colorScheme;
+    final muted = scheme.onSurfaceVariant;
+    final base = GoogleFonts.openSans(
+        fontSize: 13, color: muted, height: 1.45, fontStyle: FontStyle.italic);
+    final codeBg = scheme.surfaceContainerHighest;
     return MarkdownStyleSheet.fromTheme(Theme.of(c)).copyWith(
         p: base,
-        strong: base.copyWith(fontWeight: FontWeight.w600),
+        strong: base.copyWith(fontWeight: FontWeight.w700),
         em: base.copyWith(fontStyle: FontStyle.italic),
         listBullet: base,
         code: GoogleFonts.firaCode(
@@ -908,176 +1824,185 @@ class ChatView extends GetView<ChatController> {
           : v.toString();
 }
 
-// ── Attach Button ──
-class _AttachButton extends StatelessWidget {
+// ── Attach Button with Composited Dynamic Anchor ──
+class _AttachButton extends StatefulWidget {
   final bool isDark;
   final bool isCloud;
   final VoidCallback onImage;
+  final VoidCallback onCamera;
   final VoidCallback onFile;
-  final BuildContext context;
 
   const _AttachButton({
     required this.isDark,
     required this.isCloud,
     required this.onImage,
+    required this.onCamera,
     required this.onFile,
-    required this.context,
   });
 
   @override
-  Widget build(BuildContext buildContext) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 2),
-      child: GestureDetector(
-        onTap: () => _showSheet(buildContext),
-        child: Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.06),
-            shape: BoxShape.circle,
+  State<_AttachButton> createState() => _AttachButtonState();
+}
+
+class _AttachButtonState extends State<_AttachButton> {
+  final _overlayController = OverlayPortalController();
+  final _link = LayerLink();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+    final textColor = isDark ? Colors.white : const Color(0xFF12141D);
+    final iconColor = isDark ? const Color(0xFFD4D8E2) : const Color(0xFF323644);
+
+    return CompositedTransformTarget(
+      link: _link,
+      child: OverlayPortal(
+        controller: _overlayController,
+        overlayChildBuilder: (context) {
+          return Stack(
+            children: [
+              // Full-screen dismiss barrier
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () => _overlayController.hide(),
+                ),
+              ),
+              // Physically anchored directly above the '+' button
+              CompositedTransformFollower(
+                link: _link,
+                targetAnchor: Alignment.topLeft,
+                followerAnchor: Alignment.bottomLeft,
+                offset: const Offset(0, -8),
+                showWhenUnlinked: false,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutBack,
+                  builder: (context, val, child) => Transform.scale(
+                    scale: 0.75 + (0.25 * val),
+                    alignment: Alignment.bottomLeft,
+                    child: Opacity(
+                      opacity: val.clamp(0.0, 1.0),
+                      child: child,
+                    ),
+                  ),
+                  child: Container(
+                    width: 175,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF161922) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? const Color(0xFF282C3A)
+                            : const Color(0xFFE4E8F0),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.10),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _compactItem(
+                          icon: Icons.photo_library_outlined,
+                          title: 'Photo Library',
+                          textColor: textColor,
+                          iconColor: iconColor,
+                          onTap: () {
+                            _overlayController.hide();
+                            widget.onImage();
+                          },
+                        ),
+                        _compactItem(
+                          icon: Icons.camera_alt_outlined,
+                          title: 'Camera',
+                          textColor: textColor,
+                          iconColor: iconColor,
+                          onTap: () {
+                            _overlayController.hide();
+                            widget.onCamera();
+                          },
+                        ),
+                        _compactItem(
+                          icon: Icons.insert_drive_file_outlined,
+                          title: 'Document',
+                          textColor: textColor,
+                          iconColor: iconColor,
+                          onTap: () {
+                            _overlayController.hide();
+                            widget.onFile();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+        child: PressableScale(
+          onTap: () => _overlayController.toggle(),
+          pressedScale: 0.90,
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Icon(
+                Icons.add_rounded,
+                color: isDark ? Colors.white : const Color(0xFF12141D),
+                size: 22,
+              ),
+            ),
           ),
-          child: Icon(Icons.add_rounded,
-              color: Theme.of(buildContext).hintColor, size: 20),
         ),
       ),
     );
   }
 
-  void _showSheet(BuildContext ctx) {
-    final isDarkSheet = Theme.of(ctx).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: ctx,
-      backgroundColor: isDarkSheet ? const Color(0xFF1C1C1E) : Colors.white,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              // Handle
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: isDarkSheet
-                        ? Colors.white.withValues(alpha: 0.2)
-                        : Colors.black.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(2)),
+  Widget _compactItem({
+    required IconData icon,
+    required String title,
+    required Color textColor,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return PressableScale(
+      pressedScale: 0.96,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        child: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 19),
+            const SizedBox(width: 11),
+            Text(
+              title,
+              style: GoogleFonts.manrope(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: textColor,
               ),
-              const SizedBox(height: 16),
-              Text('Add Attachment',
-                  style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: isDarkSheet ? Colors.white : Colors.black)),
-              if (isCloud)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text('Cloud models support images & text files',
-                      style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color:
-                              isDarkSheet ? Colors.white54 : Colors.black45)),
-                ),
-              const SizedBox(height: 20),
-              Row(children: [
-                _SheetTile(
-                  icon: Icons.photo_library_rounded,
-                  color: const Color(0xFF30D158),
-                  label: 'Photo',
-                  sub: 'From gallery',
-                  isDark: isDarkSheet,
-                  onTap: () {
-                    Navigator.pop(_);
-                    onImage();
-                  },
-                ),
-                const SizedBox(width: 12),
-                _SheetTile(
-                  icon: Icons.attach_file_rounded,
-                  color: const Color(0xFF0A84FF),
-                  label: 'File',
-                  sub: isCloud ? 'PDF, DOCX, text…' : 'PDF, DOCX, text…',
-                  isDark: isDarkSheet,
-                  onTap: () {
-                    Navigator.pop(_);
-                    onFile();
-                  },
-                ),
-              ]),
-            ]),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _SheetTile extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String label;
-  final String sub;
-  final bool isDark;
-  final VoidCallback onTap;
-
-  const _SheetTile({
-    required this.icon,
-    required this.color,
-    required this.label,
-    required this.sub,
-    required this.isDark,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.black.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.08),
             ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              const SizedBox(height: 10),
-              Text(label,
-                  style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : Colors.black)),
-              const SizedBox(height: 2),
-              Text(sub,
-                  style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: isDark ? Colors.white54 : Colors.black45)),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -1120,8 +2045,8 @@ class _PulsingDotState extends State<_PulsingDot>
       child: Container(
         width: 8,
         height: 8,
-        decoration: const BoxDecoration(
-            color: Color(0xFFFF3B30), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
       ),
     );
   }
@@ -1140,9 +2065,10 @@ class _StepButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final color = enabled
-        ? _appleBlue(context)
-        : Theme.of(context).hintColor.withValues(alpha: 0.35);
+        ? scheme.primary
+        : scheme.onSurfaceVariant.withValues(alpha: 0.35);
     return GestureDetector(
       onTap: enabled ? onTap : null,
       behavior: HitTestBehavior.opaque,
@@ -1159,7 +2085,7 @@ class _StepButton extends StatelessWidget {
 class _ImageGenIndicator extends StatefulWidget {
   final ChatController controller;
   final bool isDark;
-  const _ImageGenIndicator({required this.controller, required this.isDark});
+  const _ImageGenIndicator({required this.controller, this.isDark = false});
 
   @override
   State<_ImageGenIndicator> createState() => _ImageGenIndicatorState();
@@ -1211,18 +2137,16 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
   }
 
   Widget _backendChip(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final localImage = Get.find<LocalImageService>();
     final backend = localImage.currentBackend.value;
     final isCpu = backend == Backend.cpu;
-    final color = isCpu
-        ? const Color(0xFFFF9500) // Orange for CPU
-        : const Color(0xFF34C759); // Green for GPU
+    final color = isCpu ? scheme.tertiary : scheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
+        shape: const StadiumBorder(),
       ),
       child: Text(
         isCpu
@@ -1239,6 +2163,7 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return AnimatedBuilder(
       animation: _c,
       builder: (_, __) {
@@ -1256,9 +2181,7 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
                   height: 7,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: widget.isDark
-                        ? Colors.white.withValues(alpha: 0.6)
-                        : Colors.black.withValues(alpha: 0.35),
+                    color: scheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -1285,7 +2208,8 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
                 isDone ? 'Decoding image' : 'Generating image',
                 style: GoogleFonts.inter(
                   fontSize: 13,
-                  color: Theme.of(context).hintColor,
+                  fontStyle: FontStyle.italic,
+                  color: scheme.onSurfaceVariant,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -1296,8 +2220,7 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
                   width: 160,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: (widget.isDark ? Colors.white : Colors.black)
-                        .withValues(alpha: 0.08),
+                    color: scheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(2),
                   ),
                   child: FractionallySizedBox(
@@ -1305,7 +2228,7 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
                     widthFactor: isDone ? 1.0 : pct,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: _appleBlue(context),
+                        color: scheme.primary,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -1319,7 +2242,7 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
                       : '${(pct * 100).toStringAsFixed(0)}% · Step $step of $total',
                   style: GoogleFonts.inter(
                     fontSize: 11,
-                    color: Theme.of(context).hintColor.withValues(alpha: 0.6),
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -1332,7 +2255,7 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
                   'Elapsed: ${_fmtElapsed(_elapsedSeconds)}',
                   style: GoogleFonts.inter(
                     fontSize: 10,
-                    color: Theme.of(context).hintColor.withValues(alpha: 0.45),
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.45),
                   ),
                 ),
                 // ETA (only if we have a real estimate and not done)
@@ -1342,8 +2265,7 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
                     _fmtEta(eta),
                     style: GoogleFonts.inter(
                       fontSize: 10,
-                      color:
-                          Theme.of(context).hintColor.withValues(alpha: 0.45),
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.45),
                     ),
                   ),
                 ],
@@ -1354,21 +2276,20 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF3B30).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                    decoration: ShapeDecoration(
+                      color: scheme.error.withValues(alpha: 0.1),
+                      shape: StadiumBorder(),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.stop_rounded,
-                            size: 12, color: const Color(0xFFFF3B30)),
+                        Icon(Icons.stop_rounded, size: 12, color: scheme.error),
                         const SizedBox(width: 4),
                         Text(
                           'Cancel',
                           style: GoogleFonts.inter(
                             fontSize: 11,
-                            color: const Color(0xFFFF3B30),
+                            color: scheme.error,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1385,7 +2306,75 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
   }
 }
 
-// ── Typing Dots ──
+// ── Smooth 60fps Rotating App Logo ──
+class _RotatingAppLogo extends StatefulWidget {
+  final double size;
+  const _RotatingAppLogo({this.size = 80});
+
+  @override
+  State<_RotatingAppLogo> createState() => _RotatingAppLogoState();
+}
+
+class _RotatingAppLogoState extends State<_RotatingAppLogo>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 14),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.rotate(
+          angle: _controller.value * 2 * math.pi,
+          child: child,
+        );
+      },
+      child: Container(
+        width: widget.size,
+        height: widget.size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? const Color(0x3538BDF8)
+                  : const Color(0x2038BDF8),
+              blurRadius: 28,
+              spreadRadius: 4,
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: Image.asset(
+            'assets/icons/appicon.png',
+            width: widget.size,
+            height: widget.size,
+            fit: BoxFit.cover,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+// ── 60fps Silky Typing Dots ──
 class _TypingDots extends StatefulWidget {
   final bool isDark;
   const _TypingDots({required this.isDark});
@@ -1396,12 +2385,14 @@ class _TypingDots extends StatefulWidget {
 class _TypingDotsState extends State<_TypingDots>
     with SingleTickerProviderStateMixin {
   late AnimationController _c;
+
   @override
   void initState() {
     super.initState();
     _c = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1400))
-      ..repeat();
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat();
   }
 
   @override
@@ -1412,68 +2403,102 @@ class _TypingDotsState extends State<_TypingDots>
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dotColor = scheme.onSurfaceVariant;
+
     return AnimatedBuilder(
-        animation: _c,
-        builder: (_, __) {
-          return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (i) {
-                final t = ((_c.value - i * 0.2) % 1.0).clamp(0.0, 1.0);
-                final pulse = math.sin(t * math.pi).clamp(0.0, 1.0);
-                return Padding(
-                    padding: EdgeInsets.only(right: i < 2 ? 5 : 0),
-                    child: Opacity(
-                        opacity: 0.25 + 0.75 * pulse,
-                        child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: widget.isDark
-                                    ? Colors.white.withValues(alpha: 0.6)
-                                    : Colors.black.withValues(alpha: 0.35)))));
-              }));
-        });
+      animation: _c,
+      builder: (_, __) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) {
+            final phase = (_c.value * 2 * math.pi) - (i * 0.6);
+            final bounce = math.sin(phase).clamp(-1.0, 1.0);
+            final normalized = (bounce + 1.0) / 2.0; // 0.0 -> 1.0
+            final dy = -4.5 * normalized;
+            final scale = 0.85 + 0.28 * normalized;
+            final opacity = 0.35 + 0.65 * normalized;
+
+            return Padding(
+              padding: EdgeInsets.only(right: i < 2 ? 6 : 0),
+              child: Transform.translate(
+                offset: Offset(0, dy),
+                child: Transform.scale(
+                  scale: scale,
+                  child: Opacity(
+                    opacity: opacity,
+                    child: Container(
+                      width: 7.5,
+                      height: 7.5,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: dotColor,
+                        boxShadow: [
+                          BoxShadow(
+                            color: dotColor.withValues(alpha: 0.25 * normalized),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
   }
 }
 
-// ── Blinking Cursor ──
-class _BlinkingCursor extends StatefulWidget {
-  final Color color;
-  const _BlinkingCursor({required this.color});
-  @override
-  State<_BlinkingCursor> createState() => _BlinkingCursorState();
+
+PageRouteBuilder<T> _smoothTransitionRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curved),
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.04, 0.0),
+            end: Offset.zero,
+          ).animate(curved),
+          child: child,
+        ),
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 260),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+  );
 }
 
-class _BlinkingCursorState extends State<_BlinkingCursor>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600))
-      ..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-        animation: _c,
-        builder: (_, __) => Opacity(
-            opacity: _c.value,
-            child: Container(
-                width: 2,
-                height: 16,
-                margin: const EdgeInsets.only(left: 2, bottom: 2),
-                decoration: BoxDecoration(
-                    color: widget.color,
-                    borderRadius: BorderRadius.circular(1)))));
-  }
+PageRouteBuilder<T> _topFillTransitionRoute<T>(Widget page) {
+  return PageRouteBuilder<T>(
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curved),
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.0, -0.05),
+            end: Offset.zero,
+          ).animate(curved),
+          child: child,
+        ),
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 260),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+  );
 }

@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:get/get.dart';
 import 'hive_service.dart';
 import '../core/constants.dart';
+import '../controllers/settings_controller.dart';
 import 'device_info_service.dart';
 import 'app_log_service.dart';
 
@@ -62,8 +64,13 @@ class InferenceService extends GetxService {
       return 'ERROR: Local inference is not available on this platform. Use Cloud mode.';
     }
     if (isLoadingModel.value) return 'ERROR: Model is already loading.';
+    isLoadingModel.value = true;
+    loadingModelName.value = modelName ?? modelPath.split('/').last;
+    modelLoadProgress.value = 0.0;
 
     if (modelPath.toLowerCase().endsWith('.safetensors')) {
+      isLoadingModel.value = false;
+      loadingModelName.value = '';
       return 'ERROR: Cannot load image generation models (.safetensors) into the local text engine. Native local image generation requires the upcoming stable-diffusion engine update. Use Cloud Stability AI for now.';
     }
 
@@ -104,14 +111,35 @@ class InferenceService extends GetxService {
 
       _engine = platform.InferenceEngine();
 
-      final contextSize = _hive.getSetting<int>(
-            AppConstants.keyContextSize,
-            defaultValue: AppConstants.defaultContextSize,
-          ) ??
-          AppConstants.defaultContextSize;
+      final requestedModelName = modelName ?? modelPath.split('/').last;
 
-      final finalContextSize =
-          isLiteRt ? contextSize.clamp(512, 4096) : contextSize;
+      int? fileSizeBytes;
+      try {
+        final f = File(modelPath);
+        if (f.existsSync()) fileSizeBytes = f.lengthSync();
+      } catch (_) {}
+
+      final deviceInfo = Get.find<DeviceInfoService>();
+      final calibration = deviceInfo.calculateOptimalParameters(
+        modelName: requestedModelName,
+        modelSizeBytes: fileSizeBytes,
+        runtime: runtime,
+      );
+
+      final finalContextSize = calibration.optimalContextSize;
+      final finalMaxTokens = calibration.optimalMaxTokens;
+
+      // Dynamically tune and save optimal context size and token budget
+      await _hive.setSetting(AppConstants.keyContextSize, finalContextSize);
+      await _hive.setSetting(AppConstants.keyMaxTokens, finalMaxTokens);
+      if (Get.isRegistered<SettingsController>()) {
+        final settings = Get.find<SettingsController>();
+        settings.contextSize.value = finalContextSize;
+        settings.maxTokens.value = finalMaxTokens;
+      }
+
+      print(
+          '[Inference] ⚡ Hardware Calibration: ${calibration.modelTier} | ctx=$finalContextSize | maxTokens=$finalMaxTokens | thinking=${calibration.isThinkingModel}');
 
       final lastLoadedContext =
           _hive.getSetting<int>('last_loaded_context_size') ?? 0;
@@ -120,7 +148,6 @@ class InferenceService extends GetxService {
       final deviceTier = _getDeviceTier();
       final isTensorSoC = _getIsTensorSoC();
 
-      final requestedModelName = modelName ?? modelPath.split('/').last;
       var activeModelName = requestedModelName;
       var result = await _loadModelOnEngine(
         modelPath: modelPath,
@@ -340,7 +367,7 @@ class InferenceService extends GetxService {
           loadedModelName.value.toLowerCase().contains('gemma')) {
         final isTensor = _getIsTensorSoC();
         if (isTensor) {
-          return '⚠️ This Gemma model is incompatible with your Pixel\'s Google Tensor chip. '
+          return 'This Gemma model is incompatible with your Pixel\'s Google Tensor chip. '
               'The Q4_K_M quantization format has a known bug on Tensor SoC that produces empty responses.\n\n'
               'Try one of these fixes:\n'
               '1. Download a Q4_0 or Q5_K_M version of the same model\n'

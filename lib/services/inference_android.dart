@@ -291,6 +291,26 @@ class InferenceEngine {
     return normalized.clamp(0.0, 1.0).toDouble();
   }
 
+  String _formatConstrainedSystemPrompt(String systemPrompt, int maxTokens) {
+    final clean = systemPrompt.trim();
+    final wordLimit = (maxTokens * 0.75).round();
+    final constraint =
+        'STRICT LENGTH CONSTRAINT: Your complete answer MUST be strictly generated under $maxTokens tokens (approximately $wordLimit words maximum). Be direct, concise, and plan your response to reach a complete conclusion without exceeding this limit or getting cut off.';
+    if (clean.isEmpty) return constraint;
+    return '$clean\n\n$constraint';
+  }
+
+  bool _isReasoningModelName(String modelName) {
+    final lower = modelName.toLowerCase();
+    return lower.contains('r1') ||
+        lower.contains('think') ||
+        lower.contains('qwq') ||
+        lower.contains('reason') ||
+        lower.contains('deepseek-r1') ||
+        lower.contains('deepseek_r1') ||
+        lower.contains('distill-qwen');
+  }
+
   Future<String> generate({
     required String prompt,
     List<Map<String, String>>? conversationHistory,
@@ -302,11 +322,26 @@ class InferenceEngine {
     String? audioPath,
     void Function(String token)? onToken,
   }) async {
+    final effectiveSystemPrompt =
+        _formatConstrainedSystemPrompt(systemPrompt, maxTokens);
+
+    final isReasoning = _isReasoningModelName(modelName);
+    final prefillTimeout = isReasoning
+        ? const Duration(seconds: 180)
+        : const Duration(seconds: 90);
+    final tokenIdleTimeout = isReasoning
+        ? const Duration(seconds: 25)
+        : const Duration(seconds: 15);
+    final hardTimeout = isReasoning
+        ? const Duration(seconds: 600) // 10 mins for deep reasoning
+        : const Duration(seconds: 360); // 6 mins for standard models
+
     if (_isLiteRt) {
       return _generateLiteRt(
         prompt: prompt,
+        modelName: modelName,
         conversationHistory: conversationHistory,
-        systemPrompt: systemPrompt,
+        systemPrompt: effectiveSystemPrompt,
         maxTokens: maxTokens,
         temperature: temperature,
         imagePath: imagePath,
@@ -345,7 +380,7 @@ class InferenceEngine {
     Stream<String>? stream;
     try {
       final messages = _buildChatMessages(
-          prompt, conversationHistory, systemPrompt,
+          prompt, conversationHistory, effectiveSystemPrompt,
           imagePath: imagePath);
       stream = _controller!.generateChat(
         messages: messages,
@@ -358,15 +393,15 @@ class InferenceEngine {
         repeatPenalty: 1.1,
         repeatLastN: 64,
       );
-      print('[Inference] generateChat() started (${messages.length} messages)');
+      print('[Inference] generateChat() started (${messages.length} messages, maxTokens=$maxTokens, reasoning=$isReasoning)');
     } catch (e) {
       print('[Inference] generateChat() failed: $e — fallback to generate()');
       try {
         await _controller!.stop();
       } catch (_) {}
       await Future.delayed(const Duration(milliseconds: 100));
-      final fullPrompt =
-          _buildPrompt(prompt, conversationHistory, systemPrompt, modelName);
+      final fullPrompt = _buildPrompt(
+          prompt, conversationHistory, effectiveSystemPrompt, modelName);
       stream = _controller!.generate(
         prompt: fullPrompt,
         maxTokens: maxTokens,
@@ -390,9 +425,15 @@ class InferenceEngine {
         buffer.write(clean);
         tokenCount++;
         onToken?.call(clean);
+        if (tokenCount >= maxTokens) {
+          print('[Inference] Hard maxTokens ($maxTokens) reached. Stopping.');
+          finish(buffer.toString());
+          unawaited(_controller?.stop() ?? Future<void>.value());
+          return;
+        }
         _idleTimer?.cancel();
-        _idleTimer = Timer(const Duration(seconds: 5), () {
-          print('[Inference] Idle timeout — $tokenCount tokens');
+        _idleTimer = Timer(tokenIdleTimeout, () {
+          print('[Inference] Idle timeout ($tokenIdleTimeout) — $tokenCount tokens');
           finish(buffer.toString());
         });
       },
@@ -407,15 +448,15 @@ class InferenceEngine {
     );
 
     // Prefill timeout
-    _idleTimer = Timer(const Duration(seconds: 60), () {
+    _idleTimer = Timer(prefillTimeout, () {
       if (tokenCount == 0) {
         finish(
-            'ERROR: Model did not respond. Try a smaller model or shorter conversation.');
+            'ERROR: Model did not respond within ${prefillTimeout.inSeconds}s. Try a smaller model or shorter conversation.');
       }
     });
 
     // Hard timeout
-    Future.delayed(const Duration(seconds: 180), () {
+    Future.delayed(hardTimeout, () {
       if (!completed) {
         final partial = buffer.toString();
         finish(partial.isEmpty ? 'ERROR: Generation timed out.' : partial);
@@ -427,6 +468,7 @@ class InferenceEngine {
 
   Future<String> _generateLiteRt({
     required String prompt,
+    required String modelName,
     List<Map<String, String>>? conversationHistory,
     required String systemPrompt,
     required int maxTokens,
@@ -436,6 +478,17 @@ class InferenceEngine {
     void Function(String token)? onToken,
   }) async {
     if (_liteEngine == null) throw Exception('No LiteRT-LM model loaded');
+
+    final isReasoning = _isReasoningModelName(modelName);
+    final prefillTimeout = isReasoning
+        ? const Duration(seconds: 180)
+        : const Duration(seconds: 90);
+    final tokenIdleTimeout = isReasoning
+        ? const Duration(seconds: 25)
+        : const Duration(seconds: 15);
+    final hardTimeout = isReasoning
+        ? const Duration(seconds: 600)
+        : const Duration(seconds: 360);
 
     await _subscription?.cancel();
     await _ensureLiteRtConversation(
@@ -492,8 +545,13 @@ class InferenceEngine {
           tokenCount++;
           buffer.write(text);
           onToken?.call(text);
+          if (tokenCount >= maxTokens) {
+            print('[Inference] LiteRT Hard maxTokens ($maxTokens) reached. Stopping.');
+            finish(buffer.toString());
+            return;
+          }
           _idleTimer?.cancel();
-          _idleTimer = Timer(const Duration(seconds: 8), () {
+          _idleTimer = Timer(tokenIdleTimeout, () {
             print(
                 '[Inference] LiteRT-LM multimodal idle timeout - $tokenCount chunks');
             finish(buffer.toString());
@@ -511,13 +569,13 @@ class InferenceEngine {
         },
       );
 
-      _idleTimer = Timer(const Duration(seconds: 90), () {
+      _idleTimer = Timer(prefillTimeout, () {
         if (tokenCount == 0) {
-          finish('ERROR: LiteRT-LM multimodal model did not respond.');
+          finish('ERROR: LiteRT-LM multimodal model did not respond within ${prefillTimeout.inSeconds}s.');
         }
       });
 
-      Future.delayed(const Duration(seconds: 240), () {
+      Future.delayed(hardTimeout, () {
         if (!completed) {
           final partial = buffer.toString();
           finish(partial.isEmpty
@@ -547,8 +605,13 @@ class InferenceEngine {
         tokenCount++;
         buffer.write(text);
         onToken?.call(text);
+        if (tokenCount >= maxTokens) {
+          print('[Inference] LiteRT Hard maxTokens ($maxTokens) reached. Stopping.');
+          finish(buffer.toString());
+          return;
+        }
         _idleTimer?.cancel();
-        _idleTimer = Timer(const Duration(seconds: 5), () {
+        _idleTimer = Timer(tokenIdleTimeout, () {
           print('[Inference] LiteRT-LM idle timeout - $tokenCount chunks');
           finish(buffer.toString());
         });
@@ -564,13 +627,13 @@ class InferenceEngine {
       },
     );
 
-    _idleTimer = Timer(const Duration(seconds: 60), () {
+    _idleTimer = Timer(prefillTimeout, () {
       if (tokenCount == 0) {
-        finish('ERROR: LiteRT-LM model did not respond. Try a smaller model.');
+        finish('ERROR: LiteRT-LM model did not respond within ${prefillTimeout.inSeconds}s. Try a smaller model.');
       }
     });
 
-    Future.delayed(const Duration(seconds: 180), () {
+    Future.delayed(hardTimeout, () {
       if (!completed) {
         final partial = buffer.toString();
         finish(partial.isEmpty

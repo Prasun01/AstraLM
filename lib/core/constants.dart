@@ -57,6 +57,7 @@ class AppConstants {
   static const String keyImageGenSize = 'image_gen_size';
   static const String keyImageGenQuantization = 'image_gen_quantization';
   static const String keyFontScale = 'font_scale';
+  static const String keyHasSeenWelcomeGuide = 'has_seen_welcome_guide';
 
   // Default Model Config
   static const double defaultTemperature = 0.7;
@@ -67,8 +68,7 @@ class AppConstants {
   static const bool defaultImageGenForceCpu = true;
   static const int defaultImageGenGpuGuardMb = 1843; // 1.8 GB
   static const int defaultImageGenSize = 0; // 0 = Auto recommended
-  static const double defaultFontScale =
-      0.95; // 4th slider stop, "Small" default
+  static const double defaultFontScale = 1.0; // Recommended default size
 
   // System Prompt (compact for small context models)
   static const String systemPrompt =
@@ -195,7 +195,7 @@ class AppConstants {
       'url':
           'https://huggingface.co/bartowski/gemma-2-2b-it-abliterated-GGUF/resolve/main/gemma-2-2b-it-abliterated-Q4_K_M.gguf',
       'size': '1.6 GB',
-      'description': '🔓 Abliterated — Permanently uncensored, very smart',
+      'description': 'Abliterated — Permanently uncensored, very smart',
       'template': 'gemma',
     },
     {

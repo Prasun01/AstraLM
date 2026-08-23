@@ -32,7 +32,7 @@ class ExecutionService extends GetxService {
       return {
         'type': 'cmd',
         'command': command,
-        'display': '⚡ Executed: `$command`',
+        'display': 'Executed: `$command`',
         'cmdResult': result,
       };
     }

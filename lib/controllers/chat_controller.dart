@@ -165,7 +165,24 @@ class ChatController extends GetxController {
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
   }
 
+  String _ensureActiveSession() {
+    if (currentSessionId.value.isNotEmpty) {
+      final exists = sessions.any((s) => s.id == currentSessionId.value);
+      if (exists) return currentSessionId.value;
+    }
+    final id = _uuid.v4();
+    final session = ChatSession(id: id, title: 'New Chat');
+    _hive.saveSession(id, session.toMap());
+    sessions.insert(0, session);
+    currentSessionId.value = id;
+    return id;
+  }
+
   void createNewChat() {
+    // Do not allow new chat window if the current window is empty
+    if (messages.isEmpty) {
+      return;
+    }
     final id = _uuid.v4();
     final session = ChatSession(id: id, title: 'New Chat');
     _hive.saveSession(id, session.toMap());
@@ -212,6 +229,26 @@ class ChatController extends GetxController {
     final picker = ImagePicker();
     final file = await picker.pickImage(
       source: ImageSource.gallery,
+      maxWidth: _visionImageMaxSide.toDouble(),
+      maxHeight: _visionImageMaxSide.toDouble(),
+      imageQuality: _visionImageJpegQuality,
+    );
+    if (file != null) {
+      selectedImagePath.value = file.path;
+      selectedImageBase64.value = null;
+      selectedFileName.value = file.name;
+      selectedFilePath.value = file.path;
+      selectedFileType.value = 'image';
+      selectedFileSize.value = await file.length();
+      selectedFileContent.value = null;
+      _checkVisionSupport();
+    }
+  }
+
+  Future<void> pickCamera() async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(
+      source: ImageSource.camera,
       maxWidth: _visionImageMaxSide.toDouble(),
       maxHeight: _visionImageMaxSide.toDouble(),
       imageQuality: _visionImageJpegQuality,
@@ -467,10 +504,8 @@ class ChatController extends GetxController {
         ? '$visibleText\n\nAttached file: $fileName\n```text\n$fileContent\n```'
         : visibleText;
 
-    // Create a session if none selected
-    if (currentSessionId.value.isEmpty) {
-      createNewChat();
-    }
+    // Create / ensure an active session exists before processing message
+    final activeChatId = _ensureActiveSession();
 
     // Encode image to base64 if it's not already pre-encoded, so the message
     // saved in history contains the image bytes and is 100% stable.
@@ -484,7 +519,7 @@ class ChatController extends GetxController {
     // Add user message
     final userMsg = ChatMessage(
       id: _uuid.v4(),
-      chatId: currentSessionId.value,
+      chatId: activeChatId,
       role: 'user',
       content: effectiveText,
       imageBase64: imgBase64, // Always save the encoded base64 string
@@ -511,12 +546,13 @@ class ChatController extends GetxController {
       final title = visibleText.length > 40
           ? '${visibleText.substring(0, 40)}...'
           : visibleText;
-      final session =
-          sessions.firstWhere((s) => s.id == currentSessionId.value);
-      final updated = session.copyWith(title: title, lastMessage: visibleText);
-      _hive.saveSession(updated.id, updated.toMap());
-      final idx = sessions.indexWhere((s) => s.id == updated.id);
-      if (idx >= 0) sessions[idx] = updated;
+      final session = sessions.firstWhereOrNull((s) => s.id == activeChatId);
+      if (session != null) {
+        final updated = session.copyWith(title: title, lastMessage: visibleText);
+        _hive.saveSession(updated.id, updated.toMap());
+        final idx = sessions.indexWhere((s) => s.id == updated.id);
+        if (idx >= 0) sessions[idx] = updated;
+      }
     }
 
     // Start generating
@@ -643,7 +679,7 @@ class ChatController extends GetxController {
             rawResponse = '[IMAGE_BASE64]${base64Encode(pngBytes)}';
           } else {
             await imageNotifications.failed();
-            rawResponse = '❌ Local image generation failed.';
+            rawResponse = 'Local image generation failed.';
           }
         } else {
           final inference = Get.find<InferenceService>();
@@ -753,7 +789,7 @@ class ChatController extends GetxController {
         id: _uuid.v4(),
         chatId: currentSessionId.value,
         role: 'assistant',
-        content: '❌ Error: $e',
+        content: 'Error: $e',
       );
       messages.add(errorMsg);
       _hive.saveMessage(errorMsg.id, errorMsg.toMap());

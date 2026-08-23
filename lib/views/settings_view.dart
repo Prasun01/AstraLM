@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../controllers/server_controller.dart';
 import '../controllers/settings_controller.dart';
-import '../core/colors.dart';
 import '../core/constants.dart';
 import '../services/inference_service.dart';
 import '../services/hive_service.dart';
@@ -11,210 +11,322 @@ import '../services/local_image_service.dart';
 import '../services/device_info_service.dart';
 import '../services/device_info_native.dart' as platform_info;
 import '../ffi/sd_ffi_bindings.dart';
+import '../widgets/pressable_scale.dart';
 import 'log_view.dart';
+import 'server_view.dart';
+import 'welcome_guide_view.dart';
+import 'license_view.dart';
 
 class SettingsView extends GetView<SettingsController> {
   const SettingsView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: isDark ? Colors.black : const Color(0xFFF2F2F7),
+      backgroundColor: isDark ? const Color(0xFF090A0E) : const Color(0xFFF4F6F9),
       appBar: AppBar(
-        backgroundColor: isDark ? Colors.black : const Color(0xFFF2F2F7),
-        title: Text('Settings',
-            style:
-                GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 34)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: Text(
+          'Settings & Hardware',
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            fontSize: 22,
+            letterSpacing: -0.3,
+            color: isDark ? Colors.white : const Color(0xFF0E1017),
+          ),
+        ),
         toolbarHeight: 56,
       ),
-      body: Obx(() => ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: [
-              const SizedBox(height: 8),
-              _sectionLabel(context, 'APPEARANCE'),
-              _appleGroupedCard(context, isDark, children: [
-                for (final mode in [
-                  ThemeMode.light,
-                  ThemeMode.dark,
-                  ThemeMode.system
-                ])
-                  _appleListTile(
-                    context,
-                    isDark,
-                    leading: Icon(_themeModeIcon(mode),
-                        size: 20, color: Theme.of(context).hintColor),
-                    title: _themeModeName(mode),
-                    trailing: controller.themeMode.value == mode
-                        ? Icon(Icons.check,
-                            size: 18,
-                            color: isDark
-                                ? const Color(0xFF0A84FF)
-                                : AppColors.primary)
-                        : null,
-                    showDivider: mode != ThemeMode.system,
-                    onTap: () => controller.setThemeMode(mode),
-                  ),
-              ]),
-              const SizedBox(height: 16),
-              Obx(() => _buildFontSizeCard(context, isDark)),
-              const SizedBox(height: 24),
-              _sectionLabel(context, 'DIAGNOSTICS'),
-              _appleGroupedCard(context, isDark, children: [
+      body: Obx(
+        () => ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          children: [
+            // ── APPEARANCE ──
+            _sectionLabel(context, 'APPEARANCE'),
+            _appleGroupedCard(context, children: [
+              for (final mode in [
+                ThemeMode.light,
+                ThemeMode.dark,
+                ThemeMode.system
+              ])
                 _appleListTile(
                   context,
-                  isDark,
-                  leading:
-                      _iconBox(const Color(0xFF5AC8FA), Icons.article_outlined),
-                  title: 'Logs',
-                  subtitle: 'View errors, warnings, and debug details',
-                  trailing: const Icon(Icons.chevron_right, size: 18),
-                  showDivider: false,
-                  onTap: () => Get.to(() => const LogView()),
-                ),
-              ]),
-              const SizedBox(height: 24),
-              _sectionLabel(context, 'DEVICE'),
-              _buildDeviceCard(context, isDark),
-              const SizedBox(height: 24),
-              _sectionLabel(context, 'INFERENCE MODE'),
-              _appleGroupedCard(context, isDark, children: [
-                _appleListTile(
-                  context,
-                  isDark,
-                  leading:
-                      _iconBox(AppColors.success, Icons.phone_iphone_rounded),
-                  title: 'Local (On-Device)',
-                  subtitle: _localSubtitle(),
-                  trailing: controller.inferenceMode.value == 'local'
-                      ? Icon(Icons.check,
-                          size: 18,
-                          color: isDark
-                              ? const Color(0xFF0A84FF)
-                              : AppColors.primary)
+                  leading: _iconBox(context, _themeModeIcon(mode)),
+                  title: _themeModeName(mode),
+                  trailing: controller.themeMode.value == mode
+                      ? Icon(Icons.check_rounded,
+                          size: 18, color: isDark ? Colors.white : const Color(0xFF141620))
                       : null,
-                  showDivider: true,
-                  onTap: () => controller.setInferenceMode('local'),
+                  showDivider: mode != ThemeMode.system,
+                  onTap: () => controller.setThemeMode(mode),
                 ),
-                _appleListTile(
-                  context,
-                  isDark,
-                  leading: _iconBox(AppColors.secondary, Icons.cloud_outlined),
-                  title: 'Cloud API',
-                  subtitle: controller.cloudProvider.value.toUpperCase(),
-                  trailing: controller.inferenceMode.value == 'cloud'
-                      ? Icon(Icons.check,
-                          size: 18,
-                          color: isDark
-                              ? const Color(0xFF0A84FF)
-                              : AppColors.primary)
-                      : null,
-                  showDivider: false,
-                  onTap: () => controller.setInferenceMode('cloud'),
-                ),
-              ]),
-              const SizedBox(height: 24),
-              _sectionLabel(context, 'SYSTEM PROMPT'),
-              _appleGroupedCard(context, isDark, children: [
-                Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Applies to local and cloud models',
-                            style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: Theme.of(context).hintColor)),
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: controller.globalSystemPromptController,
-                          minLines: 3,
-                          maxLines: 6,
-                          style: GoogleFonts.inter(fontSize: 14),
-                          decoration: InputDecoration(
-                            hintText: AppConstants.systemPrompt,
-                            suffixIcon: IconButton(
-                                icon: const Icon(Icons.check_circle_outline,
-                                    size: 20),
-                                onPressed: () =>
-                                    controller.setGlobalSystemPrompt(controller
-                                        .globalSystemPromptController.text)),
-                          ),
-                          onSubmitted: (v) =>
-                              controller.setGlobalSystemPrompt(v),
+            ]),
+            const SizedBox(height: 28),
+
+            // ── INFERENCE ENGINE & MODE ──
+            _sectionLabel(context, 'INFERENCE MODE'),
+            _appleGroupedCard(context, children: [
+              _appleListTile(
+                context,
+                leading: _iconBox(context, Icons.memory_rounded),
+                title: 'Local On-Device Engine',
+                subtitle: _localSubtitle(),
+                trailing: controller.inferenceMode.value == 'local'
+                    ? Icon(Icons.check_rounded,
+                        size: 18, color: isDark ? Colors.white : const Color(0xFF141620))
+                    : null,
+                showDivider: true,
+                onTap: () => controller.setInferenceMode('local'),
+              ),
+              _appleListTile(
+                context,
+                leading: _iconBox(context, Icons.hub_outlined),
+                title: 'Cloud API Provider',
+                subtitle: controller.cloudProvider.value.toUpperCase(),
+                trailing: controller.inferenceMode.value == 'cloud'
+                    ? Icon(Icons.check_rounded,
+                        size: 18, color: isDark ? Colors.white : const Color(0xFF141620))
+                    : null,
+                showDivider: false,
+                onTap: () => controller.setInferenceMode('cloud'),
+              ),
+            ]),
+            const SizedBox(height: 28),
+
+            // ── DEVICE HARDWARE CALIBRATION ──
+            _sectionLabel(context, 'DEVICE CALIBRATION'),
+            _buildDeviceCard(context),
+            const SizedBox(height: 28),
+
+            // ── LOCAL API SERVER ──
+            _buildServerSection(context),
+            const SizedBox(height: 28),
+
+            // ── GLOBAL SYSTEM PROMPT ──
+            _sectionLabel(context, 'GLOBAL SYSTEM PROMPT'),
+            _appleGroupedCard(context, children: [
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Applies across local GGUF, LiteRT, and cloud sessions',
+                      style: GoogleFonts.openSans(
+                        fontSize: 12.5,
+                        color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: controller.globalSystemPromptController,
+                      minLines: 3,
+                      maxLines: 6,
+                      style: GoogleFonts.openSans(
+                        fontSize: 13.5,
+                        color: isDark ? Colors.white : const Color(0xFF12141D),
+                      ),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF161922) : const Color(0xFFF1F3F8),
+                        hintText: AppConstants.systemPrompt,
+                        hintStyle: GoogleFonts.openSans(
+                          fontSize: 13,
+                          color: isDark ? const Color(0xFF5A6074) : const Color(0xFF9EA5B6),
                         ),
-                      ]),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: isDark ? const Color(0xFF282D3D) : const Color(0xFFD6DBE8),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: isDark ? const Color(0xFF282D3D) : const Color(0xFFD6DBE8),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: isDark ? Colors.white : const Color(0xFF12141D),
+                            width: 1.2,
+                          ),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            Icons.check_circle_outline_rounded,
+                            size: 20,
+                            color: isDark ? Colors.white : const Color(0xFF12141D),
+                          ),
+                          onPressed: () => controller.setGlobalSystemPrompt(
+                            controller.globalSystemPromptController.text,
+                          ),
+                        ),
+                      ),
+                      onSubmitted: (v) => controller.setGlobalSystemPrompt(v),
+                    ),
+                  ],
                 ),
-              ]),
-              const SizedBox(height: 24),
-              _sectionLabel(context, 'MODEL PARAMETERS'),
-              _buildLiteRtCard(context, isDark),
-              const SizedBox(height: 10),
-              _buildModelParametersCard(context, isDark),
-              const SizedBox(height: 24),
-              _sectionLabel(context, 'IMAGE GENERATION PARAMETERS'),
-              _buildImageGenerationCard(context, isDark),
-              const SizedBox(height: 24),
-              _sectionLabel(context, 'ABOUT'),
-              _appleGroupedCard(context, isDark, children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(children: [
+              ),
+            ]),
+            const SizedBox(height: 28),
+
+            // ── MODEL PARAMETERS & TUNING ──
+            _sectionLabel(context, 'MODEL PARAMETERS'),
+            _buildLiteRtCard(context),
+            const SizedBox(height: 16),
+            _buildModelParametersCard(context),
+            const SizedBox(height: 28),
+
+            // ── IMAGE GENERATION PARAMETERS ──
+            _sectionLabel(context, 'IMAGE GENERATION PARAMETERS'),
+            _buildImageGenerationCard(context),
+            const SizedBox(height: 28),
+
+            // ── DIAGNOSTICS & LOGS ──
+            _sectionLabel(context, 'DIAGNOSTICS & SYSTEM'),
+            _appleGroupedCard(context, children: [
+              _appleListTile(
+                context,
+                leading: _iconBox(context, Icons.terminal_rounded),
+                title: 'Diagnostics & Logs',
+                subtitle: 'Real-time engine logs, token speed & debug events',
+                trailing: const Icon(Icons.chevron_right, size: 18),
+                showDivider: false,
+                onTap: () => Get.to(() => const LogView()),
+              ),
+            ]),
+            const SizedBox(height: 28),
+
+            // ── ABOUT & LEGAL ──
+            _sectionLabel(context, 'ABOUT & LEGAL'),
+            _appleGroupedCard(context, children: [
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
                     Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [
-                              isDark
-                                  ? const Color(0xFF0A84FF)
-                                  : AppColors.primary,
-                              AppColors.secondary
-                            ]),
-                            borderRadius: BorderRadius.circular(12)),
-                        child: const Icon(Icons.auto_awesome_rounded,
-                            color: Colors.white, size: 22)),
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1A1D28) : const Color(0xFFE9EDF5),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF2B3042) : const Color(0xFFD4DAE6),
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: Image.asset(
+                          'assets/icons/appicon.png',
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.blur_on_rounded,
+                            size: 24,
+                            color: isDark ? Colors.white : const Color(0xFF141620),
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 14),
                     Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('PrivateLM',
-                              style: GoogleFonts.inter(
-                                  fontSize: 17, fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 2),
-                          Text(
-                              controller.appVersion.value.isEmpty
-                                  ? 'Version unavailable · by orailnoor'
-                                  : 'v${controller.appVersion.value} · by orailnoor',
-                              style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  color: Theme.of(context).hintColor)),
-                        ]),
-                  ]),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'AstraLM',
+                          style: GoogleFonts.manrope(
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : const Color(0xFF0E1017),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          controller.appVersion.value.isEmpty
+                              ? 'Version 2.0.0 · Local AI Platform'
+                              : 'v${controller.appVersion.value} · Local AI Platform',
+                          style: GoogleFonts.openSans(
+                            fontSize: 12.5,
+                            color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ]),
-              const SizedBox(height: 40),
-            ],
-          )),
+              ),
+              const Divider(height: 1),
+              _appleListTile(
+                context,
+                leading: _iconBox(context, Icons.auto_awesome_rounded),
+                title: 'Welcome Walkthrough',
+                subtitle: 'Replay animated AstraLM introduction tour',
+                trailing: const Icon(Icons.chevron_right, size: 18),
+                showDivider: true,
+                onTap: () => Navigator.of(context).push(
+                  PageRouteBuilder(
+                    opaque: false,
+                    pageBuilder: (_, __, ___) =>
+                        const WelcomeGuideView(isReplay: true),
+                    transitionsBuilder: (_, anim, __, child) =>
+                        FadeTransition(opacity: anim, child: child),
+                    transitionDuration: const Duration(milliseconds: 320),
+                  ),
+                ),
+              ),
+              _appleListTile(
+                context,
+                leading: _iconBox(context, Icons.gavel_rounded),
+                title: 'Licenses & Legal Policy',
+                subtitle: 'MIT open-source license & privacy guarantees',
+                trailing: const Icon(Icons.chevron_right, size: 18),
+                showDivider: false,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LicenseView()),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 48),
+          ],
+        ),
+      ),
     );
   }
 
-  // ── Apple grouped card container ──
-  Widget _appleGroupedCard(BuildContext context, bool isDark,
+  // ── AstraLM Monochrome Grouped Card Container ──
+  Widget _appleGroupedCard(BuildContext context,
       {required List<Widget> children}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        color: isDark ? const Color(0xFF13151D) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(mainAxisSize: MainAxisSize.min, children: children),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Column(mainAxisSize: MainAxisSize.min, children: children),
+      ),
     );
   }
 
-  // ── Apple-style list tile ──
+  // ── AstraLM Monochrome List Tile ──
   Widget _appleListTile(
-    BuildContext context,
-    bool isDark, {
+    BuildContext context, {
     Widget? leading,
     required String title,
     String? subtitle,
@@ -222,61 +334,101 @@ class SettingsView extends GetView<SettingsController> {
     bool showDivider = true,
     VoidCallback? onTap,
   }) {
-    return Column(children: [
-      InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(children: [
-            if (leading != null) ...[leading, const SizedBox(width: 14)],
-            Expanded(
-                child: Column(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        PressableScale(
+          onTap: onTap,
+          pressedScale: 0.98,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            child: Row(
+              children: [
+                if (leading != null) ...[leading, const SizedBox(width: 14)],
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                  Text(title,
-                      style: GoogleFonts.inter(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w400,
-                          color: isDark ? Colors.white : Colors.black)),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(subtitle,
-                        style: GoogleFonts.inter(
-                            fontSize: 13, color: Theme.of(context).hintColor))
-                  ],
-                ])),
-            if (trailing != null) trailing,
-          ]),
+                      Text(
+                        title,
+                        style: GoogleFonts.manrope(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : const Color(0xFF0E1017),
+                        ),
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: GoogleFonts.openSans(
+                            fontSize: 12.5,
+                            color: isDark
+                                ? const Color(0xFF8E95A8)
+                                : const Color(0xFF6B7284),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (trailing != null) trailing,
+              ],
+            ),
+          ),
         ),
-      ),
-      if (showDivider)
-        Divider(
-            height: 0.5,
-            indent: leading != null ? 58 : 16,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.black.withValues(alpha: 0.06)),
-    ]);
+        if (showDivider)
+          Divider(
+            height: 1,
+            indent: 64,
+            color: isDark ? const Color(0xFF1D212F) : const Color(0xFFECEFF6),
+          ),
+      ],
+    );
   }
 
-  Widget _iconBox(Color color, IconData icon) {
+  // ── Clean Space Gray / Monochrome Icon Badge ──
+  Widget _iconBox(BuildContext context, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-        width: 30,
-        height: 30,
-        decoration:
-            BoxDecoration(color: color, borderRadius: BorderRadius.circular(7)),
-        child: Icon(icon, size: 17, color: Colors.white));
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1B1D27) : const Color(0xFFECEFF5),
+        borderRadius: BorderRadius.circular(11),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Icon(
+          icon,
+          size: 18,
+          color: isDark ? const Color(0xFFE2E6F2) : const Color(0xFF161822),
+        ),
+      ),
+    );
   }
 
   Widget _sectionLabel(BuildContext context, String title) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
-      padding: const EdgeInsets.only(left: 16, bottom: 6),
-      child: Text(title,
-          style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-              color: Theme.of(context).hintColor)),
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        title,
+        style: GoogleFonts.manrope(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.2,
+          color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF636A7D),
+        ),
+      ),
     );
   }
 
@@ -291,106 +443,113 @@ class SettingsView extends GetView<SettingsController> {
     return 'No model loaded';
   }
 
-  Widget _buildDeviceCard(BuildContext context, bool isDark) {
+  Widget _buildDeviceCard(BuildContext context) {
     return Obx(() {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
       final device = Get.find<DeviceInfoService>();
-      Color tierColor;
-      IconData tierIcon;
-      switch (device.deviceTier.value) {
-        case 'low':
-          tierColor = AppColors.error;
-          tierIcon = Icons.battery_alert;
-          break;
-        case 'mid':
-          tierColor = AppColors.warning;
-          tierIcon = Icons.phone_android;
-          break;
-        case 'high':
-          tierColor = AppColors.success;
-          tierIcon = Icons.smartphone;
-          break;
-        case 'ultra':
-          tierColor = AppColors.primary;
-          tierIcon = Icons.rocket_launch;
-          break;
-        default:
-          tierColor = Theme.of(context).hintColor;
-          tierIcon = Icons.phone_android;
-      }
 
       final soc = device.socFamily.value;
       final quantWarning = soc.quantWarning;
 
-      return _appleGroupedCard(context, isDark, children: [
+      return _appleGroupedCard(context, children: [
         Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(children: [
-              _iconBox(tierColor, tierIcon),
-              const SizedBox(width: 14),
-              Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    Text(device.tierDescription,
-                        style: GoogleFonts.inter(
-                            fontSize: 15, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 2),
-                    Text(
-                        'Available: ${device.availableRamGB.value.toStringAsFixed(1)}GB · Context: ${device.recommendedContextSize} · Tokens: ${device.recommendedMaxTokens}',
-                        style: GoogleFonts.inter(
-                            fontSize: 12, color: Theme.of(context).hintColor)),
-                  ])),
-            ])),
-        // SoC + quantization recommendation
-        if (soc != platform_info.SocFamily.unknown) ...[
-          const Divider(height: 1, indent: 16, endIndent: 16),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Row(children: [
-              _iconBox(const Color(0xFF5856D6), Icons.memory_outlined),
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              _iconBox(context, Icons.smartphone_rounded),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(soc.displayName,
-                        style: GoogleFonts.inter(
-                            fontSize: 14, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 3),
-                    Text('Recommended: ${soc.recommendedQuant}',
-                        style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: quantWarning != null
-                                ? const Color(0xFFFF9500)
-                                : Theme.of(context).hintColor)),
+                    Text(
+                      device.tierDescription,
+                      style: GoogleFonts.manrope(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : const Color(0xFF0E1017),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Available: ${device.availableRamGB.value.toStringAsFixed(1)}GB · Context: ${device.recommendedContextSize} · Tokens: ${device.recommendedMaxTokens}',
+                      style: GoogleFonts.openSans(
+                        fontSize: 12.5,
+                        color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ]),
+            ],
+          ),
+        ),
+        // SoC + quantization recommendation
+        if (soc != platform_info.SocFamily.unknown) ...[
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                _iconBox(context, Icons.memory_rounded),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        soc.displayName,
+                        style: GoogleFonts.manrope(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : const Color(0xFF0E1017),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Recommended: ${soc.recommendedQuant}',
+                        style: GoogleFonts.openSans(
+                          fontSize: 12,
+                          color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
         // Warning banner for problematic SoCs
         if (quantWarning != null) ...[
           Container(
-            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFFF9500).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              color: isDark ? const Color(0xFF222634) : const Color(0xFFECEFF6),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? const Color(0xFF32384C) : const Color(0xFFD4DAE8),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.warning_amber_rounded,
-                    size: 16, color: Color(0xFFFF9500)),
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: isDark ? const Color(0xFFBAC0D0) : const Color(0xFF4A5060),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(quantWarning,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: const Color(0xFFFF9500),
-                        fontWeight: FontWeight.w500,
-                      )),
+                  child: Text(
+                    quantWarning,
+                    style: GoogleFonts.openSans(
+                      fontSize: 12,
+                      color: isDark ? const Color(0xFFBAC0D0) : const Color(0xFF4A5060),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -400,7 +559,8 @@ class SettingsView extends GetView<SettingsController> {
     });
   }
 
-  Widget _buildLiteRtCard(BuildContext context, bool isDark) {
+  Widget _buildLiteRtCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final modes = [
       (
         value: 'auto_fast',
@@ -421,20 +581,16 @@ class SettingsView extends GetView<SettingsController> {
         icon: Icons.shield_outlined
       ),
     ];
-    return _appleGroupedCard(context, isDark, children: [
+    return _appleGroupedCard(context, children: [
       for (var i = 0; i < modes.length; i++)
         _appleListTile(
           context,
-          isDark,
-          leading: _iconBox(
-              isDark ? const Color(0xFF0A84FF) : AppColors.primary,
-              modes[i].icon),
+          leading: _iconBox(context, modes[i].icon),
           title: modes[i].title,
           subtitle: modes[i].subtitle,
           trailing: controller.liteRtPerformanceMode.value == modes[i].value
-              ? Icon(Icons.check,
-                  size: 18,
-                  color: isDark ? const Color(0xFF0A84FF) : AppColors.primary)
+              ? Icon(Icons.check_rounded,
+                  size: 18, color: isDark ? Colors.white : const Color(0xFF141620))
               : null,
           showDivider: i < modes.length - 1,
           onTap: () => controller.setLiteRtPerformanceMode(modes[i].value),
@@ -442,11 +598,10 @@ class SettingsView extends GetView<SettingsController> {
     ]);
   }
 
-  Widget _buildModelParametersCard(BuildContext context, bool isDark) {
-    return _appleGroupedCard(context, isDark, children: [
+  Widget _buildModelParametersCard(BuildContext context) {
+    return _appleGroupedCard(context, children: [
       _modelParameterSlider(
         context,
-        isDark,
         label: 'Temperature',
         value: controller.temperature.value,
         min: 0.0,
@@ -457,11 +612,12 @@ class SettingsView extends GetView<SettingsController> {
         icon: Icons.thermostat_rounded,
         warning: 'High temperature = unpredictable output!',
       ),
-      _parameterDivider(isDark),
+      const Divider(height: 1),
       _modelParameterSlider(
         context,
-        isDark,
         label: 'Max Tokens',
+        subtitle:
+            'Local models are strictly instructed and constrained to generate under this token limit.',
         value: controller.maxTokens.value.toDouble(),
         min: 64,
         max: 4096,
@@ -472,7 +628,7 @@ class SettingsView extends GetView<SettingsController> {
         icon: Icons.tag_rounded,
         warning: 'Your phone may crash with this value!',
       ),
-      _parameterDivider(isDark),
+      const Divider(height: 1),
       (() {
         final inference = Get.find<InferenceService>();
         final savedRuntime = Get.find<HiveService>()
@@ -495,7 +651,6 @@ class SettingsView extends GetView<SettingsController> {
 
         return _modelParameterSlider(
           context,
-          isDark,
           label: 'Context Size',
           value: currentValue,
           min: 512,
@@ -513,109 +668,135 @@ class SettingsView extends GetView<SettingsController> {
     ]);
   }
 
-  Widget _buildImageGenerationCard(BuildContext context, bool isDark) {
+  Widget _buildImageGenerationCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final stepsValue = controller.imageSteps.value.toDouble();
     const safeMax = 8.0;
     final isOver = stepsValue > safeMax;
-    final accent = isOver
-        ? AppColors.warning
-        : (isDark ? const Color(0xFF0A84FF) : AppColors.primary);
     final selectedBackend = controller.imageGenBackend.value;
     final gpuBackend = controller.recommendedImageGpuBackend();
     final gpuAvailable = gpuBackend != Backend.cpu;
 
-    return _appleGroupedCard(context, isDark, children: [
+    return _appleGroupedCard(context, children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Icon(Icons.image_rounded, size: 16, color: accent),
-            const SizedBox(width: 8),
-            Text('Image Gen Steps',
-                style: GoogleFonts.inter(
-                    fontSize: 15, fontWeight: FontWeight.w400)),
+            _iconBox(context, Icons.image_rounded),
+            const SizedBox(width: 12),
+            Text(
+              'Image Gen Steps',
+              style: GoogleFonts.manrope(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : const Color(0xFF0E1017),
+              ),
+            ),
             const Spacer(),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6)),
-              child: Text(controller.imageSteps.value.toString(),
-                  style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: accent,
-                      fontWeight: FontWeight.w600)),
+                color: isDark ? const Color(0xFF1E212E) : const Color(0xFFECEFF6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF2D3346) : const Color(0xFFD4DAE8),
+                ),
+              ),
+              child: Text(
+                controller.imageSteps.value.toString(),
+                style: GoogleFonts.manrope(
+                  fontSize: 13,
+                  color: isDark ? Colors.white : const Color(0xFF141620),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ]),
           Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text('Recommended max: 8',
-                  style: GoogleFonts.inter(
-                      fontSize: 12, color: Theme.of(context).hintColor))),
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Recommended max: 8',
+              style: GoogleFonts.openSans(
+                fontSize: 12,
+                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+              ),
+            ),
+          ),
           Slider(
-              value: stepsValue.clamp(1, 20),
-              min: 1,
-              max: 20,
-              divisions: 19,
-              activeColor: accent,
-              onChanged: (v) => controller.setImageSteps(v.toInt())),
+            value: stepsValue.clamp(1, 20),
+            min: 1,
+            max: 20,
+            divisions: 19,
+            activeColor: isDark ? Colors.white : const Color(0xFF141620),
+            inactiveColor: isDark ? const Color(0xFF262B3B) : const Color(0xFFD6DBE8),
+            onChanged: (v) => controller.setImageSteps(v.toInt()),
+          ),
           if (isOver)
             Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8)),
-                child: Row(children: [
-                  Icon(Icons.warning_amber_rounded, size: 14, color: accent),
-                  const SizedBox(width: 6),
-                  Expanded(
-                      child: Text(
-                          'More steps = better quality but MUCH slower!',
-                          style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: accent,
-                              fontWeight: FontWeight.w400))),
-                ])),
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E212D) : const Color(0xFFECEFF6),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'More steps = better quality but MUCH slower!',
+                style: GoogleFonts.openSans(
+                  fontSize: 11.5,
+                  color: isDark ? const Color(0xFFBAC0D0) : const Color(0xFF4A5060),
+                ),
+              ),
+            ),
         ]),
       ),
-      const Divider(height: 1, indent: 16, endIndent: 16),
+      const Divider(height: 1),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Icon(Icons.photo_size_select_large_rounded,
-                size: 16,
-                color: isDark ? const Color(0xFF0A84FF) : AppColors.primary),
-            const SizedBox(width: 8),
-            Text('Image Size',
-                style: GoogleFonts.inter(
-                    fontSize: 15, fontWeight: FontWeight.w400)),
+            _iconBox(context, Icons.photo_size_select_large_rounded),
+            const SizedBox(width: 12),
+            Text(
+              'Image Size',
+              style: GoogleFonts.manrope(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : const Color(0xFF0E1017),
+              ),
+            ),
             const Spacer(),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                  color: (isDark ? const Color(0xFF0A84FF) : AppColors.primary)
-                      .withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6)),
+                color: isDark ? const Color(0xFF1E212E) : const Color(0xFFECEFF6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF2D3346) : const Color(0xFFD4DAE8),
+                ),
+              ),
               child: Text(
-                  controller.imageGenSize.value == 0
-                      ? 'Auto'
-                      : '${controller.imageGenSize.value}px',
-                  style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color:
-                          isDark ? const Color(0xFF0A84FF) : AppColors.primary,
-                      fontWeight: FontWeight.w600)),
+                controller.imageGenSize.value == 0
+                    ? 'Auto'
+                    : '${controller.imageGenSize.value}px',
+                style: GoogleFonts.manrope(
+                  fontSize: 13,
+                  color: isDark ? Colors.white : const Color(0xFF141620),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ]),
           Padding(
-              padding: const EdgeInsets.only(top: 4, bottom: 10),
-              child: Text(
-                  'Auto recommended. Bigger size = better detail, but much slower and more memory use.',
-                  style: GoogleFonts.inter(
-                      fontSize: 12, color: Theme.of(context).hintColor))),
+            padding: const EdgeInsets.only(top: 4, bottom: 10),
+            child: Text(
+              'Auto recommended. Bigger size = better detail, but much slower.',
+              style: GoogleFonts.openSans(
+                fontSize: 12,
+                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+              ),
+            ),
+          ),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -632,163 +813,78 @@ class SettingsView extends GetView<SettingsController> {
                   selected: controller.imageGenSize.value == option.value,
                   onSelected: (_) => controller.setImageGenSize(option.value),
                   visualDensity: VisualDensity.compact,
-                  labelStyle: GoogleFonts.inter(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  side: BorderSide(
+                    color: controller.imageGenSize.value == option.value
+                        ? (isDark ? Colors.white : const Color(0xFF141620))
+                        : (isDark ? const Color(0xFF282D3D) : const Color(0xFFD4D9E6)),
+                  ),
+                  labelStyle: GoogleFonts.manrope(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: controller.imageGenSize.value == option.value
-                        ? Colors.white
-                        : Theme.of(context).hintColor,
+                        ? (isDark ? const Color(0xFF090A0E) : Colors.white)
+                        : (isDark ? const Color(0xFFBAC0D0) : const Color(0xFF4A5060)),
                   ),
-                  selectedColor:
-                      isDark ? const Color(0xFF0A84FF) : AppColors.primary,
-                  backgroundColor: isDark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : Colors.black.withValues(alpha: 0.04),
-                  side: BorderSide(
-                    color: controller.imageGenSize.value == option.value
-                        ? Colors.transparent
-                        : Theme.of(context).dividerColor.withValues(alpha: 0.3),
-                  ),
+                  selectedColor: isDark ? Colors.white : const Color(0xFF141620),
+                  backgroundColor: isDark ? const Color(0xFF181B26) : const Color(0xFFECEFF5),
                   showCheckmark: false,
                 ),
             ],
           ),
-          if (controller.imageGenSize.value >= 512)
-            Container(
-                margin: const EdgeInsets.only(top: 10),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8)),
-                child: Row(children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      size: 14, color: AppColors.warning),
-                  const SizedBox(width: 6),
-                  Expanded(
-                      child: Text(
-                          '512 gives more detail but can be MUCH slower, heat the phone, and may fail on some devices.',
-                          style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: AppColors.warning,
-                              fontWeight: FontWeight.w400))),
-                ])),
         ]),
       ),
-      const Divider(height: 1, indent: 16, endIndent: 16),
+      const Divider(height: 1),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(Icons.shield_outlined,
-                size: 16,
-                color: isDark ? const Color(0xFF0A84FF) : AppColors.primary),
-            const SizedBox(width: 8),
-            Text('GPU Safety',
-                style: GoogleFonts.inter(
-                    fontSize: 15, fontWeight: FontWeight.w400)),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                  color: (isDark ? const Color(0xFF0A84FF) : AppColors.primary)
-                      .withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6)),
-              child: Text(
-                  controller.imageGenGpuGuardMb.value <= 0
-                      ? 'Off'
-                      : '${controller.imageGenGpuGuardMb.value} MB',
-                  style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color:
-                          isDark ? const Color(0xFF0A84FF) : AppColors.primary,
-                      fontWeight: FontWeight.w600)),
-            ),
-          ]),
-          Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                  'Models at or above this size use CPU. Smaller models can use GPU Experimental.',
-                  style: GoogleFonts.inter(
-                      fontSize: 12, color: Theme.of(context).hintColor))),
-          Slider(
-              value:
-                  controller.imageGenGpuGuardMb.value.toDouble().clamp(0, 4096),
-              min: 0,
-              max: 4096,
-              divisions: 16,
-              activeColor: isDark ? const Color(0xFF0A84FF) : AppColors.primary,
-              onChanged: (v) => controller.setImageGenGpuGuardMb(v.toInt())),
-          if (controller.imageGenGpuGuardMb.value <= 0 ||
-              controller.imageGenGpuGuardMb.value >= 2048)
-            Container(
-                margin: const EdgeInsets.only(top: 2, bottom: 10),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8)),
-                child: Row(children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      size: 14, color: AppColors.warning),
-                  const SizedBox(width: 6),
-                  Expanded(
-                      child: Text(
-                          controller.imageGenGpuGuardMb.value <= 0
-                              ? 'GPU Safety is off. Large models may crash or freeze on GPU.'
-                              : 'High GPU Safety allows larger models on GPU and may crash, freeze, or overheat some phones.',
-                          style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: AppColors.warning,
-                              fontWeight: FontWeight.w400))),
-                ])),
-        ]),
-      ),
-      const Divider(height: 1, indent: 16, endIndent: 16),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             _iconBox(
-                isDark ? const Color(0xFF0A84FF) : AppColors.primary,
-                selectedBackend == Backend.cpu
-                    ? Icons.memory_rounded
-                    : Icons.bolt_rounded),
-            const SizedBox(width: 14),
+              context,
+              selectedBackend == Backend.cpu
+                  ? Icons.memory_rounded
+                  : Icons.bolt_rounded,
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Image Backend',
-                        style: GoogleFonts.inter(
-                            fontSize: 15, fontWeight: FontWeight.w400)),
-                    const SizedBox(height: 3),
-                    Text(controller.imageGpuLabel(),
-                        style: GoogleFonts.inter(
-                            fontSize: 12, color: Theme.of(context).hintColor)),
-                  ]),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Image Backend',
+                    style: GoogleFonts.manrope(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0E1017),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    controller.imageGpuLabel(),
+                    style: GoogleFonts.openSans(
+                      fontSize: 12,
+                      color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ]),
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
             child: SegmentedButton<bool>(
-              segments: [
-                const ButtonSegment(
-                    value: false,
-                    icon: Icon(Icons.memory_rounded, size: 16),
-                    label: Text('CPU')),
+              segments: const [
                 ButtonSegment(
-                    value: true,
-                    icon: const Icon(Icons.bolt_rounded, size: 16),
-                    label: Text(
-                      'GPU',
-                      style: TextStyle(
-                        color: selectedBackend == Backend.cpu
-                            ? const Color(0xFFFF6B6B)
-                            : Colors.white,
-                      ),
-                    )),
+                  value: false,
+                  icon: Icon(Icons.memory_rounded, size: 16),
+                  label: Text('CPU'),
+                ),
+                ButtonSegment(
+                  value: true,
+                  icon: Icon(Icons.bolt_rounded, size: 16),
+                  label: Text('GPU'),
+                ),
               ],
               selected: {selectedBackend != Backend.cpu},
               onSelectionChanged: (values) {
@@ -798,121 +894,25 @@ class SettingsView extends GetView<SettingsController> {
               },
               showSelectedIcon: false,
               style: ButtonStyle(
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
                 visualDensity: VisualDensity.compact,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                textStyle: WidgetStatePropertyAll(GoogleFonts.inter(
-                    fontSize: 12, fontWeight: FontWeight.w500)),
+                textStyle: WidgetStatePropertyAll(
+                  GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ),
-          if (selectedBackend != Backend.cpu) ...[
-            const SizedBox(height: 6),
-            Text('GPU is experimental and only used below GPU Safety size.',
-                style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: const Color(0xFFFF6B6B),
-                    fontWeight: FontWeight.w500)),
-          ],
         ]),
       ),
     ]);
-  }
-
-  Widget _buildFontSizeCard(BuildContext context, bool isDark) {
-    const min = 0.8;
-    const max = 1.4;
-    final accent = isDark ? const Color(0xFF0A84FF) : const Color(0xFF007AFF);
-
-    String scaleLabel(double v) {
-      if (v <= 0.85) return 'XS';
-      if (v <= 0.95) return 'Small';
-      if (v <= 1.05) return 'Recommended';
-      if (v <= 1.15) return 'Large';
-      if (v <= 1.25) return 'XL';
-      return 'XXL';
-    }
-
-    return _appleGroupedCard(context, isDark, children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(Icons.format_size_rounded, size: 16, color: accent),
-            const SizedBox(width: 8),
-            Text('Font Size',
-                style: GoogleFonts.inter(
-                    fontSize: 15, fontWeight: FontWeight.w400)),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6)),
-              child: Text(scaleLabel(controller.fontScale.value),
-                  style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: accent,
-                      fontWeight: FontWeight.w600)),
-            ),
-          ]),
-          const SizedBox(height: 4),
-          Text('Small (0.95x) is the default size',
-              style: GoogleFonts.inter(
-                  fontSize: 12, color: Theme.of(context).hintColor)),
-          Slider(
-            value: controller.fontScale.value.clamp(min, max),
-            min: min,
-            max: max,
-            divisions: 12,
-            activeColor: accent,
-            onChanged: (v) => controller.setFontScale(v),
-          ),
-          // Scale markers
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('XS',
-                    style: GoogleFonts.inter(
-                        fontSize: 11, color: Theme.of(context).hintColor)),
-                Text('Small',
-                    style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: controller.fontScale.value >= 0.9 &&
-                                controller.fontScale.value <= 0.95
-                            ? accent
-                            : Theme.of(context).hintColor,
-                        fontWeight: controller.fontScale.value >= 0.9 &&
-                                controller.fontScale.value <= 0.95
-                            ? FontWeight.w600
-                            : FontWeight.w400)),
-                Text('Large',
-                    style: GoogleFonts.inter(
-                        fontSize: 11, color: Theme.of(context).hintColor)),
-              ],
-            ),
-          ),
-        ]),
-      ),
-    ]);
-  }
-
-  Widget _parameterDivider(bool isDark) {
-    return Divider(
-      height: 1,
-      indent: 16,
-      endIndent: 16,
-      color: isDark
-          ? Colors.white.withValues(alpha: 0.06)
-          : Colors.black.withValues(alpha: 0.06),
-    );
   }
 
   Widget _modelParameterSlider(
-    BuildContext context,
-    bool isDark, {
+    BuildContext context, {
     required String label,
+    String? subtitle,
     required double value,
     required double min,
     required double max,
@@ -923,185 +923,177 @@ class SettingsView extends GetView<SettingsController> {
     required String warning,
     String? displayValue,
   }) {
-    final isOver = value > safeMax;
-    final danger = safeMax < max
-        ? ((value - safeMax) / (max - safeMax)).clamp(0.0, 1.0)
-        : 0.0;
-    final accent = isOver
-        ? Color.lerp(AppColors.warning, AppColors.error, danger)!
-        : (isDark ? const Color(0xFF0A84FF) : AppColors.primary);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Icon(icon, size: 16, color: accent),
-          const SizedBox(width: 8),
-          Text(label,
-              style:
-                  GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w400)),
+          _iconBox(context, icon),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: GoogleFonts.manrope(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : const Color(0xFF0E1017),
+            ),
+          ),
           const Spacer(),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(6)),
-            child: Text(displayValue ?? value.toStringAsFixed(2),
-                style: GoogleFonts.inter(
-                    fontSize: 13, color: accent, fontWeight: FontWeight.w600)),
+              color: isDark ? const Color(0xFF1E212E) : const Color(0xFFECEFF6),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? const Color(0xFF2D3346) : const Color(0xFFD4DAE8),
+              ),
+            ),
+            child: Text(
+              displayValue ?? value.toStringAsFixed(2),
+              style: GoogleFonts.manrope(
+                fontSize: 13,
+                color: isDark ? Colors.white : const Color(0xFF141620),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ]),
-        if (safeMax < max)
+        if (subtitle != null && subtitle.isNotEmpty)
           Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                  'Recommended max: ${safeMax.toInt() > 0 ? safeMax.toInt().toString() : safeMax.toStringAsFixed(1)}',
-                  style: GoogleFonts.inter(
-                      fontSize: 12, color: Theme.of(context).hintColor))),
+            padding: const EdgeInsets.only(top: 6, bottom: 2),
+            child: Text(
+              subtitle,
+              style: GoogleFonts.openSans(
+                fontSize: 12,
+                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                height: 1.35,
+              ),
+            ),
+          ),
         Slider(
-            value: value.clamp(min, max),
-            min: min,
-            max: max,
-            divisions: divisions,
-            activeColor: accent,
-            onChanged: (v) {
-              if (v > safeMax && value <= safeMax) {
-                HapticFeedback.heavyImpact();
-                Get.snackbar('âš ï¸ Warning', warning,
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: AppColors.error.withValues(alpha: 0.9),
-                    colorText: Colors.white,
-                    duration: const Duration(seconds: 3),
-                    margin: const EdgeInsets.all(12));
-              } else if (v > safeMax) {
-                HapticFeedback.mediumImpact();
-              }
-              onChanged(v);
-            }),
-        if (isOver)
-          Container(
-              margin: const EdgeInsets.only(bottom: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8)),
-              child: Row(children: [
-                Icon(Icons.warning_amber_rounded, size: 14, color: accent),
-                const SizedBox(width: 6),
-                Expanded(
-                    child: Text(warning,
-                        style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: accent,
-                            fontWeight: FontWeight.w400))),
-              ])),
+          value: value.clamp(min, max),
+          min: min,
+          max: max,
+          divisions: divisions,
+          activeColor: isDark ? Colors.white : const Color(0xFF141620),
+          inactiveColor: isDark ? const Color(0xFF262B3B) : const Color(0xFFD6DBE8),
+          onChanged: (v) {
+            if (v > safeMax && value <= safeMax) {
+              HapticFeedback.heavyImpact();
+            }
+            onChanged(v);
+          },
+        ),
       ]),
     );
   }
 
-  Widget _buildSlider(
-    BuildContext context,
-    bool isDark, {
-    required String label,
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required double safeMax,
-    required ValueChanged<double> onChanged,
-    required IconData icon,
-    required String warning,
-    String? displayValue,
-  }) {
-    final isOver = value > safeMax;
-    final danger = safeMax < max
-        ? ((value - safeMax) / (max - safeMax)).clamp(0.0, 1.0)
-        : 0.0;
-    final accent = isOver
-        ? Color.lerp(AppColors.warning, AppColors.error, danger)!
-        : (isDark ? const Color(0xFF0A84FF) : AppColors.primary);
-
-    return _appleGroupedCard(context, isDark, children: [
-      Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Icon(icon, size: 16, color: accent),
-              const SizedBox(width: 8),
-              Text(label,
-                  style: GoogleFonts.inter(
-                      fontSize: 15, fontWeight: FontWeight.w400)),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6)),
-                child: Text(displayValue ?? value.toStringAsFixed(2),
-                    style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: accent,
-                        fontWeight: FontWeight.w600)),
-              ),
-            ]),
-            if (safeMax < max)
-              Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                      'Recommended max: ${safeMax.toInt() > 0 ? safeMax.toInt().toString() : safeMax.toStringAsFixed(1)}',
-                      style: GoogleFonts.inter(
-                          fontSize: 12, color: Theme.of(context).hintColor))),
-            Slider(
-                value: value.clamp(min, max),
-                min: min,
-                max: max,
-                divisions: divisions,
-                activeColor: accent,
-                onChanged: (v) {
-                  if (v > safeMax && value <= safeMax) {
-                    HapticFeedback.heavyImpact();
-                    Get.snackbar('⚠️ Warning', warning,
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: AppColors.error.withValues(alpha: 0.9),
-                        colorText: Colors.white,
-                        duration: const Duration(seconds: 3),
-                        margin: const EdgeInsets.all(12));
-                  } else if (v > safeMax) {
-                    HapticFeedback.mediumImpact();
-                  }
-                  onChanged(v);
-                }),
-            if (isOver)
-              Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8)),
-                  child: Row(children: [
-                    Icon(Icons.warning_amber_rounded, size: 14, color: accent),
-                    const SizedBox(width: 6),
-                    Expanded(
-                        child: Text(warning,
-                            style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: accent,
-                                fontWeight: FontWeight.w400))),
-                  ])),
-          ])),
-    ]);
+  IconData _themeModeIcon(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return Icons.light_mode_outlined;
+      case ThemeMode.dark:
+        return Icons.dark_mode_outlined;
+      case ThemeMode.system:
+        return Icons.brightness_auto_outlined;
+    }
   }
 
-  String _themeModeName(ThemeMode m) => m == ThemeMode.light
-      ? 'Light'
-      : m == ThemeMode.dark
-          ? 'Dark'
-          : 'System Default';
-  IconData _themeModeIcon(ThemeMode m) => m == ThemeMode.light
-      ? Icons.wb_sunny_outlined
-      : m == ThemeMode.dark
-          ? Icons.dark_mode_outlined
-          : Icons.brightness_auto_outlined;
+  String _themeModeName(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'Light Theme';
+      case ThemeMode.dark:
+        return 'Dark Theme (AstraLM Space Obsidian)';
+      case ThemeMode.system:
+        return 'Match System Appearance';
+    }
+  }
+
+  Widget _buildServerSection(BuildContext context) {
+    final serverController = Get.find<ServerController>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Obx(() {
+      final isRunning = serverController.isRunning.value;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionLabel(context, 'LOCAL API SERVER'),
+          _appleGroupedCard(context, children: [
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E212E) : const Color(0xFFECEFF6),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF2D3346) : const Color(0xFFD4DAE8),
+                      ),
+                    ),
+                    child: Text(
+                      isRunning ? 'RUNNING' : 'STOPPED',
+                      style: GoogleFonts.manrope(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : const Color(0xFF141620),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isRunning ? 'OpenAI API Running' : 'OpenAI API Stopped',
+                          style: GoogleFonts.manrope(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : const Color(0xFF0E1017),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isRunning
+                              ? 'http://localhost:8080/v1'
+                              : 'Expose local model to other apps & LAN',
+                          style: GoogleFonts.openSans(
+                            fontSize: 12,
+                            color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: isRunning,
+                    activeColor: isDark ? Colors.white : const Color(0xFF141620),
+                    onChanged: serverController.isStarting.value
+                        ? null
+                        : (v) => serverController.toggleServer(v),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            _appleListTile(
+              context,
+              leading: _iconBox(context, Icons.dns_outlined),
+              title: 'Server Dashboard & Endpoints',
+              subtitle: 'API keys, CORS, docs & client examples',
+              trailing: const Icon(Icons.chevron_right, size: 18),
+              showDivider: false,
+              onTap: () => Get.to(() => const ServerView()),
+            ),
+          ]),
+        ],
+      );
+    });
+  }
 }

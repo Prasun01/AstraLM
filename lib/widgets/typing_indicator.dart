@@ -32,22 +32,12 @@ class _TypingIndicatorState extends State<TypingIndicator>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
 
     return Align(
       alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-            bottomRight: Radius.circular(20),
-            bottomLeft: Radius.circular(6),
-          ),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -69,9 +59,7 @@ class _TypingIndicatorState extends State<TypingIndicator>
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.6)
-                                : Colors.black.withValues(alpha: 0.35),
+                            color: scheme.onSurfaceVariant,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -89,7 +77,8 @@ class _TypingIndicatorState extends State<TypingIndicator>
                   '${inference.tokenCount.value} tokens',
                   style: GoogleFonts.inter(
                     fontSize: 11,
-                    color: Theme.of(context).hintColor,
+                    fontStyle: FontStyle.italic,
+                    color: scheme.onSurfaceVariant,
                     fontWeight: FontWeight.w400,
                   ),
                 );
@@ -98,7 +87,8 @@ class _TypingIndicatorState extends State<TypingIndicator>
                 'thinking…',
                 style: GoogleFonts.inter(
                   fontSize: 12,
-                  color: Theme.of(context).hintColor,
+                  fontStyle: FontStyle.italic,
+                  color: scheme.onSurfaceVariant,
                   fontWeight: FontWeight.w400,
                 ),
               );

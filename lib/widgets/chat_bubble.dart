@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/chat_message.dart';
 import '../utils/thought_parser.dart';
 import 'attachment_preview.dart';
+import 'code_block_widget.dart';
 import 'image_viewer.dart';
 import 'thought_disclosure.dart';
 
@@ -13,14 +13,12 @@ class ChatBubble extends StatelessWidget {
 
   const ChatBubble({super.key, required this.message});
 
-  // ── Apple-style colors ──
-  static const _appleBlue = Color(0xFF007AFF);
-  static const _appleBlueDark = Color(0xFF0A84FF);
-
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == 'user';
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final textColor = isDark ? Colors.white : Colors.black;
     final visibleContent = message.fileName == null
         ? message.content
         : message.content.split('\n\nAttached file:').first;
@@ -29,164 +27,207 @@ class ChatBubble extends StatelessWidget {
         : splitThoughtTags(_cleanAssistantText(visibleContent));
     final answerContent = isUser ? visibleContent : thoughtParts.answer.trim();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-      child: Align(
-        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.78,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: _bubbleColor(context, isUser),
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(20),
-              topRight: const Radius.circular(20),
-              bottomLeft: Radius.circular(isUser ? 20 : 6),
-              bottomRight: Radius.circular(isUser ? 6 : 20),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.fastLinearToSlowEaseIn,
+      builder: (context, anim, child) => Opacity(
+        opacity: anim,
+        child: Transform.translate(
+          offset: Offset(0, (1 - anim) * 6),
+          child: child,
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: isUser ? 4 : 8,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Align(
+              alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+              child: isUser
+                  ? _buildUserBubble(context, isDark, textColor, visibleContent)
+                  : _buildAssistantBubble(context, isDark, scheme, thoughtParts, answerContent),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image attachment
-              if (message.decodedImageBytes != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: GestureDetector(
-                    onTap: () => ImageViewer.show(context, message.imageBase64!),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Image.memory(
-                        message.decodedImageBytes!,
-                        width: double.infinity,
-                        height: 200,
-                        fit: BoxFit.cover,
-                        gaplessPlayback: true,
-                        errorBuilder: (_, __, ___) => Container(
-
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.05)
-                                : Colors.black.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Center(child: Icon(Icons.broken_image_rounded, size: 28)),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Thought disclosure
-              if (!isUser && thoughtParts.hasThought)
-                ThoughtDisclosure(
-                  thought: thoughtParts.thought,
-                  durationSeconds: message.thoughtDurationSeconds,
-                  styleSheet: _thoughtMarkdownStyle(context),
-                ),
-
-              // Message content
-              if (isUser)
-                SelectableText(
-                  visibleContent,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    color: Colors.white,
-                    height: 1.45,
-                    fontWeight: FontWeight.w400,
-                  ),
-                )
-              else if (answerContent.isNotEmpty)
-                MarkdownBody(
-                  data: answerContent,
-                  selectable: true,
-                  styleSheet: _markdownStyle(context),
-                ),
-
-              // File attachment
-              if (message.fileName != null) ...[
-                const SizedBox(height: 10),
-                AttachmentPreview(
-                  fileName: message.fileName!,
-                  fileType: message.fileType,
-                  fileSize: message.fileSize,
-                  imageBase64: message.imageBase64,
-                  imagePath: message.imagePath,
-                  compact: true,
-                ),
-              ],
-
-              // Timestamp & speed
-              const SizedBox(height: 8),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (message.tokensPerSec != null && message.tokensPerSec! > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Text(
-                        '${message.tokensPerSec!.toStringAsFixed(1)} tok/s',
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          color: isUser
-                              ? Colors.white.withValues(alpha: 0.55)
-                              : Theme.of(context).hintColor.withValues(alpha: 0.5),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  if (message.imageGenDurationMs != null && message.imageGenDurationMs! > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Text(
-                        _formatGenTime(message.imageGenDurationMs!),
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          color: isUser
-                              ? Colors.white.withValues(alpha: 0.55)
-                              : Theme.of(context).hintColor.withValues(alpha: 0.5),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  Text(
-                    _formatTime(message.timestamp),
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      color: isUser
-                          ? Colors.white.withValues(alpha: 0.55)
-                          : Theme.of(context).hintColor.withValues(alpha: 0.5),
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ),
         ),
       ),
     );
   }
 
-  Color _bubbleColor(BuildContext context, bool isUser) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (isUser) return isDark ? _appleBlueDark : _appleBlue;
-    return isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7);
+  Widget _buildUserBubble(
+    BuildContext context,
+    bool isDark,
+    Color textColor,
+    String visibleContent,
+  ) {
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.78,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1B1E28) : const Color(0xFFE9EDF5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (message.decodedImageBytes != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: GestureDetector(
+                onTap: () =>
+                    ImageViewer.show(context, message.imageBase64!),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(
+                    message.decodedImageBytes!,
+                    width: double.infinity,
+                    height: 180,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF242836) : const Color(0xFFDFE4F0),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                          child:
+                              Icon(Icons.broken_image_rounded, size: 28)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          Text(
+            visibleContent,
+            style: GoogleFonts.openSans(
+              fontSize: 14.5,
+              color: textColor,
+              height: 1.38,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (message.fileName != null) ...[
+            const SizedBox(height: 6),
+            AttachmentPreview(
+              fileName: message.fileName!,
+              fileType: message.fileType,
+              fileSize: message.fileSize,
+              imageBase64: message.imageBase64,
+              imagePath: message.imagePath,
+              compact: true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAssistantBubble(
+    BuildContext context,
+    bool isDark,
+    ColorScheme scheme,
+    ThoughtParts thoughtParts,
+    String answerContent,
+  ) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.88,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Image attachment
+          if (message.decodedImageBytes != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: GestureDetector(
+                onTap: () =>
+                    ImageViewer.show(context, message.imageBase64!),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(
+                    message.decodedImageBytes!,
+                    width: double.infinity,
+                    height: 180,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                          child:
+                              Icon(Icons.broken_image_rounded, size: 28)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Thought disclosure
+          if (thoughtParts.hasThought)
+            ThoughtDisclosure(
+              thought: thoughtParts.thought,
+              durationSeconds: message.thoughtDurationSeconds,
+              styleSheet: _thoughtMarkdownStyle(context),
+            ),
+
+          // Message content with custom code block renderer
+          if (answerContent.isNotEmpty)
+            MarkdownBody(
+              data: answerContent,
+              selectable: true,
+              builders: {
+                'code': CodeBlockBuilder(isDark: isDark),
+              },
+              styleSheet: _markdownStyle(context),
+            ),
+
+          // File attachment
+          if (message.fileName != null) ...[
+            const SizedBox(height: 10),
+            AttachmentPreview(
+              fileName: message.fileName!,
+              fileType: message.fileType,
+              fileSize: message.fileSize,
+              imageBase64: message.imageBase64,
+              imagePath: message.imagePath,
+              compact: true,
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   MarkdownStyleSheet _markdownStyle(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = Theme.of(context).colorScheme.onSurface;
-    final muted = Theme.of(context).hintColor;
-    final base = GoogleFonts.inter(fontSize: 15, color: color, height: 1.5);
-    final codeBlockBg = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA);
+    final color = isDark ? Colors.white : Colors.black;
+    final muted = isDark ? const Color(0xFFC0C4D0) : const Color(0xFF404450);
+    final base = GoogleFonts.openSans(fontSize: 16, color: color, height: 1.55);
+    final codeBlockBg =
+        isDark ? const Color(0xFF12141A) : const Color(0xFFE8EBF2);
 
     return MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
       p: base,
-      strong: base.copyWith(fontWeight: FontWeight.w600),
+      h1: GoogleFonts.playfairDisplay(
+          fontSize: 24, fontWeight: FontWeight.w700, color: color),
+      h2: GoogleFonts.playfairDisplay(
+          fontSize: 20, fontWeight: FontWeight.w700, color: color),
+      h3: GoogleFonts.manrope(
+          fontSize: 16, fontWeight: FontWeight.w700, color: color),
+      strong: base.copyWith(fontWeight: FontWeight.w700),
       em: base.copyWith(fontStyle: FontStyle.italic),
       listBullet: base,
       code: GoogleFonts.firaCode(
@@ -201,51 +242,37 @@ class ChatBubble extends StatelessWidget {
       codeblockPadding: const EdgeInsets.all(14),
       blockquote: base.copyWith(color: muted),
       blockquoteDecoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(
-            color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.15),
-            width: 3,
-          ),
-        ),
+        color: isDark ? const Color(0xFF171920) : const Color(0xFFE2E5EC),
+        borderRadius: BorderRadius.circular(8),
       ),
-      blockquotePadding: const EdgeInsets.only(left: 14, top: 2, bottom: 2),
+      blockquotePadding: const EdgeInsets.only(
+          left: 14, right: 14, top: 8, bottom: 8),
     );
   }
 
   MarkdownStyleSheet _thoughtMarkdownStyle(BuildContext context) {
-    final muted = Theme.of(context).hintColor;
-    final base = GoogleFonts.inter(fontSize: 13, color: muted, height: 1.4);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? const Color(0xFFC0C4D0) : const Color(0xFF404450);
+    final base = GoogleFonts.openSans(
+        fontSize: 13, color: muted, height: 1.45, fontStyle: FontStyle.italic);
+    final codeBg =
+        isDark ? const Color(0xFF12141A) : const Color(0xFFE8EBF2);
 
     return MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
       p: base,
-      strong: base.copyWith(fontWeight: FontWeight.w600),
+      strong: base.copyWith(fontWeight: FontWeight.w700),
       em: base.copyWith(fontStyle: FontStyle.italic),
       listBullet: base,
       code: GoogleFonts.firaCode(
         fontSize: 11,
         color: muted,
-        backgroundColor: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
+        backgroundColor: codeBg,
       ),
       codeblockDecoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
+        color: codeBg,
         borderRadius: BorderRadius.circular(10),
       ),
     );
-  }
-
-  String _formatTime(DateTime date) {
-    final h = date.hour.toString().padLeft(2, '0');
-    final m = date.minute.toString().padLeft(2, '0');
-    return '$h:$m';
-  }
-
-  String _formatGenTime(int ms) {
-    if (ms < 1000) return '${ms}ms';
-    if (ms < 60000) return '${(ms / 1000).toStringAsFixed(1)}s';
-    final m = ms ~/ 60000;
-    final s = (ms % 60000) ~/ 1000;
-    return s > 0 ? '${m}m ${s}s' : '${m}m';
   }
 
   String _cleanAssistantText(String text) {

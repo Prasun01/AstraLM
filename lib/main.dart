@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 // import 'firebase_options.dart';
 import 'controllers/settings_controller.dart';
@@ -22,6 +23,7 @@ import 'services/download_service.dart';
 import 'services/device_info_service.dart';
 import 'services/local_image_service.dart';
 import 'services/app_log_service.dart';
+import 'services/document_export_service.dart';
 import 'services/crash_reporting_service.dart';
 import 'services/image_generation_notification_service.dart';
 import 'core/constants.dart';
@@ -77,6 +79,7 @@ void main() {
     Get.put(CloudService());
     Get.put(DownloadService());
     Get.put(LocalImageService());
+    Get.put(DocumentExportService());
     final crashReporting =
         await Get.putAsync(() => CrashReportingService().init());
     FlutterError.onError = (details) {
@@ -104,14 +107,17 @@ void main() {
     // Auto-configure inference settings based on device RAM
     _autoConfigureForDevice();
 
-    // Keep last model as a quick-load option, but do not auto-load on startup.
-    _validateLastModel();
+    // Automatically validate and load the last used model on startup
+    _validateAndAutoLoadLastModel();
 
-    runApp(const PrivateLMApp());
+    runApp(const AstraLMApp());
 
-    // Apply system UI after frame is rendered so Get.mediaQuery is available
+    // Pre-warm resources, fonts, assets, and animation curves on startup to ensure instant 60/120fps response
     WidgetsBinding.instance.addPostFrameCallback((_) {
       settingsController.setThemeMode(settingsController.themeMode.value);
+      if (Get.context != null) {
+        _preWarmAllAppAnimationsAndResources(Get.context!);
+      }
     });
   }, (error, stack) async {
     if (Get.isRegistered<AppLogService>()) {
@@ -136,9 +142,49 @@ void main() {
   ));
 }
 
-/// Validates that remembered models still exist on disk.
-/// Does NOT auto-load — the HomeView will ask the user on first launch.
-void _validateLastModel() async {
+/// Pre-warms animation engines, Bezier curve transforms, fonts, button physics, and screen transition animations at startup
+void _preWarmAllAppAnimationsAndResources(BuildContext context) {
+  try {
+    precacheImage(const AssetImage('assets/icons/appicon.png'), context);
+    // Pre-load common GoogleFonts styles
+    GoogleFonts.manrope(fontSize: 14);
+    GoogleFonts.openSans(fontSize: 14);
+    GoogleFonts.firaCode(fontSize: 12);
+
+    // Pre-evaluate animation curves for button clicking & transitions
+    const testCurves = [
+      Curves.easeOutCubic,
+      Curves.easeInCubic,
+      Curves.easeInOutCubic,
+      Curves.fastOutSlowIn,
+      Curves.easeOutQuad,
+      Curves.easeInQuad,
+      Curves.linear,
+    ];
+    for (final c in testCurves) {
+      c.transform(0.0);
+      c.transform(0.25);
+      c.transform(0.5);
+      c.transform(0.75);
+      c.transform(1.0);
+    }
+
+    // Pre-warm Tween transforms for button clicks and page transitions
+    final scaleTween = Tween<double>(begin: 1.0, end: 0.96);
+    scaleTween.transform(0.5);
+    final opacityTween = Tween<double>(begin: 1.0, end: 0.85);
+    opacityTween.transform(0.5);
+    final slideTween =
+        Tween<Offset>(begin: const Offset(0.04, 0.0), end: Offset.zero);
+    slideTween.transform(0.5);
+    final topSlideTween =
+        Tween<Offset>(begin: const Offset(0.0, -0.05), end: Offset.zero);
+    topSlideTween.transform(0.5);
+  } catch (_) {}
+}
+
+/// Validates and automatically loads the last used model on startup.
+void _validateAndAutoLoadLastModel() async {
   final hive = Get.find<HiveService>();
   final downloadService = Get.find<DownloadService>();
 
@@ -191,8 +237,8 @@ void _autoConfigureForDevice() {
       'maxTokens=${device.recommendedMaxTokens} for ${device.totalRamGB.value.toStringAsFixed(1)}GB RAM');
 }
 
-class PrivateLMApp extends StatelessWidget {
-  const PrivateLMApp({super.key});
+class AstraLMApp extends StatelessWidget {
+  const AstraLMApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -201,11 +247,13 @@ class PrivateLMApp extends StatelessWidget {
       final themeMode = settings.themeMode.value;
       final scale = settings.fontScale.value; // read here → Obx tracks it
       return GetMaterialApp(
-        title: 'PrivateLM',
+        title: 'AstraLM',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: themeMode,
+        defaultTransition: Transition.rightToLeftWithFade,
+        transitionDuration: const Duration(milliseconds: 260),
         initialRoute: AppRoutes.home,
         getPages: AppPages.pages,
         builder: (ctx, child) => MediaQuery(

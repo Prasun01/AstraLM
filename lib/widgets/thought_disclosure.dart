@@ -1,5 +1,5 @@
 import 'dart:async';
-
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,28 +23,36 @@ class ThoughtDisclosure extends StatefulWidget {
 }
 
 class _ThoughtDisclosureState extends State<ThoughtDisclosure>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late bool _expanded;
   late DateTime _startedAt;
   Timer? _timer;
-  int _liveSeconds = 0;
-  late AnimationController _animController;
+  double _liveSeconds = 0.0;
+  late AnimationController _expandAnimController;
   late Animation<double> _expandAnimation;
+  late AnimationController _pulseAnimController;
 
   @override
   void initState() {
     super.initState();
     _expanded = widget.isThinking;
     _startedAt = DateTime.now();
-    _animController = AnimationController(
+
+    _expandAnimController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 320),
       value: _expanded ? 1.0 : 0.0,
     );
     _expandAnimation = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutCubic,
+      parent: _expandAnimController,
+      curve: Curves.fastOutSlowIn,
     );
+
+    _pulseAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    )..repeat();
+
     _syncTimer();
   }
 
@@ -55,12 +63,12 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
     if (widget.isThinking && !oldWidget.isThinking) {
       _expanded = true;
       _startedAt = DateTime.now();
-      _liveSeconds = 0;
-      _animController.forward();
+      _liveSeconds = 0.0;
+      _expandAnimController.forward();
     } else if (!widget.isThinking && oldWidget.isThinking) {
       _expanded = false;
-      _liveSeconds = widget.durationSeconds ?? _liveSeconds;
-      _animController.reverse();
+      _liveSeconds = (widget.durationSeconds ?? _liveSeconds.toInt()).toDouble();
+      _expandAnimController.reverse();
     }
 
     _syncTimer();
@@ -69,7 +77,8 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
   @override
   void dispose() {
     _timer?.cancel();
-    _animController.dispose();
+    _expandAnimController.dispose();
+    _pulseAnimController.dispose();
     super.dispose();
   }
 
@@ -79,10 +88,11 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
       _timer = null;
       return;
     }
-    _timer ??= Timer.periodic(const Duration(seconds: 1), (_) {
+    _timer ??= Timer.periodic(const Duration(milliseconds: 100), (_) {
       if (!mounted) return;
       setState(() {
-        _liveSeconds = DateTime.now().difference(_startedAt).inSeconds;
+        _liveSeconds =
+            DateTime.now().difference(_startedAt).inMilliseconds / 1000.0;
       });
     });
   }
@@ -90,104 +100,231 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
   void _toggle() {
     setState(() => _expanded = !_expanded);
     if (_expanded) {
-      _animController.forward();
+      _expandAnimController.forward();
     } else {
-      _animController.reverse();
+      _expandAnimController.reverse();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final muted = Theme.of(context).hintColor;
-    final accentColor = isDark ? const Color(0xFF0A84FF) : const Color(0xFF007AFF);
+    final isThinking = widget.isThinking;
+
+    final primaryAccent = isDark ? const Color(0xFFE0E5F5) : const Color(0xFF1E2230);
+    final bgThinking = isDark ? const Color(0xFF141620) : const Color(0xFFF0F3FA);
+    final mutedText = isDark ? const Color(0xFF9096A8) : const Color(0xFF646B80);
+    final timeStr = _labelTime;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12, top: 4),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.04)
-            : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: _toggle,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.isThinking)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 1.5,
-                          color: accentColor,
-                        ),
-                      ),
-                    ),
-                  if (!widget.isThinking)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: Icon(
-                        Icons.lightbulb_outline_rounded,
-                        size: 14,
-                        color: muted,
-                      ),
-                    ),
-                  Text(
-                    _label,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: widget.isThinking ? accentColor : muted,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.25 : 0.0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.chevron_right_rounded,
-                      size: 16,
-                      color: muted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // Content
-          SizeTransition(
-            sizeFactor: _expandAnimation,
-            axisAlignment: -1.0,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: MarkdownBody(
-                data: widget.thought.trim(),
-                selectable: true,
-                styleSheet: widget.styleSheet,
-              ),
-            ),
+        color: isThinking
+            ? bgThinking
+            : (isDark ? const Color(0xFF13151D) : const Color(0xFFF4F6FB)),
+        borderRadius: BorderRadius.circular(14),
+        // No grey border outline - clean floating depth
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
+            blurRadius: isThinking ? 12 : 6,
+            offset: const Offset(0, 3),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header Bar
+            InkWell(
+              onTap: _toggle,
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    if (isThinking)
+                      AnimatedBuilder(
+                        animation: _pulseAnimController,
+                        builder: (_, __) {
+                          final scale = 0.88 + 0.24 * math.sin(_pulseAnimController.value * 2 * math.pi);
+                          return Transform.scale(
+                            scale: scale,
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isDark ? const Color(0xFF222638) : const Color(0xFFE2E7F5),
+                              ),
+                              child: Icon(
+                                Icons.lightbulb_rounded,
+                                size: 14,
+                                color: primaryAccent,
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark ? const Color(0xFF1C1F2B) : const Color(0xFFE5EBF5),
+                        ),
+                        child: Icon(
+                          Icons.lightbulb_outline_rounded,
+                          size: 14,
+                          color: mutedText,
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Text(
+                            isThinking ? 'Thinking' : 'Thought Process',
+                            style: GoogleFonts.manrope(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: isThinking ? primaryAccent : mutedText,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          if (timeStr.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1D212E) : const Color(0xFFE2E8F4),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                timeStr,
+                                style: GoogleFonts.firaCode(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isThinking ? primaryAccent : mutedText,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    AnimatedRotation(
+                      turns: _expanded ? 0.25 : 0.0,
+                      duration: const Duration(milliseconds: 260),
+                      curve: Curves.fastOutSlowIn,
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: isThinking ? primaryAccent : mutedText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Expandable Thought Content
+            SizeTransition(
+              sizeFactor: _expandAnimation,
+              axisAlignment: -1.0,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    if (widget.thought.trim().isEmpty && isThinking)
+                      Row(
+                        children: [
+                          Text(
+                            'Formulating reasoning...',
+                            style: GoogleFonts.openSans(
+                              fontSize: 12.5,
+                              fontStyle: FontStyle.italic,
+                              color: mutedText,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          _ThinkingShimmerCursor(isDark: isDark),
+                        ],
+                      )
+                    else
+                      MarkdownBody(
+                        data: widget.thought.trim(),
+                        selectable: true,
+                        styleSheet: widget.styleSheet,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  String get _label {
-    final seconds = widget.durationSeconds ?? _liveSeconds;
+  String get _labelTime {
     if (widget.isThinking) {
-      return seconds > 0 ? 'Thinking for ${seconds}s…' : 'Thinking…';
+      return '${_liveSeconds.toStringAsFixed(1)}s';
     }
-    return seconds > 0 ? 'Thought for ${seconds}s' : 'Thought';
+    final secs = widget.durationSeconds ?? _liveSeconds.toInt();
+    return secs > 0 ? '${secs}s' : '';
+  }
+}
+
+class _ThinkingShimmerCursor extends StatefulWidget {
+  final bool isDark;
+  const _ThinkingShimmerCursor({required this.isDark});
+
+  @override
+  State<_ThinkingShimmerCursor> createState() => _ThinkingShimmerCursorState();
+}
+
+class _ThinkingShimmerCursorState extends State<_ThinkingShimmerCursor>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, __) {
+        return Opacity(
+          opacity: 0.2 + 0.8 * _c.value,
+          child: Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: widget.isDark ? const Color(0xFFBAC0D5) : const Color(0xFF4A5064),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

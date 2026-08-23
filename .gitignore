@@ -87,3 +87,17 @@ local_plugins/**/ios/sd_cpp_src/
 local_plugins/**/android/.cxx/
 local_plugins/**/android/build/
 reference_local_diffusion/
+
+# Models and AI weights
+*.gguf
+*.litertlm
+*.tflite
+*.safetensors
+*.bin
+*.onnx
+*.weights
+
+# Android APK / AAB binaries
+*.apk
+*.aab
+

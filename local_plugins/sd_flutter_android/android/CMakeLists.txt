@@ -28,9 +28,8 @@ if(SD_VULKAN)
     add_definitions(-DSD_JNI_HAVE_VULKAN=1)
 endif()
 
-# OpenMP is now enabled — libomp.so is bundled in jniLibs/arm64-v8a/
-# This gives 2-4x CPU speedup for matrix operations in ggml
-set(GGML_OPENMP ON CACHE BOOL "Enable OpenMP for CPU parallelization")
+# Disable OpenMP for cross-compilation stability across NDK versions
+set(GGML_OPENMP OFF CACHE BOOL "Disable OpenMP for CPU parallelization")
 
 # Add stable-diffusion.cpp
 set(SD_BUILD_EXAMPLES OFF CACHE BOOL "Disable SD examples")

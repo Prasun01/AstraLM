@@ -26,25 +26,23 @@ class AttachmentPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
     final type = fileType ?? _typeFromName(fileName);
-    final color = _colorForType(type, isDark);
+    final color = _colorForType(context, type);
     final label = _labelForType(type);
 
     return Container(
       constraints: compact ? const BoxConstraints(maxWidth: 260) : null,
       padding: EdgeInsets.all(compact ? 8 : 12),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.06)
-            : Colors.black.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(14),
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
         children: [
           // Leading icon/thumbnail
-          _leading(context, type, color, isDark),
+          _leading(context, type, color),
           const SizedBox(width: 10),
           // File info
           Flexible(
@@ -58,7 +56,7 @@ class AttachmentPreview extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
                     fontSize: compact ? 13 : 14,
-                    color: Theme.of(context).colorScheme.onSurface,
+                    color: scheme.onSurface,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -71,7 +69,7 @@ class AttachmentPreview extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: Theme.of(context).hintColor,
+                    color: scheme.onSurfaceVariant,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -86,15 +84,13 @@ class AttachmentPreview extends StatelessWidget {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.06),
+                  color: scheme.error.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.close_rounded,
                   size: 14,
-                  color: Theme.of(context).hintColor,
+                  color: scheme.error,
                 ),
               ),
             ),
@@ -104,7 +100,8 @@ class AttachmentPreview extends StatelessWidget {
     );
   }
 
-  Widget _leading(BuildContext context, String type, Color color, bool isDark) {
+  Widget _leading(BuildContext context, String type, Color color) {
+    final scheme = Theme.of(context).colorScheme;
     final image = _imageThumbnail();
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
@@ -198,13 +195,14 @@ class AttachmentPreview extends StatelessWidget {
     }
   }
 
-  Color _colorForType(String type, bool isDark) {
+  Color _colorForType(BuildContext context, String type) {
+    final scheme = Theme.of(context).colorScheme;
     switch (type) {
-      case 'image':  return isDark ? const Color(0xFF0A84FF) : const Color(0xFF007AFF);
-      case 'pdf':    return const Color(0xFFFF3B30);
-      case 'audio':  return const Color(0xFFFF9500);
-      case 'text':   return isDark ? const Color(0xFF64D2FF) : const Color(0xFF5AC8FA);
-      default:       return isDark ? const Color(0xFF98989D) : const Color(0xFF8E8E93);
+      case 'image':  return scheme.primary;
+      case 'pdf':    return scheme.error;
+      case 'audio':  return scheme.tertiary;
+      case 'text':   return scheme.secondary;
+      default:       return scheme.onSurfaceVariant;
     }
   }
 }

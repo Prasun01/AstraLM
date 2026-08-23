@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AstraLM — Private On-Device & Cloud AI Architecture</title>
+  <meta name="description" content="AstraLM is a high-performance, privacy-first mobile AI assistant with on-device LiteRT/GGUF acceleration, DeepSeek R1 reasoning, and multi-cloud intelligence.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Ambient Parallax Background Layers -->
+  <div class="parallax-bg" id="parallaxBg">
+    <div class="mesh-layer mesh-1" id="mesh1"></div>
+    <div class="mesh-layer mesh-2" id="mesh2"></div>
+    <div class="mesh-layer mesh-3" id="mesh3"></div>
+    <div class="starfield-canvas-container">
+      <canvas id="starfieldCanvas"></canvas>
+    </div>
+    <div class="grid-overlay"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="#" class="brand-logo">
+        <div class="logo-icon-box">
+          <img src="logo.png" alt="AstraLM Logo" class="brand-logo-img">
+        </div>
+        <span class="brand-name">Astra<span>LM</span></span>
+        <span class="brand-version">v1.0.5</span>
+      </a>
+
+      <div class="nav-links" id="navLinks">
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#simulator" class="nav-link">Interactive Demo</a>
+        <a href="#reasoning" class="nav-link">Neural Engine</a>
+        <a href="#benchmarks" class="nav-link">Hardware Spec</a>
+        <a href="#downloads" class="nav-link">Downloads</a>
+      </div>
+
+      <div class="nav-actions">
+        <a href="#downloads" class="btn btn-primary btn-sm">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Get APK</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero-section" id="hero">
+    <div class="hero-container">
+      <div class="hero-badge">
+        <div class="badge-pulse"></div>
+        <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+        </svg>
+        <span>Next-Gen Mobile AI & Reasoning Architecture</span>
+      </div>
+
+      <h1 class="hero-title">
+        Private On-Device Intelligence.<br>
+        <span class="gradient-text">Zero Compromise Mastery.</span>
+      </h1>
+
+      <p class="hero-subtitle">
+        Execute high-throughput LLMs directly on your mobile NPU & GPU with LiteRT and GGUF. Experience transparent deep reasoning chains, on-device Stable Diffusion, and instant PDF/DOCX document synthesis with total data privacy.
+      </p>
+
+      <div class="hero-cta-group">
+        <a href="#downloads" class="btn btn-primary btn-lg">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download Android APK</span>
+        </a>
+        <a href="#simulator" class="btn btn-secondary btn-lg">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="10 8 16 12 10 16 10 8"></polygon>
+          </svg>
+          <span>Try Interactive Demo</span>
+        </a>
+      </div>
+
+      <div class="hero-stats-row">
+        <div class="stat-pill">
+          <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span><strong>42.8 tok/s</strong> Peak Local NPU</span>
+        </div>
+        <div class="stat-pill">
+          <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span><strong>100% Offline</strong> Air-Gapped Safe</span>
+        </div>
+        <div class="stat-pill">
+          <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+          <span><strong>0.0ms</strong> Cloud Ping</span>
+        </div>
+      </div>
+
+      <!-- 3D Interactive Floating Phone Frame -->
+      <div class="phone-showcase-wrapper" id="phoneWrapper">
+        <div class="phone-frame" id="phone3D">
+          <div class="phone-speaker"></div>
+          <div class="phone-screen">
+            <!-- App Header -->
+            <div class="app-header">
+              <div class="app-header-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+              </div>
+              <div class="app-model-capsule">
+                <div class="live-dot"></div>
+                <span>DeepSeek-R1-Distill-1.5B</span>
+              </div>
+              <div class="app-header-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              </div>
+            </div>
+
+            <!-- Chat Stream Area -->
+            <div class="app-chat-body">
+              <div class="chat-msg user-msg">
+                <div class="user-text">Generate a concise PDF report analyzing local AI vs Cloud APIs with a Python snippet.</div>
+              </div>
+
+              <div class="chat-msg ai-msg">
+                <!-- Neural Thought Box with Bulb -->
+                <div class="app-thought-box">
+                  <div class="thought-header">
+                    <div class="thought-bulb-pulse">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.5 3 6h8c1.5-1.5 3-3.5 3-6a7 7 0 0 0-7-7z"></path></svg>
+                    </div>
+                    <span class="thought-title">Thought Process</span>
+                    <span class="thought-timer">2.8s</span>
+                    <svg class="thought-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </div>
+                  <div class="thought-body italic">
+                    Analyzing latency overheads: on-device NPU delivers zero roundtrip serialization, deterministic offline runtime, and zero bandwidth costs...
+                  </div>
+                </div>
+
+                <!-- Answer Content -->
+                <div class="app-answer-text">
+                  <h3>Local NPU vs. Cloud Inference Analysis</h3>
+                  <p>Running models directly on-device delivers true air-gapped privacy and sub-10ms response initialization.</p>
+                </div>
+
+                <!-- Code Block with Copy -->
+                <div class="app-code-box">
+                  <div class="code-box-header">
+                    <div class="code-lang">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                      <span>PYTHON</span>
+                    </div>
+                    <button class="code-copy-btn" id="heroCodeCopy">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                      <span>Copy</span>
+                    </button>
+                  </div>
+                  <pre><code>import litert_lm as llm
+
+engine = llm.Engine.load("deepseek_r1_1.5b.bin")
+stream = engine.generate("Synthesize executive brief...")
+for token in stream:
+    print(token, end="", flush=True)</code></pre>
+                </div>
+
+                <!-- Document Download Card -->
+                <div class="app-doc-card">
+                  <div class="doc-card-info">
+                    <div class="doc-badge-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    </div>
+                    <div>
+                      <div class="doc-tag">DOCUMENT GENERATED</div>
+                      <div class="doc-name">AI_Architecture_Analysis.pdf</div>
+                    </div>
+                  </div>
+                  <div class="doc-actions">
+                    <button class="doc-btn doc-pdf" onclick="simulateDownload('PDF')">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                      <span>Save PDF</span>
+                    </button>
+                    <button class="doc-btn doc-docx" onclick="simulateDownload('DOCX')">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                      <span>Save DOCX</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Action Bar -->
+                <div class="app-action-bar">
+                  <div class="action-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</div>
+                  <div class="action-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg> PDF</div>
+                  <div class="action-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path></svg> DOCX</div>
+                  <div class="tok-speed">38.4 tok/s</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- App Bottom Bar -->
+            <div class="app-bottom-bar">
+              <div class="app-input-capsule">
+                <span>Ask AstraLM anything...</span>
+                <div class="input-actions">
+                  <div class="action-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></div>
+                  <div class="action-circle send-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Bento Grid Features Section -->
+  <section class="features-section" id="features">
+    <div class="section-container">
+      <div class="section-header">
+        <div class="section-tag">ENGINE ARCHITECTURE</div>
+        <h2 class="section-title">Engineered for Sovereign Hardware AI</h2>
+        <p class="section-desc">A unified local-first architecture combining high-speed NPU kernels, transparent reasoning chains, and document generation.</p>
+      </div>
+
+      <div class="bento-grid">
+        <!-- Bento 1: Dual Runtime Engine -->
+        <div class="bento-card bento-wide">
+          <div class="bento-icon-wrapper">
+            <svg class="bento-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+              <rect x="9" y="9" width="6" height="6"></rect>
+              <line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line>
+              <line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line>
+              <line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line>
+              <line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line>
+            </svg>
+          </div>
+          <h3>Dual Runtime: LiteRT & GGUF</h3>
+          <p>Execute quantized Google LiteRT models (.bin / .tflite) and llama.cpp GGUF weights on mobile NPUs and Adreno/Mali GPUs with dynamic memory tier calibrations.</p>
+          <div class="bento-chip-row">
+            <span class="chip">Google LiteRT NPU</span>
+            <span class="chip">llama.cpp GGUF</span>
+            <span class="chip">OpenCL / Vulkan GPU</span>
+          </div>
+        </div>
+
+        <!-- Bento 2: Deep Neural Reasoning -->
+        <div class="bento-card">
+          <div class="bento-icon-wrapper">
+            <svg class="bento-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.5 3 6h8c1.5-1.5 3-3.5 3-6a7 7 0 0 0-7-7z"></path>
+            </svg>
+          </div>
+          <h3>Neural Reasoning Chains</h3>
+          <p>Inspect raw model thinking chains in real-time. Live millisecond timers, 60fps pulsation, and automated conclusion recovery ensure zero lost replies.</p>
+          <div class="mini-preview-box">
+            <div class="mini-bulb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.5 3 6h8c1.5-1.5 3-3.5 3-6a7 7 0 0 0-7-7z"></path></svg></div>
+            <span class="mini-italic">Synthesizing step-by-step logic...</span>
+          </div>
+        </div>
+
+        <!-- Bento 3: Document Generation Skill -->
+        <div class="bento-card">
+          <div class="bento-icon-wrapper">
+            <svg class="bento-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+          </div>
+          <h3>PDF & DOCX Export Skill</h3>
+          <p>Ask AstraLM to draft contracts, summaries, or reports, and receive formatted ready-to-share PDF and Word (.docx) documents with one tap.</p>
+          <div class="bento-chip-row">
+            <span class="chip">Syncfusion PDF</span>
+            <span class="chip">OpenXML DOCX</span>
+            <span class="chip">Direct Share</span>
+          </div>
+        </div>
+
+        <!-- Bento 4: Code Studio -->
+        <div class="bento-card">
+          <div class="bento-icon-wrapper">
+            <svg class="bento-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+          </div>
+          <h3>Code Studio with 1-Tap Copy</h3>
+          <p>Automatic language badge detection, horizontal scrolling, Fira Code monospace font, and instant animated clipboard feedback.</p>
+        </div>
+
+        <!-- Bento 5: On-Device Stable Diffusion -->
+        <div class="bento-card">
+          <div class="bento-icon-wrapper">
+            <svg class="bento-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+          </div>
+          <h3>On-Device Image Synthesis</h3>
+          <p>Generate high-fidelity imagery offline with Stable Diffusion txt2img and img2img pipelines featuring VAE GPU memory guards.</p>
+        </div>
+
+        <!-- Bento 6: Multi-Cloud Intelligence -->
+        <div class="bento-card bento-wide">
+          <div class="bento-icon-wrapper">
+            <svg class="bento-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+            </svg>
+          </div>
+          <h3>Multi-Provider Cloud Unification</h3>
+          <p>Instantly route complex tasks to premier frontier providers with your own API keys. Full support for OpenAI GPT-4o, Anthropic Claude 3.7 Sonnet, Google Gemini 2.5, DeepSeek R1, OpenRouter, and NVIDIA NIM.</p>
+          <div class="bento-chip-row">
+            <span class="chip">OpenAI</span>
+            <span class="chip">Claude 3.7</span>
+            <span class="chip">Gemini 2.5</span>
+            <span class="chip">DeepSeek R1</span>
+            <span class="chip">NVIDIA NIM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Live Simulator Section -->
+  <section class="simulator-section" id="simulator">
+    <div class="section-container">
+      <div class="section-header">
+        <div class="section-tag">LIVE TESTBENCH</div>
+        <h2 class="section-title">Experience AstraLM in Your Browser</h2>
+        <p class="section-desc">Select a workload scenario to observe real-time reasoning, code generation, and live document export.</p>
+      </div>
+
+      <div class="sim-presets-bar">
+        <button class="preset-btn active" data-scenario="reasoning">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.5 3 6h8c1.5-1.5 3-3.5 3-6a7 7 0 0 0-7-7z"></path></svg>
+          <span>Deep Reasoning (R1)</span>
+        </button>
+        <button class="preset-btn" data-scenario="pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span>Generate PDF Document</span>
+        </button>
+        <button class="preset-btn" data-scenario="code">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          <span>Code Studio (Dart/Flutter)</span>
+        </button>
+        <button class="preset-btn" data-scenario="cloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
+          <span>Cloud Hybrid Switch</span>
+        </button>
+      </div>
+
+      <div class="simulator-console">
+        <div class="console-header">
+          <div class="console-controls">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <div class="console-meta" id="consoleModelName">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <span>Model: DeepSeek-R1-Distill-Qwen-1.5B (Local LiteRT)</span>
+          </div>
+          <div class="console-tps" id="consoleTps">36.2 tok/s</div>
+        </div>
+
+        <div class="console-body" id="consoleBody">
+          <!-- Dynamic scenario injected by JS -->
+        </div>
+
+        <div class="console-footer">
+          <div class="console-input-mock">
+            <input type="text" id="simCustomInput" placeholder="Type a prompt (e.g., 'Summarize quantum encryption as PDF')...">
+            <button class="btn btn-primary btn-sm" id="simSendBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hardware Calibration & Benchmarks Section -->
+  <section class="benchmarks-section" id="benchmarks">
+    <div class="section-container">
+      <div class="section-header">
+        <div class="section-tag">HARDWARE CALIBRATION</div>
+        <h2 class="section-title">Optimized for Your Specific Device Specs</h2>
+        <p class="section-desc">AstraLM dynamically calculates RAM thresholds, SoC tiers, and NPU context budgets to prevent out-of-memory crashes while maximizing generation speeds.</p>
+      </div>
+
+      <!-- Interactive RAM Tier Calculator -->
+      <div class="ram-calculator-box">
+        <div class="calc-top">
+          <h3>Select Your Device RAM</h3>
+          <div class="ram-selector" id="ramSelector">
+            <button class="ram-btn" data-ram="4">4 GB RAM</button>
+            <button class="ram-btn" data-ram="6">6 GB RAM</button>
+            <button class="ram-btn active" data-ram="8">8 GB RAM (Galaxy A35 / Pixel)</button>
+            <button class="ram-btn" data-ram="12">12+ GB RAM (Flagship)</button>
+          </div>
+        </div>
+
+        <div class="calc-results-grid" id="calcResults">
+          <div class="calc-card">
+            <div class="calc-label">RECOMMENDED MODEL</div>
+            <div class="calc-value" id="calcModel">Qwen 2.5 1.5B / DeepSeek R1 1.5B</div>
+            <div class="calc-desc" id="calcModelDesc">Ultra-fast response with deep reasoning capabilities</div>
+          </div>
+          <div class="calc-card">
+            <div class="calc-label">OPTIMAL CONTEXT SIZE</div>
+            <div class="calc-value" id="calcContext">4,096 tokens</div>
+            <div class="calc-desc" id="calcContextDesc">Full conversation history & document processing</div>
+          </div>
+          <div class="calc-card">
+            <div class="calc-label">REASONING TOKEN BUDGET</div>
+            <div class="calc-value" id="calcBudget">2,560 tokens</div>
+            <div class="calc-desc" id="calcBudgetDesc">Generous allocation for step-by-step thinking chains</div>
+          </div>
+          <div class="calc-card">
+            <div class="calc-label">EXPECTED INFERENCE SPEED</div>
+            <div class="calc-value highlight-green" id="calcSpeed">32 – 45 tok/s</div>
+            <div class="calc-desc" id="calcSpeedDesc">Hardware accelerated NPU/GPU execution</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Benchmarks Table -->
+      <div class="benchmark-table-wrapper">
+        <table class="benchmark-table">
+          <thead>
+            <tr>
+              <th>Model Name</th>
+              <th>Format</th>
+              <th>RAM Footprint</th>
+              <th>Target Chipset</th>
+              <th>Tokens / Sec</th>
+              <th>Reasoning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>DeepSeek-R1-Distill-1.5B</strong></td>
+              <td><span class="badge-runtime">LiteRT / GGUF</span></td>
+              <td>1.1 GB</td>
+              <td>Exynos 1380 / Snapdragon 7s Gen 2</td>
+              <td><span class="speed-tag">38.2 t/s</span></td>
+              <td><span class="badge-feature">Supported</span></td>
+            </tr>
+            <tr>
+              <td><strong>Qwen 2.5 1.5B Instruct</strong></td>
+              <td><span class="badge-runtime">LiteRT</span></td>
+              <td>0.98 GB</td>
+              <td>Exynos / Dimensity / Snapdragon</td>
+              <td><span class="speed-tag">44.5 t/s</span></td>
+              <td><span class="badge-feature">Direct</span></td>
+            </tr>
+            <tr>
+              <td><strong>Llama 3.2 3B Instruct</strong></td>
+              <td><span class="badge-runtime">GGUF Q4_K_M</span></td>
+              <td>2.2 GB</td>
+              <td>Snapdragon 8 Gen 2 / Gen 3</td>
+              <td><span class="speed-tag">24.1 t/s</span></td>
+              <td><span class="badge-feature">Direct</span></td>
+            </tr>
+            <tr>
+              <td><strong>Gemma 2 2B IT</strong></td>
+              <td><span class="badge-runtime">LiteRT GPU</span></td>
+              <td>1.5 GB</td>
+              <td>Tensor G3 / G4 / Dimensity 9300</td>
+              <td><span class="speed-tag">31.6 t/s</span></td>
+              <td><span class="badge-feature">Direct</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download & Install CTA Section -->
+  <section class="download-section" id="downloads">
+    <div class="section-container">
+      <div class="download-card">
+        <div class="download-glow"></div>
+        <div class="download-content">
+          <div class="section-tag">INSTANT DEPLOYMENT</div>
+          <h2>Ready to Run Sovereign AI in Your Pocket?</h2>
+          <p>Get the latest release of AstraLM. No telemetry, no forced subscriptions, zero cloud tracking.</p>
+
+          <div class="download-btn-group">
+            <a href="https://github.com/orailnoor/privatelm/releases" target="_blank" class="btn btn-primary btn-xl">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <div>
+                <span class="btn-title">Download APK (ARM64)</span>
+                <span class="btn-sub">v1.0.5 · Android 10+ (API 29+)</span>
+              </div>
+            </a>
+
+            <div class="adb-install-card">
+              <div class="adb-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><polyline points="8 12 12 16 16 12"></polyline><line x1="12" y1="8" x2="12" y2="16"></line></svg>
+                <span>Direct ADB Install Command</span>
+              </div>
+              <code>adb install -r app-debug.apk</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-brand">
+        <div class="brand-logo">
+          <div class="logo-icon-box">
+            <img src="logo.png" alt="AstraLM Logo" class="brand-logo-img">
+          </div>
+          <span class="brand-name">Astra<span>LM</span></span>
+        </div>
+        <p>Private on-device and hybrid cloud AI client crafted for Android. High-performance offline intelligence.</p>
+        <p class="attribution-text">3D App Logo: <a href="https://www.figma.com/design/kv7ujFJ12n6sCfTr3XEDQT/Damascue-vol.1--Free-3d-pack---Community-?node-id=1-22&t=P5FrZaje0jBqnKZt-0" target="_blank" rel="noopener">Damascus Vol. 1 Community 3D Pack</a> (Figma Community, CC BY 4.0).</p>
+      </div>
+
+      <div class="footer-links-group">
+        <div class="footer-col">
+          <h4>Navigation</h4>
+          <a href="#features">Features</a>
+          <a href="#simulator">Live Simulator</a>
+          <a href="#benchmarks">Benchmarks</a>
+          <a href="#downloads">Get APK</a>
+        </div>
+        <div class="footer-col">
+          <h4>Runtimes</h4>
+          <a href="#">Google LiteRT</a>
+          <a href="#">llama.cpp GGUF</a>
+          <a href="#">Stable Diffusion</a>
+          <a href="#">Syncfusion OpenXML</a>
+        </div>
+        <div class="footer-col">
+          <h4>Attribution & Privacy</h4>
+          <a href="https://www.figma.com/design/kv7ujFJ12n6sCfTr3XEDQT/Damascue-vol.1--Free-3d-pack---Community-?node-id=1-22&t=P5FrZaje0jBqnKZt-0" target="_blank" rel="noopener">Damascus 3D Pack</a>
+          <a href="#">Zero Telemetry</a>
+          <a href="#">Local Hive Storage</a>
+          <a href="#">Air-Gap Validation</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 AstraLM Project. All rights reserved. Designed with Astra Space aesthetics.</p>
+    </div>
+  </footer>
+
+  <!-- Toast Notification -->
+  <div class="site-toast" id="siteToast">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+    <span id="toastMsg">Action completed</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

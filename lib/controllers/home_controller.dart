@@ -14,7 +14,7 @@ class HomeController extends GetxController {
     currentTab.value = index;
   }
 
-  /// Shows a one-time dialog on startup asking if the user wants to reload
+  /// Shows a one-time bottom sheet on startup asking if the user wants to reload
   /// the last used model (text or image). Does not auto-load anything.
   void checkResumeModel(BuildContext context) async {
     if (_resumeDialogShown) return;
@@ -42,54 +42,25 @@ class HomeController extends GetxController {
         imagePath.isNotEmpty &&
         await downloadService.isModelDownloaded(imageName);
 
-    if (!hasText && !hasImage) return;
-    if (!context.mounted) return;
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final label = hasText && hasImage
-        ? '$textName & $imageName'
-        : (hasText ? textName : imageName);
-
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (_) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Resume Session?',
-            style: TextStyle(
-                color: isDark ? Colors.white : Colors.black,
-                fontWeight: FontWeight.w600)),
-        content: Text(
-            'Load your last model${hasImage && hasText ? 's' : ''}?\n\n$label',
-            style: TextStyle(
-                color: isDark ? Colors.white70 : Colors.black87)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Skip',
-                style: TextStyle(color: isDark ? Colors.white54 : Colors.black54)),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: isDark ? const Color(0xFF0A84FF) : const Color(0xFF007AFF),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () {
-              Navigator.of(context).pop();
-              if (hasText) {
-                Get.find<InferenceService>().loadModel(textPath,
-                    modelName: textName, modelRuntime: textRuntime);
-              }
-              if (hasImage) {
-                Get.find<LocalImageService>().loadModel(imagePath,
-                    modelName: imageName);
-              }
-            },
-            child: const Text('Load'),
-          ),
-        ],
-      ),
-    );
+    if (hasText) {
+      final inf = Get.find<InferenceService>();
+      if (!inf.isModelLoaded.value && !inf.isLoadingModel.value) {
+        inf.loadModel(
+          textPath,
+          modelName: textName,
+          modelRuntime: textRuntime,
+        );
+      }
+    }
+    if (hasImage) {
+      final localImage = Get.find<LocalImageService>();
+      if (!localImage.isModelLoaded.value && !localImage.isLoadingModel.value) {
+        localImage.loadModel(
+          imagePath,
+          modelName: imageName,
+        );
+      }
+    }
+    return;
   }
 }

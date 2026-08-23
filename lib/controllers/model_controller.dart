@@ -37,6 +37,8 @@ class ModelController extends GetxController {
   final fileSizes = <String, int>{}.obs;
   final modelScope = 'local'.obs;
   final localFilter = ''.obs;
+  final localSizeFilter = 'all'.obs; // 'all', 'tiny', 'small', 'medium'
+  final sortMode = 'popular'.obs; // 'popular', 'size_asc', 'size_desc', 'name'
   final importFileName = ''.obs;
   final importStatus = ''.obs;
   final importCopiedBytes = 0.obs;
@@ -46,10 +48,28 @@ class ModelController extends GetxController {
   final externalDownloadId = Rx<int?>(null);
 
   void toggleSort() {
-    sortSmallestFirst.value = !sortSmallestFirst.value;
+    if (sortMode.value == 'popular') {
+      sortMode.value = 'size_asc';
+    } else if (sortMode.value == 'size_asc') {
+      sortMode.value = 'size_desc';
+    } else if (sortMode.value == 'size_desc') {
+      sortMode.value = 'name';
+    } else {
+      sortMode.value = 'popular';
+    }
+  }
+
+  void setSortMode(String mode) {
+    sortMode.value = mode;
+  }
+
+  void setSizeFilter(String size) {
+    localSizeFilter.value = size;
   }
 
   static const localFilters = [
+    'all',
+    'recommended',
     'downloaded',
     'general',
     'image',
@@ -57,50 +77,109 @@ class ModelController extends GetxController {
     'vision'
   ];
 
+  bool isRecommendedModel(AiModel model) {
+    final dev = Get.find<DeviceInfoService>();
+    final ram = dev.totalRamGB.value > 0 ? dev.totalRamGB.value : 6.0;
+    final bytes = _knownModelBytes(model);
+    if (model.template == 'sd') return ram >= 6.0;
+    if (ram <= 4.0) {
+      return bytes <= 1600 * 1024 * 1024;
+    } else if (ram <= 8.0) {
+      return bytes <= 3600 * 1024 * 1024;
+    }
+    return true;
+  }
+
+  List<AiModel> get recommendedModels {
+    return availableModels.where((m) => isRecommendedModel(m)).take(6).toList();
+  }
+
   List<AiModel> get displayedModels {
+    return filteredDisplayedModels;
+  }
+
+  List<AiModel> get filteredDisplayedModels {
+    final filter =
+        localFilter.value.isEmpty ? defaultLocalFilter : localFilter.value;
+    final sizeFilter = localSizeFilter.value;
+
+    var list = availableModels.where((model) {
+      // 1. Category Filter
+      final bool matchesCategory;
+      switch (filter) {
+        case 'all':
+          matchesCategory = true;
+          break;
+        case 'recommended':
+          matchesCategory = isRecommendedModel(model);
+          break;
+        case 'downloaded':
+          matchesCategory = isDownloaded(model.filename);
+          break;
+        case 'uncensored':
+          matchesCategory = isUncensoredModel(model);
+          break;
+        case 'vision':
+          matchesCategory = isVisionModel(model);
+          break;
+        case 'image':
+          matchesCategory = isImageModel(model);
+          break;
+        case 'general':
+        default:
+          matchesCategory = isGeneralModel(model);
+          break;
+      }
+      if (!matchesCategory) return false;
+
+      // 2. Size Filter
+      if (sizeFilter != 'all') {
+        final bytes = _knownModelBytes(model);
+        if (sizeFilter == 'tiny') {
+          if (bytes > 1600 * 1024 * 1024) return false;
+        } else if (sizeFilter == 'small') {
+          if (bytes < 1400 * 1024 * 1024 || bytes > 3200 * 1024 * 1024) {
+            return false;
+          }
+        } else if (sizeFilter == 'medium') {
+          if (bytes <= 3200 * 1024 * 1024) return false;
+        }
+      }
+
+      return true;
+    }).toList();
+
+    // 3. Sorting
     final active = _inference.loadedModelName.value;
-    final models = [...availableModels];
-    models.sort((a, b) {
+    list.sort((a, b) {
       if (a.filename == active) return -1;
       if (b.filename == active) return 1;
       final aDownloaded = isDownloaded(a.filename);
       final bDownloaded = isDownloaded(b.filename);
       if (aDownloaded != bDownloaded) return aDownloaded ? -1 : 1;
 
-      if (sortSmallestFirst.value) {
-        final aBytes = _knownModelBytes(a);
-        final bBytes = _knownModelBytes(b);
-        if (aBytes > 0 && bBytes > 0 && aBytes != bBytes) {
+      switch (sortMode.value) {
+        case 'size_asc':
+          final aBytes = _knownModelBytes(a);
+          final bBytes = _knownModelBytes(b);
           return aBytes.compareTo(bBytes);
-        }
-      }
-      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-    });
-    return models;
-  }
-
-  List<AiModel> get filteredDisplayedModels {
-    final filter =
-        localFilter.value.isEmpty ? defaultLocalFilter : localFilter.value;
-    return displayedModels.where((model) {
-      switch (filter) {
-        case 'downloaded':
-          return isDownloaded(model.filename);
-        case 'uncensored':
-          return isUncensoredModel(model);
-        case 'vision':
-          return isVisionModel(model);
-        case 'image':
-          return isImageModel(model);
-        case 'general':
+        case 'size_desc':
+          final aBytes = _knownModelBytes(a);
+          final bBytes = _knownModelBytes(b);
+          return bBytes.compareTo(aBytes);
+        case 'name':
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        case 'popular':
         default:
-          return isGeneralModel(model);
+          return 0;
       }
-    }).toList();
+    });
+
+    return list;
   }
 
   String get defaultLocalFilter =>
-      downloadedFiles.isNotEmpty ? 'downloaded' : 'general';
+      downloadedFiles.isNotEmpty ? 'downloaded' : 'all';
 
   double get importProgress => importTotalBytes.value <= 0
       ? 0.0
@@ -454,7 +533,9 @@ class ModelController extends GetxController {
   Future<void> loadModel(String filename) async {
     if (_inference.isLoadingModel.value) {
       Get.snackbar('Model Loading', 'Another model is already loading.',
-          snackPosition: SnackPosition.BOTTOM);
+          snackPosition: SnackPosition.TOP,
+          barBlur: 0,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12));
       return;
     }
     final path = await _download.modelPath(filename);
@@ -464,7 +545,9 @@ class ModelController extends GetxController {
       Get.snackbar(
         'Helper File',
         '$filename is used internally by image generation and cannot be loaded as a model.',
-        snackPosition: SnackPosition.BOTTOM,
+        snackPosition: SnackPosition.TOP,
+        barBlur: 0,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       );
       return;
     }
@@ -476,6 +559,8 @@ class ModelController extends GetxController {
       await _showRuntimeRestartDialog(
         currentRuntime: _inference.sessionNativeRuntime,
         targetRuntime: targetRuntime,
+        pendingModelName: filename,
+        pendingModelPath: path,
       );
       return;
     }
@@ -490,8 +575,10 @@ class ModelController extends GetxController {
       Get.snackbar(
         'Incomplete Model File',
         '$filename is only $actual. Delete it and download again.',
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 6),
+        snackPosition: SnackPosition.TOP,
+        barBlur: 0,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        duration: const Duration(seconds: 5),
       );
       return;
     }
@@ -504,8 +591,10 @@ class ModelController extends GetxController {
       Get.snackbar(
         'Corrupt Model File',
         '$filename did not download correctly. Delete it and download again.',
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 6),
+        snackPosition: SnackPosition.TOP,
+        barBlur: 0,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        duration: const Duration(seconds: 5),
       );
       return;
     }
@@ -517,8 +606,10 @@ class ModelController extends GetxController {
       Get.snackbar(
         'Corrupt Model File',
         '$filename is not a valid LiteRT-LM file. Delete it and download again.',
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 6),
+        snackPosition: SnackPosition.TOP,
+        barBlur: 0,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        duration: const Duration(seconds: 5),
       );
       return;
     }
@@ -571,13 +662,23 @@ class ModelController extends GetxController {
       Get.snackbar(
         isError ? 'Model Not Loaded' : 'Image Model',
         result,
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: isError
-            ? const Color(0xFFFF9500).withValues(alpha: 0.15)
-            : const Color(0xFF34C759).withValues(alpha: 0.15),
-        colorText: isError ? const Color(0xFFFF9500) : const Color(0xFF34C759),
+        snackPosition: SnackPosition.TOP,
+        barBlur: 0,
+        overlayBlur: 0,
+        backgroundColor:
+            Get.isDarkMode ? const Color(0xFF1B1D25) : Colors.white,
+        colorText: Get.isDarkMode ? Colors.white : Colors.black,
+        borderColor: Get.isDarkMode
+            ? const Color(0xFF2E3240)
+            : const Color(0xFFD6DBE5),
+        borderWidth: 1.2,
+        icon: Icon(
+          isError ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
+          color: isError ? const Color(0xFFFF9500) : const Color(0xFF34C759),
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         duration:
-            isError ? const Duration(seconds: 6) : const Duration(seconds: 2),
+            isError ? const Duration(seconds: 5) : const Duration(seconds: 2),
       );
     } else {
       final result = await _inference.loadModel(
@@ -591,8 +692,38 @@ class ModelController extends GetxController {
         _inference.isVisionLoaded.value =
             fallbackToText ? false : (model == null ? false : isVisionModel(model));
         await _settings.setInferenceMode('local');
-        Get.snackbar('Model Loaded', result,
-            snackPosition: SnackPosition.BOTTOM);
+
+        final currentCtx = _settings.contextSize.value;
+        final currentTokens = _settings.maxTokens.value;
+        final isThinking = Get.find<DeviceInfoService>()
+            .calculateOptimalParameters(
+              modelName: filename,
+              runtime: model?.runtime ?? 'llama',
+            )
+            .isThinkingModel;
+
+        Get.snackbar(
+          'Model Loaded',
+          '$result · $currentCtx Ctx · $currentTokens Tokens${isThinking ? " · Reasoning Mode" : ""}',
+          snackPosition: SnackPosition.TOP,
+          barBlur: 0,
+          overlayBlur: 0,
+          backgroundColor:
+              Get.isDarkMode ? const Color(0xFF141620) : const Color(0xFFF3F5F9),
+          colorText: Get.isDarkMode ? Colors.white : const Color(0xFF12141D),
+          borderColor: Get.isDarkMode
+              ? const Color(0xFF262B3B)
+              : const Color(0xFFD4DAE8),
+          borderWidth: 1.2,
+          borderRadius: 16,
+          icon: Icon(
+            Icons.check_circle_outline_rounded,
+            color: Get.isDarkMode ? Colors.white : const Color(0xFF12141D),
+            size: 22,
+          ),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          duration: const Duration(seconds: 3),
+        );
       } else {
         bool showDetails = false;
         Get.dialog(
@@ -756,6 +887,8 @@ class ModelController extends GetxController {
   Future<void> _showRuntimeRestartDialog({
     required String currentRuntime,
     required String targetRuntime,
+    required String pendingModelName,
+    required String pendingModelPath,
   }) async {
     final currentLabel = _runtimeLabel(currentRuntime);
     final targetLabel = _runtimeLabel(targetRuntime);
@@ -764,8 +897,8 @@ class ModelController extends GetxController {
         title: const Text('Restart required'),
         content: Text(
           'You already used $currentLabel in this app session. '
-          'Switching to $targetLabel without restarting can crash the native runtime.\n\n'
-          'Restart the app, then load this model.',
+          'Switching to $targetLabel requires an app restart.\n\n'
+          'Restart the app now, and it will prompt you to load $pendingModelName.',
         ),
         actions: [
           TextButton(
@@ -775,6 +908,10 @@ class ModelController extends GetxController {
           ElevatedButton(
             onPressed: () async {
               Get.back();
+              final hive = Get.find<HiveService>();
+              await hive.setSetting(AppConstants.keyLocalModelName, pendingModelName);
+              await hive.setSetting(AppConstants.keyLocalModelPath, pendingModelPath);
+              await hive.setSetting(AppConstants.keyLocalModelRuntime, targetRuntime);
               try {
                 await _androidImportChannel.invokeMethod('restartApp');
               } catch (_) {
@@ -964,6 +1101,12 @@ class ModelController extends GetxController {
             TextButton(
               onPressed: () async {
                 Get.back(result: _ModelLoadAction.cancel);
+                final hive = Get.find<HiveService>();
+                final modelPath = await _download.modelPath(filename);
+                await hive.setSetting(AppConstants.keyLocalModelName, filename);
+                await hive.setSetting(AppConstants.keyLocalModelPath, modelPath);
+                await hive.setSetting(AppConstants.keyLocalModelRuntime,
+                    isLiteRt ? AiModel.runtimeLiteRt : AiModel.runtimeLlama);
                 try {
                   await _androidImportChannel.invokeMethod('restartApp');
                 } catch (_) {
