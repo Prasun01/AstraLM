@@ -74,6 +74,13 @@ class InferenceService extends GetxService {
       return 'ERROR: Cannot load image generation models (.safetensors) into the local text engine. Native local image generation requires the upcoming stable-diffusion engine update. Use Cloud Stability AI for now.';
     }
 
+    final lower = (modelName ?? modelPath.split('/').last).toLowerCase();
+    if (lower.contains('lfm') || lower.contains('liquid')) {
+      isLoadingModel.value = false;
+      loadingModelName.value = '';
+      return 'ERROR: Liquid Foundation Models (LFM) use a non-Transformer architecture not supported by mobile llama.cpp. Please use Qwen 2.5, Gemma 2, Llama 3.2, or DeepSeek-R1.';
+    }
+
     try {
       final runtime = _runtimeFor(modelPath, modelRuntime);
       final isLiteRt = runtime == 'litert';
