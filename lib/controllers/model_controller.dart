@@ -552,19 +552,6 @@ class ModelController extends GetxController {
       return;
     }
 
-    final lowerName = filename.toLowerCase();
-    if (lowerName.contains('lfm') || lowerName.contains('liquid')) {
-      Get.snackbar(
-        'Unsupported Architecture',
-        'Liquid Foundation Models (LFM) use a custom architecture not supported by the mobile llama.cpp engine. Please use Qwen 2.5, Gemma 2, Llama 3.2, or DeepSeek-R1.',
-        snackPosition: SnackPosition.TOP,
-        barBlur: 0,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        duration: const Duration(seconds: 5),
-      );
-      return;
-    }
-
     final path = await _download.modelPath(filename);
     final isLiteRt = filename.toLowerCase().endsWith('.litertlm') ||
         model?.runtime == AiModel.runtimeLiteRt;
