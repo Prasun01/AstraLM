@@ -405,6 +405,7 @@ class CloudService extends GetxService {
 
       final fullText = StringBuffer();
       String remainder = '';
+      bool inReasoning = false;
 
       await for (final chunk in response.transform(utf8.decoder)) {
         final text = remainder + chunk;
@@ -421,17 +422,42 @@ class CloudService extends GetxService {
             final data = jsonDecode(jsonStr);
             if (data['type'] == 'content_block_delta') {
               final delta = data['delta'];
-              if (delta != null && delta['type'] == 'text_delta') {
-                final t = delta['text'] as String?;
-                if (t != null && t.isNotEmpty) {
-                  fullText.write(t);
-                  onToken(t);
+              if (delta != null) {
+                if (delta['type'] == 'thinking_delta') {
+                  final t = delta['thinking'] as String?;
+                  if (t != null && t.isNotEmpty) {
+                    if (!inReasoning) {
+                      inReasoning = true;
+                      fullText.write('<think>\n');
+                      onToken('<think>\n');
+                    }
+                    fullText.write(t);
+                    onToken(t);
+                  }
+                } else if (delta['type'] == 'text_delta') {
+                  if (inReasoning) {
+                    inReasoning = false;
+                    fullText.write('\n</think>\n\n');
+                    onToken('\n</think>\n\n');
+                  }
+                  final t = delta['text'] as String?;
+                  if (t != null && t.isNotEmpty) {
+                    fullText.write(t);
+                    onToken(t);
+                  }
                 }
               }
             }
           } catch (_) {}
         }
       }
+
+      if (inReasoning) {
+        inReasoning = false;
+        fullText.write('\n</think>\n\n');
+        onToken('\n</think>\n\n');
+      }
+
       return fullText.toString();
     } finally {
       client.close(force: true);
@@ -489,7 +515,17 @@ class CloudService extends GetxService {
     final candidates = data['candidates'] as List?;
     if (candidates != null && candidates.isNotEmpty) {
       final contentParts = candidates[0]['content']['parts'] as List;
-      return contentParts.map((p) => p['text'] ?? '').join('');
+      final buffer = StringBuffer();
+      for (final p in contentParts) {
+        final isThought = p['thought'] == true;
+        final t = p['text'] as String? ?? '';
+        if (isThought) {
+          buffer.write('<think>\n$t\n</think>\n\n');
+        } else {
+          buffer.write(t);
+        }
+      }
+      return buffer.toString();
     }
     return '';
   }
@@ -545,6 +581,7 @@ class CloudService extends GetxService {
 
       final fullText = StringBuffer();
       String remainder = '';
+      bool inReasoning = false;
 
       await for (final chunk in response.transform(utf8.decoder)) {
         final text = remainder + chunk;
@@ -564,10 +601,26 @@ class CloudService extends GetxService {
               final contentParts = candidates[0]['content']?['parts'] as List?;
               if (contentParts != null) {
                 for (final part in contentParts) {
+                  final isThought = part['thought'] == true;
                   final t = part['text'] as String?;
                   if (t != null && t.isNotEmpty) {
-                    fullText.write(t);
-                    onToken(t);
+                    if (isThought) {
+                      if (!inReasoning) {
+                        inReasoning = true;
+                        fullText.write('<think>\n');
+                        onToken('<think>\n');
+                      }
+                      fullText.write(t);
+                      onToken(t);
+                    } else {
+                      if (inReasoning) {
+                        inReasoning = false;
+                        fullText.write('\n</think>\n\n');
+                        onToken('\n</think>\n\n');
+                      }
+                      fullText.write(t);
+                      onToken(t);
+                    }
                   }
                 }
               }
@@ -575,6 +628,13 @@ class CloudService extends GetxService {
           } catch (_) {}
         }
       }
+
+      if (inReasoning) {
+        inReasoning = false;
+        fullText.write('\n</think>\n\n');
+        onToken('\n</think>\n\n');
+      }
+
       return fullText.toString();
     } finally {
       client.close(force: true);

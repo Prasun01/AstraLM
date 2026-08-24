@@ -14,8 +14,8 @@ class ThoughtParts {
 }
 
 ThoughtParts splitThoughtTags(String text, {bool isStreaming = false}) {
-  final startExp = RegExp(r'<think>', caseSensitive: false);
-  final endExp = RegExp(r'</think>', caseSensitive: false);
+  final startExp = RegExp(r'<(think|thought|reasoning)>', caseSensitive: false);
+  final endExp = RegExp(r'</(think|thought|reasoning)>', caseSensitive: false);
   final start = startExp.firstMatch(text);
 
   if (start == null) {
@@ -35,7 +35,7 @@ ThoughtParts splitThoughtTags(String text, {bool isStreaming = false}) {
       );
     }
 
-    // Finished generation without </think> tag
+    // Finished generation without closing tag: check for explicit conclusion separator
     final conclusionExp = RegExp(
       r'(\n\n(?:Final Answer|Conclusion|Therefore|In summary|Summary|Answer|Here is the|To summarize)[^\n]*\n[\s\S]*$)',
       caseSensitive: false,
@@ -52,24 +52,15 @@ ThoughtParts splitThoughtTags(String text, {bool isStreaming = false}) {
     }
 
     return ThoughtParts(
-      thought: '',
-      answer: '$before\n\n$afterStart'.trim(),
+      thought: afterStart.trim(),
+      answer: before.trim(),
       isThinking: false,
     );
   }
 
   final thought = afterStart.substring(0, end.start);
   final after = afterStart.substring(end.end);
-  var answer = '$before$after'.trim();
-
-  if (answer.isEmpty && thought.trim().isNotEmpty) {
-    answer = thought.trim();
-    return ThoughtParts(
-      thought: '',
-      answer: answer,
-      isThinking: false,
-    );
-  }
+  final answer = '$before$after'.trim();
 
   return ThoughtParts(
     thought: thought.trim(),
