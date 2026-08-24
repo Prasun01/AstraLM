@@ -264,7 +264,6 @@ class InferenceService extends GetxService {
     gpuName.value = '';
     contextTokensUsed.value = 0;
     contextTokensTotal.value = 0;
-    _sessionNativeRuntime = '';
   }
 
   Future<String> generate({

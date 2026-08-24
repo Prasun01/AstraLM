@@ -755,7 +755,17 @@ class CloudService extends GetxService {
     }
 
     final data = jsonDecode(response.body);
-    return data['choices'][0]['message']['content'] ?? '';
+    final choice = (data['choices'] as List?)?.isNotEmpty == true
+        ? data['choices'][0] as Map
+        : null;
+    final message = choice?['message'] as Map?;
+    final reasoning = message?['reasoning_content']?.toString() ??
+        message?['thought']?.toString();
+    final content = message?['content']?.toString() ?? '';
+    if (reasoning != null && reasoning.isNotEmpty) {
+      return '<think>\n$reasoning\n</think>\n\n$content';
+    }
+    return content;
   }
 
   Future<String> _streamOpenAICompatible({
@@ -794,6 +804,7 @@ class CloudService extends GetxService {
 
       final buffer = StringBuffer();
       String remainder = '';
+      bool inReasoning = false;
 
       await for (final chunk in response.transform(utf8.decoder)) {
         final text = remainder + chunk;
@@ -816,11 +827,21 @@ class CloudService extends GetxService {
             final reasoning = delta?['reasoning_content']?.toString() ??
                 delta?['thought']?.toString();
             if (reasoning != null && reasoning.isNotEmpty) {
+              if (!inReasoning) {
+                inReasoning = true;
+                buffer.write('<think>\n');
+                onToken('<think>\n');
+              }
               buffer.write(reasoning);
               onToken(reasoning);
             }
             final token = delta?['content']?.toString();
             if (token != null && token.isNotEmpty) {
+              if (inReasoning) {
+                inReasoning = false;
+                buffer.write('\n</think>\n\n');
+                onToken('\n</think>\n\n');
+              }
               buffer.write(token);
               onToken(token);
             }
@@ -828,6 +849,12 @@ class CloudService extends GetxService {
             // Ignore malformed keep-alive chunks and continue reading.
           }
         }
+      }
+
+      if (inReasoning) {
+        inReasoning = false;
+        buffer.write('\n</think>\n\n');
+        onToken('\n</think>\n\n');
       }
 
       return buffer.toString();

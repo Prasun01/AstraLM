@@ -539,17 +539,6 @@ class ModelController extends GetxController {
       return;
     }
 
-    // Proactively unload any currently active model first to completely free RAM/VRAM
-    if (_inference.isModelLoaded.value && _inference.loadedModelName.value != filename) {
-      await _inference.unloadModel();
-      await Future.delayed(const Duration(milliseconds: 100));
-    }
-    if (_localImage.isModelLoaded.value && _localImage.loadedModelName.value != filename) {
-      await _localImage.unloadModel();
-      await Future.delayed(const Duration(milliseconds: 100));
-    }
-
-    final path = await _download.modelPath(filename);
     final model =
         availableModels.firstWhereOrNull((m) => m.filename == filename);
     if (_isAuxiliaryImageFile(filename)) {
@@ -562,10 +551,13 @@ class ModelController extends GetxController {
       );
       return;
     }
+
+    final path = await _download.modelPath(filename);
     final isLiteRt = filename.toLowerCase().endsWith('.litertlm') ||
         model?.runtime == AiModel.runtimeLiteRt;
     final targetRuntime =
         model?.runtime ?? AiModel.runtimeFromFilename(filename);
+
     if (_inference.requiresAppRestartForRuntime(targetRuntime)) {
       await _showRuntimeRestartDialog(
         currentRuntime: _inference.sessionNativeRuntime,
@@ -574,6 +566,16 @@ class ModelController extends GetxController {
         pendingModelPath: path,
       );
       return;
+    }
+
+    // Proactively unload any currently active model first to completely free RAM/VRAM
+    if (_inference.isModelLoaded.value && _inference.loadedModelName.value != filename) {
+      await _inference.unloadModel();
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+    if (_localImage.isModelLoaded.value && _localImage.loadedModelName.value != filename) {
+      await _localImage.unloadModel();
+      await Future.delayed(const Duration(milliseconds: 300));
     }
     final fileBytes = await _modelFileBytes(filename, path, model);
     if (model != null && _isIncompleteCatalogFile(model, fileBytes)) {

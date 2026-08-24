@@ -2711,8 +2711,8 @@ class ModelView extends GetView<ModelController> {
                                         context, model.filename),
                             icon: Icon(
                               isActive
-                                  ? PhosphorIconsBold.circle
-                                  : PhosphorIconsBold.circle,
+                                  ? PhosphorIconsBold.stop
+                                  : PhosphorIconsBold.trash,
                               size: 20,
                               color: isActive
                                   ? Theme.of(context)
