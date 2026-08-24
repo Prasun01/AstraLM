@@ -66,6 +66,27 @@ class CloudService extends GetxService {
     }
   }
 
+  int get _defaultMaxTokensForCloud {
+    switch (_provider) {
+      case 'anthropic':
+        return 8192;
+      case 'google':
+        return 8192;
+      case 'deepseek':
+        return 8192;
+      case 'openrouter':
+        return 8192;
+      case 'nvidia':
+        return 8192;
+      case 'kimi':
+        return 8192;
+      case 'openai':
+        return 8192;
+      default:
+        return 4096;
+    }
+  }
+
   bool get isConfigured {
     if (_provider == 'custom') {
       final baseUrl =
@@ -254,7 +275,7 @@ class CloudService extends GetxService {
         'model': _model,
         'messages': apiMessages,
         'temperature': temperature ?? AppConstants.defaultTemperature,
-        'max_tokens': maxTokens ?? AppConstants.defaultMaxTokens,
+        'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
       }),
     );
 
@@ -312,7 +333,7 @@ class CloudService extends GetxService {
     final body = <String, dynamic>{
       'model': _model,
       'messages': apiMessages,
-      'max_tokens': maxTokens ?? AppConstants.defaultMaxTokens,
+      'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
       'temperature': temperature ?? AppConstants.defaultTemperature,
     };
     if (systemMsg != null) body['system'] = systemMsg;
@@ -380,7 +401,7 @@ class CloudService extends GetxService {
     final body = <String, dynamic>{
       'model': _model,
       'messages': apiMessages,
-      'max_tokens': maxTokens ?? AppConstants.defaultMaxTokens,
+      'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
       'temperature': temperature ?? AppConstants.defaultTemperature,
       'stream': true,
     };
@@ -533,7 +554,7 @@ class CloudService extends GetxService {
           : contents,
       'generationConfig': {
         'temperature': temperature ?? AppConstants.defaultTemperature,
-        'maxOutputTokens': maxTokens ?? AppConstants.defaultMaxTokens,
+        'maxOutputTokens': maxTokens ?? _defaultMaxTokensForCloud,
       },
     };
 
@@ -715,7 +736,7 @@ class CloudService extends GetxService {
         'model': _model,
         'messages': apiMessages,
         'temperature': temperature ?? AppConstants.defaultTemperature,
-        'max_tokens': maxTokens ?? AppConstants.defaultMaxTokens,
+        'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
       }),
     );
 
@@ -764,7 +785,7 @@ class CloudService extends GetxService {
         'model': _model,
         'messages': apiMessages,
         'temperature': temperature ?? AppConstants.defaultTemperature,
-        'max_tokens': maxTokens ?? AppConstants.defaultMaxTokens,
+        'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
       }),
     );
 
@@ -856,7 +877,7 @@ class CloudService extends GetxService {
         'model': _model,
         'messages': apiMessages,
         'temperature': temperature ?? AppConstants.defaultTemperature,
-        'max_tokens': maxTokens ?? AppConstants.defaultMaxTokens,
+        'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
       }),
     );
 
@@ -902,7 +923,7 @@ class CloudService extends GetxService {
         'model': _model,
         'messages': _buildOpenAICompatibleMessages(messages, imageBase64),
         'temperature': temperature ?? AppConstants.defaultTemperature,
-        'max_tokens': maxTokens ?? AppConstants.defaultMaxTokens,
+        'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
         'stream': true,
       }));
 

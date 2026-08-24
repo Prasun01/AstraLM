@@ -584,6 +584,13 @@ class ChatController extends GetxController {
       selectedImagePath.value = null;
       selectedImageBase64.value = null;
 
+      final inferenceMode = _hive.getSetting(
+            AppConstants.keyInferenceMode,
+            defaultValue: 'local',
+          ) ??
+          'local';
+      final maxDocChars = inferenceMode == 'local' ? 12000 : 500000;
+
       if (fileType == 'pdf' || fileType == 'docx') {
         final path = file.path;
         if (path != null) {
@@ -592,9 +599,9 @@ class ChatController extends GetxController {
               path,
               extension,
             );
-            if (content.length > 12000) {
+            if (content.length > maxDocChars) {
               content =
-                  '${content.substring(0, 12000)}\n\n[File truncated for context size]';
+                  '${content.substring(0, maxDocChars)}\n\n[File truncated for context size]';
             }
             selectedFileContent.value = content;
           } catch (e) {
@@ -602,7 +609,8 @@ class ChatController extends GetxController {
               'Document extraction failed',
               details: e,
             );
-            selectedFileContent.value = '[Could not extract text from ${selectedFileName.value}: $e]';
+            selectedFileContent.value =
+                '[Could not extract text from ${selectedFileName.value}: $e]';
           }
         }
       } else if (fileType == 'text') {
@@ -611,9 +619,9 @@ class ChatController extends GetxController {
         if (bytes == null) return;
         selectedFileSize.value = file.size > 0 ? file.size : bytes.length;
         var content = utf8.decode(bytes, allowMalformed: true);
-        if (content.length > 12000) {
+        if (content.length > maxDocChars) {
           content =
-              '${content.substring(0, 12000)}\n\n[File truncated for context size]';
+              '${content.substring(0, maxDocChars)}\n\n[File truncated for context size]';
         }
         selectedFileContent.value = content;
       }
@@ -1140,18 +1148,18 @@ class ChatController extends GetxController {
       modelName,
     );
     if (isCanvasMode.value) {
-      final canvasInstruction =
+      const canvasInstruction =
           'CANVAS WORKSPACE MODE: You are generating or updating content directly into an interactive document/code Canvas editor. Focus on delivering clean, complete, well-formatted markdown or code without conversational preambles so that the document is immediately usable.';
       prompt = prompt.isEmpty ? canvasInstruction : '$prompt\n\n$canvasInstruction';
     }
 
     final effort = settings.reasoningEffort.value;
     if (effort == 'none') {
-      final noReasoningInstruction =
+      const noReasoningInstruction =
           'DIRECT RESPONSE DIRECTIVE: Respond directly, accurately, and concisely. Do NOT generate internal reasoning or thought blocks. Provide the direct answer immediately.';
       prompt = prompt.isEmpty ? noReasoningInstruction : '$prompt\n\n$noReasoningInstruction';
     } else if (effort == 'deep') {
-      final deepReasoningInstruction =
+      const deepReasoningInstruction =
           'DEEP REASONING DIRECTIVE: Perform exhaustive, step-by-step reasoning inside <think> tags. Explore assumptions, multiple angles, and verify edge cases thoroughly before writing your final answer.';
       prompt = prompt.isEmpty ? deepReasoningInstruction : '$prompt\n\n$deepReasoningInstruction';
     }
