@@ -34,75 +34,62 @@ String _extractRenderableHtml(String content) {
 bool _isHtmlContent(String content) {
   final clean = _extractRenderableHtml(content);
   final lower = clean.toLowerCase();
-  return lower.startsWith('<!doctype html') ||
-      lower.startsWith('<!doctype') ||
+  return lower.startsWith('<!doctype') ||
       lower.startsWith('<html') ||
-      (lower.contains('<html') && lower.contains('</html>')) ||
-      (lower.contains('<body') && lower.contains('</body>')) ||
-      (lower.contains('<head') && lower.contains('</head>')) ||
-      (lower.contains('<script') && lower.contains('</script>')) ||
-      (lower.contains('<style') && lower.contains('</style>')) ||
-      (lower.contains('<div') && lower.contains('</div>')) ||
-      (lower.contains('<svg') && lower.contains('</svg>') && clean.startsWith('<svg')) ||
-      (lower.contains('<canvas') && lower.contains('</canvas>'));
+      lower.contains('<html') ||
+      lower.contains('<head') ||
+      lower.contains('<body>') ||
+      lower.contains('<body ') ||
+      lower.contains('<script') ||
+      lower.contains('<style') ||
+      lower.contains('<div') ||
+      lower.contains('<svg') ||
+      lower.contains('<canvas') ||
+      lower.contains('<button') ||
+      lower.contains('<p>') ||
+      lower.contains('<h1') ||
+      lower.contains('<h2') ||
+      lower.contains('<h3') ||
+      lower.contains('<span') ||
+      lower.contains('<table') ||
+      lower.contains('<form') ||
+      lower.contains('<iframe') ||
+      lower.contains('<a href');
 }
 
-String _detectLanguage(String content) {
-  final clean = _extractRenderableHtml(content).trim();
+String _generateFullHtmlDocument(String content, bool isDark) {
+  final clean = _extractRenderableHtml(content);
+  if (clean.isEmpty) return '';
+
   final lower = clean.toLowerCase();
-  if (lower.startsWith('import flutter') ||
-      (lower.contains('class ') && lower.contains('extends')) ||
-      lower.contains('widget build(')) {
-    return 'dart';
-  }
-  if (lower.startsWith('import ') ||
-      lower.startsWith('def ') ||
-      lower.startsWith('from ') ||
-      lower.contains('if __name__ ==')) {
-    return 'python';
-  }
-  if (lower.startsWith('function ') ||
-      lower.startsWith('const ') ||
-      lower.startsWith('let ') ||
-      lower.startsWith('var ') ||
-      lower.contains('console.log') ||
-      lower.contains('document.getelementbyid')) {
-    return 'javascript';
-  }
-  if (lower.startsWith('{') && lower.endsWith('}') ||
-      lower.startsWith('[') && lower.endsWith(']')) {
-    return 'json';
-  }
-  if (lower.startsWith('select ') || lower.startsWith('create table')) {
-    return 'sql';
-  }
-  if (lower.startsWith('#include') || lower.contains('int main(')) {
-    return 'cpp';
-  }
-  if (lower.startsWith('package main') || lower.startsWith('func main(')) {
-    return 'go';
-  }
-  if (lower.startsWith('fn main(') || lower.contains('pub struct')) {
-    return 'rust';
-  }
-  return 'code';
-}
+  final isCompleteHtml = lower.contains('<html') || lower.contains('<!doctype');
+  if (isCompleteHtml) return clean;
 
-String _preparePreviewContent(String content) {
-  final trimmed = content.trim();
-  if (trimmed.isEmpty) return trimmed;
-  if (trimmed.contains('```') ||
-      trimmed.startsWith('#') ||
-      trimmed.contains('\n# ') ||
-      trimmed.contains('\n## ') ||
-      trimmed.contains('\n### ') ||
-      trimmed.startsWith('> ') ||
-      trimmed.startsWith('- ') ||
-      trimmed.startsWith('* ')) {
-    return content;
-  }
-  final lang = _detectLanguage(content);
-  return '```$lang\n$trimmed\n```';
+  final bg = isDark ? '#0A0C11' : '#FFFFFF';
+  final fg = isDark ? '#E2E6F2' : '#0F172A';
+
+  return '''<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      background-color: $bg;
+      color: $fg;
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+<body>
+  $clean
+</body>
+</html>''';
 }
 
 class CanvasWorkspace extends StatefulWidget {
@@ -133,17 +120,14 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
     super.dispose();
   }
 
-  void _syncHtmlIfChanged(String content, bool isHtml) {
-    if (isHtml && _webController != null) {
-      final cleanHtml = _extractRenderableHtml(content);
-      final fullHtml = (cleanHtml.toLowerCase().contains('<html') ||
-              cleanHtml.toLowerCase().contains('<!doctype'))
-          ? cleanHtml
-          : '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{font-family:system-ui,-apple-system,sans-serif;padding:16px;margin:0;line-height:1.5;color:#E2E6F2;}}</style></head><body>$cleanHtml</body></html>';
-      if (fullHtml != _lastLoadedHtml) {
+  void _syncHtmlIfChanged(String content, bool isDark) {
+    if (_webController != null) {
+      final fullHtml = _generateFullHtmlDocument(content, isDark);
+      if (fullHtml.isNotEmpty && fullHtml != _lastLoadedHtml) {
         _lastLoadedHtml = fullHtml;
         _webController!.loadData(
           data: fullHtml,
+          baseUrl: WebUri('about:blank'),
           mimeType: 'text/html',
           encoding: 'utf-8',
         );
@@ -155,25 +139,43 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
   Widget build(BuildContext context) {
     final controller = Get.find<ChatController>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
 
     return Obx(() {
       if (!controller.isCanvasOpen.value) return const SizedBox.shrink();
 
+      final title = controller.canvasTitle.value.isEmpty
+          ? 'Canvas Document'
+          : controller.canvasTitle.value;
       final content = controller.canvasContent.value;
       final isEditing = controller.isCanvasEditing.value;
       final isHtml = _isHtmlContent(content);
+      final wordCount = content.trim().isEmpty
+          ? 0
+          : content.trim().split(RegExp(r'\s+')).length;
 
-      if (!isEditing) {
-        _syncHtmlIfChanged(content, isHtml);
+      if (!isEditing && isHtml) {
+        _syncHtmlIfChanged(content, isDark);
       }
 
       return Container(
         color: isDark ? const Color(0xFF0A0C11) : const Color(0xFFFAFBFD),
         child: SafeArea(
-          child: Stack(
+          bottom: false,
+          child: Column(
             children: [
-              // ── Main Content Area ──
-              Positioned.fill(
+              // ── Header ──
+              _buildHeader(
+                context, controller, title, content, wordCount,
+                isEditing, isHtml, isDark, scheme,
+              ),
+
+              // ── Sub Tab Bar (for switching between Code and Preview when not in full edit) ──
+              if (!isEditing)
+                _buildSubTabBar(isDark, scheme, isHtml),
+
+              // ── Main Content Body ──
+              Expanded(
                 child: isEditing
                     ? _buildEditor(controller, isDark)
                     : TabBarView(
@@ -186,89 +188,8 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
                       ),
               ),
 
-              // ── Top Floating Bar (Round Floating Buttons & Tab Switcher) ──
-              Positioned(
-                top: 10,
-                left: 12,
-                right: 12,
-                child: Row(
-                  children: [
-                    // Floating Round Close Button
-                    _roundFloatingBtn(
-                      icon: PhosphorIconsBold.x,
-                      tooltip: 'Close Canvas',
-                      isDark: isDark,
-                      onTap: controller.closeCanvas,
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Floating Round Segmented Tab Switcher (Code / Live Preview)
-                    if (!isEditing)
-                      _buildFloatingSegmentedTabs(isDark),
-
-                    const Spacer(),
-
-                    // Floating Round Actions (Undo, View/Edit, Copy, Share)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (controller.canvasHistory.length > 1) ...[
-                          _roundFloatingBtn(
-                            icon: PhosphorIconsBold.arrowCounterClockwise,
-                            tooltip: 'Undo',
-                            isDark: isDark,
-                            onTap: controller.undoCanvas,
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        _roundFloatingBtn(
-                          icon: isEditing ? PhosphorIconsBold.eye : PhosphorIconsBold.pencil,
-                          tooltip: isEditing ? 'Read View' : 'Edit Code',
-                          isDark: isDark,
-                          onTap: () {
-                            controller.isCanvasEditing.value = !isEditing;
-                            if (!controller.isCanvasEditing.value) {
-                              controller.updateCanvasContent(
-                                  controller.canvasTextController.text);
-                            }
-                          },
-                        ),
-                        const SizedBox(width: 6),
-                        _roundFloatingBtn(
-                          icon: PhosphorIconsBold.copy,
-                          tooltip: 'Copy Code',
-                          isDark: isDark,
-                          onTap: () {
-                            Clipboard.setData(ClipboardData(text: content));
-                            Get.snackbar(
-                              'Copied',
-                              'Code copied to clipboard.',
-                              snackPosition: SnackPosition.BOTTOM,
-                              duration: const Duration(seconds: 2),
-                              margin: const EdgeInsets.all(12),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 6),
-                        _roundFloatingBtn(
-                          icon: PhosphorIconsBold.shareNetwork,
-                          tooltip: 'Share Code',
-                          isDark: isDark,
-                          onTap: () => Share.share(content),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Bottom Floating Buttons with Fade Scroll ──
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 12,
-                child: _buildFloatingActionsWithFade(controller, isDark),
-              ),
+              // ── Bottom Action Toolbar ──
+              _buildBottomToolbar(controller, isDark, scheme),
             ],
           ),
         ),
@@ -276,64 +197,194 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
     });
   }
 
-  /// Floating Round Segmented Tab Switcher
-  Widget _buildFloatingSegmentedTabs(bool isDark) {
+  Widget _buildHeader(
+    BuildContext context,
+    ChatController controller,
+    String title,
+    String content,
+    int wordCount,
+    bool isEditing,
+    bool isHtml,
+    bool isDark,
+    ColorScheme scheme,
+  ) {
+    final headerBg = isDark ? const Color(0xFF0F1117) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF1E222E) : const Color(0xFFECEFF6);
+
     return Container(
-      height: 36,
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF141620).withValues(alpha: 0.92)
-            : Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isDark ? const Color(0xFF262B3B) : const Color(0xFFDCE2EE),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+        color: headerBg,
+        border: Border(bottom: BorderSide(color: borderColor, width: 1)),
+      ),
+      child: Row(
+        children: [
+          PhosphorIcon(
+            PhosphorIconsBold.notepad,
+            color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.manrope(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : const Color(0xFF0E1017),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (isHtml
+                                ? const Color(0xFFEA580C)
+                                : (isDark ? const Color(0xFF1D4ED8) : const Color(0xFF2563EB)))
+                            .withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        isHtml ? 'HTML' : 'Canvas',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: isHtml
+                              ? const Color(0xFFEA580C)
+                              : (isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  isEditing
+                      ? 'Editing · $wordCount words'
+                      : (isHtml ? 'Live Web Preview · $wordCount words' : '$wordCount words'),
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: isDark ? const Color(0xFF6B7284) : const Color(0xFF8E95A8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Header Actions
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (controller.canvasHistory.length > 1) ...[
+                _headerIconBtn(
+                  PhosphorIconsBold.arrowCounterClockwise,
+                  'Undo',
+                  isDark,
+                  controller.undoCanvas,
+                ),
+                const SizedBox(width: 4),
+              ],
+              _headerIconBtn(
+                isEditing ? PhosphorIconsBold.eye : PhosphorIconsBold.pencil,
+                isEditing ? 'Preview' : 'Edit',
+                isDark,
+                () {
+                  controller.isCanvasEditing.value = !isEditing;
+                  if (!controller.isCanvasEditing.value) {
+                    controller.updateCanvasContent(
+                        controller.canvasTextController.text);
+                  }
+                },
+              ),
+              const SizedBox(width: 4),
+              _headerIconBtn(
+                PhosphorIconsBold.copy,
+                'Copy',
+                isDark,
+                () {
+                  Clipboard.setData(ClipboardData(text: content));
+                  Get.snackbar(
+                    'Copied',
+                    'Canvas content copied to clipboard.',
+                    snackPosition: SnackPosition.BOTTOM,
+                    duration: const Duration(seconds: 2),
+                    margin: const EdgeInsets.all(12),
+                  );
+                },
+              ),
+              const SizedBox(width: 4),
+              _headerIconBtn(
+                PhosphorIconsBold.shareNetwork,
+                'Share',
+                isDark,
+                () => Share.share(content, subject: title),
+              ),
+              const SizedBox(width: 4),
+              _headerIconBtn(
+                PhosphorIconsBold.x,
+                'Close',
+                isDark,
+                controller.closeCanvas,
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSubTabBar(bool isDark, ColorScheme scheme, bool isHtml) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F1117) : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? const Color(0xFF1E222E) : const Color(0xFFECEFF6),
+            width: 1,
+          ),
+        ),
+      ),
       child: TabBar(
         controller: _tabController,
-        isScrollable: true,
-        tabAlignment: TabAlignment.start,
         dividerColor: Colors.transparent,
+        indicatorColor: scheme.primary,
+        indicatorWeight: 2.5,
         indicatorSize: TabBarIndicatorSize.tab,
-        indicator: BoxDecoration(
-          color: isDark ? const Color(0xFF262B3B) : const Color(0xFF141620),
-          borderRadius: BorderRadius.circular(15),
-        ),
-        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-        labelStyle: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w800),
-        unselectedLabelStyle:
-            GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600),
-        labelColor: Colors.white,
+        labelColor: isDark ? Colors.white : const Color(0xFF0E1017),
         unselectedLabelColor:
-            isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B),
+            isDark ? const Color(0xFF6B7284) : const Color(0xFF8E95A8),
+        labelStyle: GoogleFonts.manrope(fontSize: 12.5, fontWeight: FontWeight.w700),
+        unselectedLabelStyle:
+            GoogleFonts.manrope(fontSize: 12.5, fontWeight: FontWeight.w500),
         tabs: const [
           Tab(
-            height: 30,
+            height: 38,
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                PhosphorIcon(PhosphorIconsBold.code, size: 13),
-                SizedBox(width: 4),
-                Text('Code'),
+                PhosphorIcon(PhosphorIconsBold.code, size: 15),
+                SizedBox(width: 6),
+                Text('Source Code'),
               ],
             ),
           ),
           Tab(
-            height: 30,
+            height: 38,
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                PhosphorIcon(PhosphorIconsBold.browsers, size: 13),
-                SizedBox(width: 4),
+                PhosphorIcon(
+                  PhosphorIconsBold.browsers,
+                  size: 15,
+                ),
+                SizedBox(width: 6),
                 Text('Preview'),
               ],
             ),
@@ -343,142 +394,10 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
     );
   }
 
-  /// Round Floating Action Button
-  Widget _roundFloatingBtn({
-    required PhosphorIconData icon,
-    required String tooltip,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: PressableScale(
-        pressedScale: 0.90,
-        onTap: onTap,
-        child: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isDark
-                ? const Color(0xFF141620).withValues(alpha: 0.92)
-                : Colors.white.withValues(alpha: 0.95),
-            border: Border.all(
-              color: isDark ? const Color(0xFF262B3B) : const Color(0xFFDCE2EE),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.08),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Center(
-            child: PhosphorIcon(
-              icon,
-              size: 17,
-              color: isDark ? Colors.white : const Color(0xFF12141D),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Code View with Soft Text Wrapping (No Horizontal Side Scrolling)
-  Widget _buildCodeView(BuildContext context, String content, bool isDark) {
-    if (content.trim().isEmpty) return _empty(isDark);
-    final textColor = isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 62, 18, 90), // Top & bottom padding for floating controls
-      physics: const BouncingScrollPhysics(),
-      child: SelectableText(
-        content,
-        style: GoogleFonts.firaCode(
-          fontSize: 13.5,
-          color: textColor,
-          height: 1.55,
-        ),
-      ),
-    );
-  }
-
-  /// Live Preview View
-  Widget _buildPreviewView(
-      BuildContext context, String content, bool isHtml, bool isDark) {
-    if (content.trim().isEmpty) return _empty(isDark);
-
-    if (isHtml) {
-      final cleanHtml = _extractRenderableHtml(content);
-      final fullHtml = (cleanHtml.toLowerCase().contains('<html') ||
-              cleanHtml.toLowerCase().contains('<!doctype'))
-          ? cleanHtml
-          : '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{font-family:system-ui,-apple-system,sans-serif;padding:16px;margin:0;line-height:1.5;${isDark ? 'background:#0A0C11;color:#E2E6F2;' : 'background:#FFFFFF;color:#0F172A;'}}</style></head><body>$cleanHtml</body></html>';
-
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(0, 58, 0, 80),
-        child: ClipRect(
-          child: InAppWebView(
-            key: ValueKey(fullHtml.hashCode),
-            initialData: InAppWebViewInitialData(
-              data: fullHtml,
-              mimeType: 'text/html',
-              encoding: 'utf-8',
-            ),
-            initialSettings: InAppWebViewSettings(
-              javaScriptEnabled: true,
-              domStorageEnabled: true,
-              allowFileAccessFromFileURLs: true,
-              allowUniversalAccessFromFileURLs: true,
-              mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-              hardwareAcceleration: true,
-              useHybridComposition: true,
-              transparentBackground: false,
-              verticalScrollBarEnabled: true,
-              horizontalScrollBarEnabled: true,
-              overScrollMode: OverScrollMode.IF_CONTENT_SCROLLS,
-            ),
-            onWebViewCreated: (c) {
-              _webController = c;
-              _lastLoadedHtml = fullHtml;
-            },
-            onLoadStop: (c, url) {
-              if (isDark) {
-                c.evaluateJavascript(source: '''
-                  if (!document.getElementById('_dark_style')) {
-                    var s = document.createElement('style');
-                    s.id = '_dark_style';
-                    s.textContent = 'html,body{background:#0A0C11!important;color:#E2E6F2!important}';
-                    document.head.appendChild(s);
-                  }
-                ''');
-              }
-            },
-          ),
-        ),
-      );
-    }
-
-    final previewMarkdown = _preparePreviewContent(content);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 62, 18, 90),
-      physics: const BouncingScrollPhysics(),
-      child: MarkdownBody(
-        data: previewMarkdown,
-        selectable: true,
-        builders: {'code': CodeBlockBuilder(isDark: isDark)},
-        styleSheet: _canvasMarkdownStyle(context, isDark),
-      ),
-    );
-  }
-
-  /// Editor with Soft Line Wrapping
   Widget _buildEditor(ChatController controller, bool isDark) {
     return Container(
       color: isDark ? const Color(0xFF0A0C11) : Colors.white,
-      padding: const EdgeInsets.fromLTRB(18, 62, 18, 90),
+      padding: const EdgeInsets.all(16),
       child: TextField(
         controller: controller.canvasTextController,
         onChanged: (v) => controller.canvasContent.value = v,
@@ -491,13 +410,91 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
         ),
         decoration: InputDecoration(
           border: InputBorder.none,
-          hintText: 'Type or paste code…',
+          hintText: 'Type or edit content in canvas…',
           hintStyle: GoogleFonts.inter(
-            color: isDark
-                ? const Color(0xFF44495A)
-                : const Color(0xFFB0B8C8),
+            color: isDark ? const Color(0xFF44495A) : const Color(0xFFB0B8C8),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCodeView(BuildContext context, String content, bool isDark) {
+    if (content.trim().isEmpty) return _empty(isDark);
+    final textColor = isDark ? const Color(0xFFE2E8F0) : const Color(0xFF0F172A);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      physics: const BouncingScrollPhysics(),
+      child: SelectableText(
+        content,
+        style: GoogleFonts.firaCode(
+          fontSize: 13.5,
+          color: textColor,
+          height: 1.55,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreviewView(
+      BuildContext context, String content, bool isHtml, bool isDark) {
+    if (content.trim().isEmpty) return _empty(isDark);
+
+    if (isHtml) {
+      final fullHtml = _generateFullHtmlDocument(content, isDark);
+
+      return InAppWebView(
+        key: ValueKey(fullHtml.hashCode),
+        initialData: InAppWebViewInitialData(
+          data: fullHtml,
+          baseUrl: WebUri('about:blank'),
+          mimeType: 'text/html',
+          encoding: 'utf-8',
+        ),
+        initialSettings: InAppWebViewSettings(
+          javaScriptEnabled: true,
+          javaScriptCanOpenWindowsAutomatically: true,
+          domStorageEnabled: true,
+          databaseEnabled: true,
+          allowFileAccessFromFileURLs: true,
+          allowUniversalAccessFromFileURLs: true,
+          allowContentAccess: true,
+          allowFileAccess: true,
+          mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+          hardwareAcceleration: true,
+          useHybridComposition: true,
+          transparentBackground: false,
+          verticalScrollBarEnabled: true,
+          horizontalScrollBarEnabled: true,
+        ),
+        onWebViewCreated: (c) {
+          _webController = c;
+          _lastLoadedHtml = fullHtml;
+        },
+        onLoadStop: (c, url) {
+          if (isDark) {
+            c.evaluateJavascript(source: '''
+              if (!document.getElementById('_dark_style')) {
+                var s = document.createElement('style');
+                s.id = '_dark_style';
+                s.textContent = 'html,body{background:#0A0C11!important;color:#E2E6F2!important}';
+                document.head.appendChild(s);
+              }
+            ''');
+          }
+        },
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
+      physics: const BouncingScrollPhysics(),
+      child: MarkdownBody(
+        data: content,
+        selectable: true,
+        builders: {'code': CodeBlockBuilder(isDark: isDark)},
+        styleSheet: _canvasMarkdownStyle(context, isDark),
       ),
     );
   }
@@ -508,13 +505,13 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
         mainAxisSize: MainAxisSize.min,
         children: [
           PhosphorIcon(
-            PhosphorIconsBold.code,
-            size: 44,
+            PhosphorIconsBold.notepad,
+            size: 40,
             color: isDark ? const Color(0xFF2E3347) : const Color(0xFFC8D0E2),
           ),
           const SizedBox(height: 12),
           Text(
-            'Canvas is waiting for code response…',
+            'Canvas is waiting for response…',
             style: GoogleFonts.manrope(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -526,67 +523,126 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
     );
   }
 
-  /// Floating Buttons with Side Gradient Fades (No Surrounding Box)
-  Widget _buildFloatingActionsWithFade(ChatController controller, bool isDark) {
-    return ShaderMask(
-      shaderCallback: (Rect bounds) {
-        return const LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            Colors.transparent,
-            Colors.black,
-            Colors.black,
-            Colors.transparent,
-          ],
-          stops: [0.0, 0.05, 0.95, 1.0],
-        ).createShader(bounds);
-      },
-      blendMode: BlendMode.dstIn,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+  Widget _buildBottomToolbar(
+      ChatController controller, bool isDark, ColorScheme scheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F1117) : const Color(0xFFF5F7FA),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? const Color(0xFF1E222E) : const Color(0xFFECEFF6),
+            width: 1,
+          ),
+        ),
+      ),
+      child: ShaderMask(
+        shaderCallback: (Rect bounds) {
+          return const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Colors.transparent,
+              Colors.black,
+              Colors.black,
+              Colors.transparent,
+            ],
+            stops: [0.0, 0.04, 0.96, 1.0],
+          ).createShader(bounds);
+        },
+        blendMode: BlendMode.dstIn,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: [
+              _chip(
+                PhosphorIconsBold.chatCircle,
+                'Add Comments',
+                isDark,
+                scheme,
+                () => controller.requestCanvasRevision(
+                    'Add thorough explanatory comments throughout this code/document.'),
+              ),
+              const SizedBox(width: 8),
+              _chip(
+                PhosphorIconsBold.scissors,
+                'Make Concise',
+                isDark,
+                scheme,
+                () => controller.requestCanvasRevision(
+                    'Make this concise and direct, keeping all essential details.'),
+              ),
+              const SizedBox(width: 8),
+              _chip(
+                PhosphorIconsBold.sparkle,
+                'Fix & Polish',
+                isDark,
+                scheme,
+                () => controller.requestCanvasRevision(
+                    'Review, fix any errors, and polish the structure and clarity.'),
+              ),
+              const SizedBox(width: 8),
+              _chip(
+                PhosphorIconsBold.textT,
+                'Explain',
+                isDark,
+                scheme,
+                () => controller.requestCanvasRevision(
+                    'Expand with deeper explanations and step-by-step breakdown.'),
+              ),
+              const SizedBox(width: 8),
+              _chip(
+                PhosphorIconsBold.translate,
+                'Translate',
+                isDark,
+                scheme,
+                () => controller.requestCanvasRevision(
+                    'Translate this document accurately to Spanish.'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(
+    PhosphorIconData icon,
+    String label,
+    bool isDark,
+    ColorScheme scheme,
+    VoidCallback onTap,
+  ) {
+    return PressableScale(
+      pressedScale: 0.94,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isDark
+              ? const Color(0xFF1A1D28)
+              : scheme.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(20),
+        ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _boldFloatingChip(
-              icon: PhosphorIconsBold.chatCircle,
-              label: 'Add Comments',
-              isDark: isDark,
-              onTap: () => controller.requestCanvasRevision(
-                  'Add thorough explanatory comments throughout this code.'),
+            PhosphorIcon(
+              icon,
+              size: 13,
+              color: isDark ? const Color(0xFF8E95A8) : scheme.primary,
             ),
-            const SizedBox(width: 8),
-            _boldFloatingChip(
-              icon: PhosphorIconsBold.scissors,
-              label: 'Make Concise',
-              isDark: isDark,
-              onTap: () => controller.requestCanvasRevision(
-                  'Optimize and make this code concise, keeping all functionality.'),
-            ),
-            const SizedBox(width: 8),
-            _boldFloatingChip(
-              icon: PhosphorIconsBold.sparkle,
-              label: 'Fix & Polish',
-              isDark: isDark,
-              onTap: () => controller.requestCanvasRevision(
-                  'Review, fix any bugs, and polish code formatting.'),
-            ),
-            const SizedBox(width: 8),
-            _boldFloatingChip(
-              icon: PhosphorIconsBold.textT,
-              label: 'Explain',
-              isDark: isDark,
-              onTap: () => controller.requestCanvasRevision(
-                  'Explain step-by-step how this code works.'),
-            ),
-            const SizedBox(width: 8),
-            _boldFloatingChip(
-              icon: PhosphorIconsBold.translate,
-              label: 'Translate',
-              isDark: isDark,
-              onTap: () => controller.requestCanvasRevision(
-                  'Translate any comments and strings into Spanish.'),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                color: isDark
+                    ? const Color(0xFFCBD5E1)
+                    : const Color(0xFF1E293B),
+              ),
             ),
           ],
         ),
@@ -594,53 +650,31 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
     );
   }
 
-  /// Individual Bigger & Bolder Floating Chip (No Parent Box)
-  Widget _boldFloatingChip({
-    required PhosphorIconData icon,
-    required String label,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return PressableScale(
-      pressedScale: 0.92,
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        decoration: BoxDecoration(
-          color: isDark
-              ? const Color(0xFF141620).withValues(alpha: 0.94)
-              : Colors.white.withValues(alpha: 0.96),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: isDark ? const Color(0xFF262B3B) : const Color(0xFFDCE2EE),
-            width: 1.2,
+  Widget _headerIconBtn(
+    PhosphorIconData icon,
+    String tooltip,
+    bool isDark,
+    VoidCallback onTap,
+  ) {
+    return Tooltip(
+      message: tooltip,
+      child: PressableScale(
+        pressedScale: 0.88,
+        onTap: onTap,
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF181C26) : const Color(0xFFF0F3F8),
+            borderRadius: BorderRadius.circular(8),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            PhosphorIcon(
+          child: Center(
+            child: PhosphorIcon(
               icon,
               size: 16,
-              color: isDark ? Colors.white : const Color(0xFF12141D),
+              color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
             ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.manrope(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : const Color(0xFF12141D),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -651,8 +685,8 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
     final muted = isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B);
     final codeBlockBg =
         isDark ? const Color(0xFF12141C) : const Color(0xFFF1F4F9);
-    final base =
-        GoogleFonts.inter(fontSize: 15, color: color, height: 1.6);
+    final base = GoogleFonts.inter(fontSize: 15, color: color, height: 1.6);
+
     return MarkdownStyleSheet(
       p: base,
       h1: GoogleFonts.manrope(
@@ -673,11 +707,9 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
       strong: base.copyWith(fontWeight: FontWeight.w700),
       em: base.copyWith(fontStyle: FontStyle.italic),
       code: GoogleFonts.firaCode(
-          fontSize: 12.5,
-          color: color,
-          backgroundColor: codeBlockBg),
-      codeblockDecoration:
-          BoxDecoration(color: codeBlockBg, borderRadius: BorderRadius.circular(10)),
+          fontSize: 12.5, color: color, backgroundColor: codeBlockBg),
+      codeblockDecoration: BoxDecoration(
+          color: codeBlockBg, borderRadius: BorderRadius.circular(10)),
       blockquote: base.copyWith(color: muted),
       blockquoteDecoration: BoxDecoration(
           color: isDark ? const Color(0xFF161922) : const Color(0xFFEDF1F8),
