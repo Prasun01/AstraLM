@@ -2686,15 +2686,40 @@ class _AnimatedThinkingIndicatorState extends State<_AnimatedThinkingIndicator>
     with SingleTickerProviderStateMixin {
   late AnimationController _dotsController;
   Timer? _textTimer;
-  int _textIndex = 0;
+  int _ticks = 0;
+  String _currentText = 'Thinking…';
+  final math.Random _random = math.Random();
 
-  static const List<String> _generalTexts = [
+  static const List<String> _earlyTexts = [
     'Thinking…',
     'Cooking…',
-    'Thinking harder…',
+    'Let him cook…',
     'Formulating response…',
     'Connecting dots…',
+    'Analyzing prompt…',
+    'Gathering thoughts…',
+  ];
+
+  static const List<String> _mediumTexts = [
+    'Thinking harder…',
+    'Crunching neural weights…',
+    'Untangling complex thoughts…',
+    'Summoning deep wisdom…',
+    'Running matrix math…',
+    'Still cooking, hold tight…',
+    'Connecting more dots…',
     'Polishing answer…',
+  ];
+
+  static const List<String> _lateTexts = [
+    'bro, your cpu is slow 💀',
+    'CPU fans spinning at 100% 💨',
+    'Silicon is getting toasty 🔥',
+    'Sweating through these tokens…',
+    'Fighting for every single token…',
+    'Calculating the meaning of life…',
+    'Worth the wait, promise…',
+    'Almost done baking tokens…',
   ];
 
   static const List<String> _imageTexts = [
@@ -2702,32 +2727,60 @@ class _AnimatedThinkingIndicatorState extends State<_AnimatedThinkingIndicator>
     'Analyzing visual details…',
     'Inspecting pixels…',
     'Extracting context…',
+    'Decoding visual patterns…',
   ];
 
   static const List<String> _audioTexts = [
     'Listening to audio…',
     'Processing sound stream…',
     'Transcribing words…',
+    'Analyzing acoustic waves…',
   ];
 
-  List<String> get _currentTexts {
-    if (widget.attachmentType == 'image') return _imageTexts;
-    if (widget.attachmentType == 'audio') return _audioTexts;
-    return _generalTexts;
+  String _pickNextText() {
+    if (widget.attachmentType == 'image') {
+      return _imageTexts[_random.nextInt(_imageTexts.length)];
+    }
+    if (widget.attachmentType == 'audio') {
+      return _audioTexts[_random.nextInt(_audioTexts.length)];
+    }
+
+    // Progressive humor & depth based on elapsed duration
+    List<String> pool;
+    if (_ticks < 3) {
+      pool = _earlyTexts;
+    } else if (_ticks < 7) {
+      pool = _mediumTexts;
+    } else {
+      pool = _lateTexts;
+    }
+
+    var next = pool[_random.nextInt(pool.length)];
+    while (next == _currentText && pool.length > 1) {
+      next = pool[_random.nextInt(pool.length)];
+    }
+    return next;
   }
 
   @override
   void initState() {
     super.initState();
+    _currentText = widget.attachmentType == 'image'
+        ? 'Reading image…'
+        : widget.attachmentType == 'audio'
+            ? 'Listening to audio…'
+            : 'Thinking…';
+
     _dotsController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     )..repeat();
 
-    _textTimer = Timer.periodic(const Duration(milliseconds: 2200), (t) {
+    _textTimer = Timer.periodic(const Duration(milliseconds: 2400), (t) {
       if (mounted) {
         setState(() {
-          _textIndex = (_textIndex + 1) % _currentTexts.length;
+          _ticks++;
+          _currentText = _pickNextText();
         });
       }
     });
@@ -2744,8 +2797,6 @@ class _AnimatedThinkingIndicatorState extends State<_AnimatedThinkingIndicator>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dotColor = isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB);
-    final currentList = _currentTexts;
-    final currentText = currentList[_textIndex % currentList.length];
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -2797,32 +2848,45 @@ class _AnimatedThinkingIndicatorState extends State<_AnimatedThinkingIndicator>
         ),
         const SizedBox(width: 10),
 
-        // Dynamic Animated Text Transition
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0.0, 0.25),
-                  end: Offset.zero,
-                ).animate(CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOutCubic,
-                )),
-                child: child,
+        // Jitter-Free Cross-Fade Text
+        SizedBox(
+          height: 22,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              layoutBuilder: (currentChild, previousChildren) {
+                return Stack(
+                  alignment: Alignment.centerLeft,
+                  children: <Widget>[
+                    ...previousChildren,
+                    if (currentChild != null) currentChild,
+                  ],
+                );
+              },
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOut,
+                  ),
+                  child: child,
+                );
+              },
+              child: Text(
+                _currentText,
+                key: ValueKey(_currentText),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? const Color(0xFF9AA0B2)
+                      : const Color(0xFF5A6074),
+                  letterSpacing: -0.1,
+                ),
               ),
-            );
-          },
-          child: Text(
-            currentText,
-            key: ValueKey(currentText),
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: isDark ? const Color(0xFF9AA0B2) : const Color(0xFF5A6074),
-              letterSpacing: -0.1,
             ),
           ),
         ),
