@@ -443,11 +443,18 @@ class InferenceEngine {
     int tokenCount = 0;
     _subscription = stream.listen(
       (token) {
-        if (tokenCount == 0) {
-          print('[Inference] ✓ FIRST TOKEN received! Prefill done.');
-        }
         final clean = _sanitizeGemmaGarbage(token);
         if (clean.isEmpty) return;
+        if (tokenCount == 0) {
+          print('[Inference] ✓ FIRST TOKEN received! Prefill done.');
+          if (isReasoning &&
+              !clean.trimLeft().startsWith('<think>') &&
+              !clean.trimLeft().startsWith('<thought>') &&
+              !clean.trimLeft().startsWith('<reasoning>')) {
+            buffer.write('<think>\n');
+            onToken?.call('<think>\n');
+          }
+        }
         buffer.write(clean);
         tokenCount++;
         onToken?.call(clean);
@@ -626,6 +633,13 @@ class InferenceEngine {
 
         if (tokenCount == 0) {
           print('[Inference] LiteRT-LM FIRST TOKEN received');
+          if (isReasoning &&
+              !text.trimLeft().startsWith('<think>') &&
+              !text.trimLeft().startsWith('<thought>') &&
+              !text.trimLeft().startsWith('<reasoning>')) {
+            buffer.write('<think>\n');
+            onToken?.call('<think>\n');
+          }
         }
         _liteConversationHasMessages = true;
         tokenCount++;
