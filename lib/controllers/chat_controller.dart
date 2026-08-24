@@ -760,16 +760,15 @@ class ChatController extends GetxController {
       int? thoughtDurationSeconds;
 
       void trackThoughtTiming() {
-        final parts = splitThoughtTags(streamingResponse.value);
-        if (parts.hasThought && parts.isThinking && thoughtStartedAt == null) {
+        final parts = splitThoughtTags(streamingResponse.value, isStreaming: true);
+        if (parts.hasThought && thoughtStartedAt == null) {
           thoughtStartedAt = DateTime.now();
         }
-        if (parts.hasThought &&
-            !parts.isThinking &&
+        if (!parts.isThinking &&
             thoughtStartedAt != null &&
             thoughtDurationSeconds == null) {
-          thoughtDurationSeconds =
-              DateTime.now().difference(thoughtStartedAt!).inSeconds;
+          final diff = DateTime.now().difference(thoughtStartedAt!).inSeconds;
+          thoughtDurationSeconds = diff > 0 ? diff : 1;
         }
       }
 

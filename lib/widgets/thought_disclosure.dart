@@ -67,9 +67,7 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
       _liveSeconds = 0.0;
       _expandAnimController.forward();
     } else if (!widget.isThinking && oldWidget.isThinking) {
-      _expanded = false;
       _liveSeconds = (widget.durationSeconds ?? _liveSeconds.toInt()).toDouble();
-      _expandAnimController.reverse();
     }
 
     _syncTimer();

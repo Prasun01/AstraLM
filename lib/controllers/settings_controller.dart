@@ -40,7 +40,7 @@ class SettingsController extends GetxController {
   final stabilityModel = 'sd3.5-flash'.obs;
   final nvidiaModel = 'meta/llama-3.1-8b-instruct'.obs;
   final openRouterModel = 'openai/gpt-4o-mini'.obs;
-  final deepSeekModel = 'deepseek-v4-flash'.obs;
+  final deepSeekModel = 'deepseek-reasoner'.obs;
   final customCloudModel = ''.obs;
   final globalSystemPrompt = AppConstants.systemPrompt.obs;
   final nvidiaModels = <String>[].obs;
@@ -175,8 +175,8 @@ class SettingsController extends GetxController {
             defaultValue: 'openai/gpt-4o-mini') ??
         'openai/gpt-4o-mini';
     deepSeekModel.value = _hive.getSetting(AppConstants.keyDeepSeekModel,
-            defaultValue: 'deepseek-v4-flash') ??
-        'deepseek-v4-flash';
+            defaultValue: 'deepseek-reasoner') ??
+        'deepseek-reasoner';
     customCloudModel.value =
         _hive.getSetting(AppConstants.keyCustomCloudModel) ?? '';
     _loadCustomCloudProfiles();

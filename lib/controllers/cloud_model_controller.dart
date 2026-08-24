@@ -52,10 +52,8 @@ class CloudModelController extends GetxController {
       'gpt-4o-mini',
     ],
     'deepseek': [
-      'deepseek-v4-flash',
-      'deepseek-v4-pro',
-      'deepseek-chat',
       'deepseek-reasoner',
+      'deepseek-chat',
     ],
     'google': [
       'gemini-2.5-flash',
