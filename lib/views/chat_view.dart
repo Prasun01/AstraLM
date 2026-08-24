@@ -18,6 +18,7 @@ import '../widgets/attachment_preview.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/thought_disclosure.dart';
 import '../widgets/pressable_scale.dart';
+import '../widgets/canvas_workspace.dart';
 import 'model_view.dart';
 import 'settings_view.dart';
 
@@ -30,14 +31,16 @@ class ChatView extends GetView<ChatController> {
       drawer: _buildSidebarDrawer(context),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _appBar(context),
-      body: Column(
+      body: Stack(
         children: [
-          _modelLoadingBar(context),
-          Expanded(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Obx(() {
+          Column(
+            children: [
+              _modelLoadingBar(context),
+              Expanded(
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Obx(() {
                     if (controller.currentSessionId.value.isEmpty ||
                         controller.messages.isEmpty) {
                       return _emptyState(context);
@@ -126,7 +129,12 @@ class ChatView extends GetView<ChatController> {
           _inputBar(context),
         ],
       ),
-    );
+      const Positioned.fill(
+        child: CanvasWorkspace(),
+      ),
+    ],
+  ),
+);
   }
 
   // ── AppBar ──
@@ -295,6 +303,83 @@ class ChatView extends GetView<ChatController> {
         );
       }),
       actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Center(
+            child: Obx(() {
+              final isCanvasActive =
+                  controller.isCanvasMode.value || controller.isCanvasOpen.value;
+              return Tooltip(
+                message: controller.isCanvasMode.value
+                    ? 'Canvas Mode Active'
+                    : 'Open Canvas Workspace',
+                child: PressableScale(
+                  onTap: () {
+                    if (controller.canvasContent.value.isNotEmpty) {
+                      controller.openCanvas();
+                    } else {
+                      controller.toggleCanvasMode();
+                      Get.snackbar(
+                        controller.isCanvasMode.value
+                            ? 'Canvas Mode Enabled'
+                            : 'Canvas Mode Disabled',
+                        controller.isCanvasMode.value
+                            ? 'AI will write answers directly into the Canvas editor.'
+                            : 'Standard chat mode active.',
+                        snackPosition: SnackPosition.BOTTOM,
+                        duration: const Duration(seconds: 2),
+                        margin: const EdgeInsets.all(12),
+                      );
+                    }
+                  },
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isCanvasActive
+                          ? (isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFE2E8F0))
+                          : (isDark
+                              ? const Color(0xFF141620)
+                              : const Color(0xFFE9EDF5)),
+                      shape: BoxShape.circle,
+                      border: isCanvasActive
+                          ? Border.all(
+                              color: isDark
+                                  ? const Color(0xFF3B82F6)
+                                  : const Color(0xFF2563EB),
+                              width: 1.5,
+                            )
+                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black
+                              .withValues(alpha: isDark ? 0.45 : 0.08),
+                          blurRadius: 12,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.edit_note_rounded,
+                        size: 20,
+                        color: isCanvasActive
+                            ? (isDark
+                                ? const Color(0xFF93C5FD)
+                                : const Color(0xFF1D4ED8))
+                            : (isDark
+                                ? const Color(0xFFE2E6F2)
+                                : const Color(0xFF161822)),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.only(right: 14),
           child: Center(
@@ -816,6 +901,63 @@ class ChatView extends GetView<ChatController> {
                           icon: Icons.add_rounded,
                           enabled: steps < 20,
                           onTap: () => settings.setImageSteps(steps + 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          Obx(() {
+            if (!controller.isCanvasMode.value) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark
+                            ? const Color(0xFF3B82F6).withValues(alpha: 0.4)
+                            : const Color(0xFF2563EB).withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.edit_note_rounded,
+                          size: 16,
+                          color: isDark
+                              ? const Color(0xFF93C5FD)
+                              : const Color(0xFF1D4ED8),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Canvas Mode Active',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? const Color(0xFF93C5FD)
+                                : const Color(0xFF1D4ED8),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => controller.toggleCanvasMode(false),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 14,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                          ),
                         ),
                       ],
                     ),
@@ -1938,6 +2080,32 @@ class _AttachButtonState extends State<_AttachButton> {
                           onTap: () {
                             _overlayController.hide();
                             widget.onFile();
+                          },
+                        ),
+                        _compactItem(
+                          icon: Icons.edit_note_rounded,
+                          title: 'Canvas Mode',
+                          textColor: textColor,
+                          iconColor: iconColor,
+                          onTap: () {
+                            _overlayController.hide();
+                            final chatCtrl = Get.find<ChatController>();
+                            if (chatCtrl.canvasContent.value.isNotEmpty) {
+                              chatCtrl.openCanvas();
+                            } else {
+                              chatCtrl.toggleCanvasMode();
+                              Get.snackbar(
+                                chatCtrl.isCanvasMode.value
+                                    ? 'Canvas Mode Enabled'
+                                    : 'Canvas Mode Disabled',
+                                chatCtrl.isCanvasMode.value
+                                    ? 'AI will write answers directly into the Canvas editor.'
+                                    : 'Standard chat mode active.',
+                                snackPosition: SnackPosition.BOTTOM,
+                                duration: const Duration(seconds: 2),
+                                margin: const EdgeInsets.all(12),
+                              );
+                            }
                           },
                         ),
                       ],

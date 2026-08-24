@@ -79,6 +79,87 @@ class ChatController extends GetxController {
   final imageGenStartTime = Rxn<DateTime>();
   final imageGenDecoding = false.obs;
 
+  // Canvas Mode State (Gemini-style interactive document workspace)
+  final isCanvasMode = false.obs;
+  final isCanvasOpen = false.obs;
+  final canvasTitle = 'Document'.obs;
+  final canvasContent = ''.obs;
+  final isCanvasEditing = false.obs;
+  final canvasTextController = TextEditingController();
+  final canvasHistory = <String>[].obs;
+  final canvasLanguage = 'markdown'.obs;
+
+  void toggleCanvasMode([bool? force]) {
+    if (force != null) {
+      isCanvasMode.value = force;
+    } else {
+      isCanvasMode.value = !isCanvasMode.value;
+    }
+  }
+
+  void openCanvas({String? title, String? content, String? language}) {
+    if (title != null && title.trim().isNotEmpty) canvasTitle.value = title;
+    if (content != null) {
+      canvasContent.value = content;
+      canvasTextController.text = content;
+      if (!canvasHistory.contains(content)) {
+        canvasHistory.add(content);
+      }
+    }
+    if (language != null) canvasLanguage.value = language;
+    isCanvasOpen.value = true;
+  }
+
+  void closeCanvas() {
+    isCanvasOpen.value = false;
+  }
+
+  void updateCanvasContent(String newContent) {
+    canvasContent.value = newContent;
+    canvasTextController.text = newContent;
+    if (canvasHistory.isEmpty || canvasHistory.last != newContent) {
+      canvasHistory.add(newContent);
+    }
+  }
+
+  void undoCanvas() {
+    if (canvasHistory.length > 1) {
+      canvasHistory.removeLast();
+      final prev = canvasHistory.last;
+      canvasContent.value = prev;
+      canvasTextController.text = prev;
+    }
+  }
+
+  void requestCanvasRevision(String instruction) {
+    final currentDoc = canvasContent.value;
+    final prompt = '$instruction\n\nHere is the current canvas document to update:\n```${canvasLanguage.value}\n$currentDoc\n```';
+    textController.text = prompt;
+    sendMessage();
+  }
+
+  String _deriveCanvasTitle(String text) {
+    var cleaned = text.trim();
+    if (cleaned.toLowerCase().startsWith('write a ') ||
+        cleaned.toLowerCase().startsWith('write an ') ||
+        cleaned.toLowerCase().startsWith('create a ') ||
+        cleaned.toLowerCase().startsWith('draft a ')) {
+      final firstSpace = cleaned.indexOf(' ');
+      if (firstSpace >= 0) {
+        cleaned = cleaned.substring(firstSpace + 1).trim();
+        final secondSpace = cleaned.indexOf(' ');
+        if (secondSpace >= 0) {
+          cleaned = cleaned.substring(secondSpace + 1).trim();
+        }
+      }
+    }
+    if (cleaned.length > 30) {
+      cleaned = '${cleaned.substring(0, 30).trim()}...';
+    }
+    if (cleaned.isEmpty) return 'Document';
+    return cleaned;
+  }
+
   // Speech-to-text
   final isListening = false.obs;
   final sttAvailable = false.obs;
@@ -562,6 +643,14 @@ class ChatController extends GetxController {
     streamingAttachmentType.value =
         (imagePath != null || fileType == 'audio') ? fileType : null;
     streamingResponse.value = '';
+
+    if (isCanvasMode.value) {
+      isCanvasOpen.value = true;
+      canvasTitle.value = _deriveCanvasTitle(visibleText);
+      canvasContent.value = '';
+      canvasTextController.clear();
+    }
+
     _followStreaming = true;
     _scrollToBottom(force: true);
 
@@ -637,7 +726,7 @@ class ChatController extends GetxController {
           final pngBytes = await localImage.generateImage(
             prompt: text,
             onProgress: (step, total) {
-              print('[ChatController] Progress callback: step=$step, total=$total');
+              if (generationId != _generationSerial) return;
               imageGenStep.value = step;
               imageGenTotal.value = total;
               if (step >= total && total > 0) {
@@ -698,6 +787,11 @@ class ChatController extends GetxController {
               // Real-time streaming update
               streamingResponse.value += token;
               trackThoughtTiming();
+              if (isCanvasMode.value) {
+                final clean = splitThoughtTags(streamingResponse.value).answer;
+                canvasContent.value = clean;
+                canvasTextController.text = clean;
+              }
               _scrollToBottom();
             },
           );
@@ -714,6 +808,11 @@ class ChatController extends GetxController {
           onToken: (token) {
             streamingResponse.value += token;
             trackThoughtTiming();
+            if (isCanvasMode.value) {
+              final clean = splitThoughtTags(streamingResponse.value).answer;
+              canvasContent.value = clean;
+              canvasTextController.text = clean;
+            }
             _scrollToBottom();
           },
         );
@@ -737,6 +836,11 @@ class ChatController extends GetxController {
       imageGenTotal.value = 0;
       imageGenDecoding.value = false;
 
+      if (isCanvasMode.value) {
+        final finalDoc = splitThoughtTags(rawResponse).answer;
+        updateCanvasContent(finalDoc);
+      }
+
       String? outImageBase64;
       if (rawResponse.startsWith('[IMAGE_BASE64]')) {
         outImageBase64 = rawResponse.substring('[IMAGE_BASE64]'.length);
@@ -755,6 +859,8 @@ class ChatController extends GetxController {
         role: 'assistant',
         content: rawResponse,
         imageBase64: outImageBase64,
+        isCanvas: isCanvasMode.value,
+        canvasTitle: isCanvasMode.value ? canvasTitle.value : null,
         tokensPerSec: tps,
         thoughtDurationSeconds: thoughtDurationSeconds,
         imageGenDurationMs: genDurationMs,
@@ -903,9 +1009,15 @@ class ChatController extends GetxController {
     final modelName = settings.inferenceMode.value == 'local'
         ? inference.loadedModelName.value
         : settings.selectedCloudModelName;
-    return settings.effectiveSystemPromptForModel(
+    var prompt = settings.effectiveSystemPromptForModel(
       modelName,
     );
+    if (isCanvasMode.value) {
+      final canvasInstruction =
+          'CANVAS WORKSPACE MODE: You are generating or updating content directly into an interactive document/code Canvas editor. Focus on delivering clean, complete, well-formatted markdown or code without conversational preambles so that the document is immediately usable.';
+      prompt = prompt.isEmpty ? canvasInstruction : '$prompt\n\n$canvasInstruction';
+    }
+    return prompt;
   }
 
   String _attachmentTypeForExtension(String extension) {
