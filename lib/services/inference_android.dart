@@ -103,40 +103,15 @@ class InferenceEngine {
       print('[Inference] GPU detection failed: $e — CPU fallback');
     }
 
-    // ── Thread Tuning ──
-    int threads;
-    if (gpuLayers > 0) {
-      threads = deviceTier == 'ultra'
-          ? 4
-          : deviceTier == 'high'
-              ? 4
-              : 4;
-    } else {
-      threads = deviceTier == 'ultra'
-          ? 6
-          : deviceTier == 'high'
-              ? 5
-              : deviceTier == 'mid'
-                  ? 4
-                  : 3;
-    }
-
-    // Google Tensor SoC (Pixel 6/7/8) has known Q4_K_M dequant bugs
-    // that corrupt logits at >1 thread on Gemma models. Force single-threaded
-    // to eliminate KV cache races in the quantization dot-product path.
-    final modelName = modelPath.toLowerCase();
-    if (isTensorSoC && modelName.contains('gemma')) {
-      threads = 1;
-      print(
-          '[Inference] Tensor SoC + Gemma detected — forcing single-threaded inference');
-    }
+    // ── Thread Tuning (Rock-solid 4 threads for mobile ARM big cores) ──
+    final threads = deviceTier == 'low' ? 3 : 4;
 
     // ── Load Progress ──
     await _loadProgressSub?.cancel();
     _loadProgressSub = null;
     try {
       _loadProgressSub = _controller!.loadProgress.listen((progress) {
-        onProgress?.call(_normalizeProgress(progress));
+        onProgress?.call(progress);
       });
     } catch (_) {}
 
