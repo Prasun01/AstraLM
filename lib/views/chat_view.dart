@@ -1741,6 +1741,47 @@ class ChatView extends GetView<ChatController> {
                         ),
                         const SizedBox(height: 6),
 
+                        // Reasoning Effort Selector Bar
+                        Obx(() {
+                          final currentEffort = settings.reasoningEffort.value;
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 6),
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1C1E26) : const Color(0xFFE8EBF2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                _buildReasoningTab(
+                                  effort: 'none',
+                                  label: 'Direct',
+                                  icon: PhosphorIconsBold.lightning,
+                                  isSelected: currentEffort == 'none',
+                                  isDark: isDark,
+                                  onTap: () => settings.setReasoningEffort('none'),
+                                ),
+                                _buildReasoningTab(
+                                  effort: 'standard',
+                                  label: 'Reason',
+                                  icon: PhosphorIconsBold.brain,
+                                  isSelected: currentEffort == 'standard',
+                                  isDark: isDark,
+                                  onTap: () => settings.setReasoningEffort('standard'),
+                                ),
+                                _buildReasoningTab(
+                                  effort: 'deep',
+                                  label: 'Deep',
+                                  icon: PhosphorIconsBold.sparkle,
+                                  isSelected: currentEffort == 'deep',
+                                  isDark: isDark,
+                                  onTap: () => settings.setReasoningEffort('deep'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+
                         if (!hasAny)
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1946,6 +1987,62 @@ class ChatView extends GetView<ChatController> {
           child: FadeTransition(opacity: curve, child: child),
         );
       },
+    );
+  }
+
+  Widget _buildReasoningTab({
+    required String effort,
+    required String label,
+    required PhosphorIconData icon,
+    required bool isSelected,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (isDark ? const Color(0xFF2E3342) : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    )
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              PhosphorIcon(
+                icon,
+                size: 11,
+                color: isSelected
+                    ? (isDark ? Colors.white : Colors.black)
+                    : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284)),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 10.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected
+                      ? (isDark ? Colors.white : Colors.black)
+                      : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

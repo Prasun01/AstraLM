@@ -2670,7 +2670,11 @@ class ModelView extends GetView<ModelController> {
                           FilledButton.tonal(
                             onPressed: isActive || disableActions
                                 ? null
-                                : () => controller.loadModel(model.filename),
+                                : () async {
+                                    await Get.find<SettingsController>()
+                                        .setInferenceMode('local');
+                                    await controller.loadModel(model.filename);
+                                  },
                             style: FilledButton.styleFrom(
                               backgroundColor: isActive
                                   ? null
@@ -2974,13 +2978,15 @@ class ModelView extends GetView<ModelController> {
                   ),
                   onPressed: isDownloading
                       ? null
-                      : () {
+                      : () async {
                           Navigator.pop(ctx);
                           if (isDownloaded) {
                             if (isActive) {
-                              controller.unloadModel();
+                              await controller.unloadModel();
                             } else {
-                              controller.loadModel(model.filename);
+                              await Get.find<SettingsController>()
+                                  .setInferenceMode('local');
+                              await controller.loadModel(model.filename);
                             }
                           } else {
                             _confirmDownload(context, model);

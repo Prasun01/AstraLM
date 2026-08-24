@@ -1144,6 +1144,18 @@ class ChatController extends GetxController {
           'CANVAS WORKSPACE MODE: You are generating or updating content directly into an interactive document/code Canvas editor. Focus on delivering clean, complete, well-formatted markdown or code without conversational preambles so that the document is immediately usable.';
       prompt = prompt.isEmpty ? canvasInstruction : '$prompt\n\n$canvasInstruction';
     }
+
+    final effort = settings.reasoningEffort.value;
+    if (effort == 'none') {
+      final noReasoningInstruction =
+          'DIRECT RESPONSE DIRECTIVE: Respond directly, accurately, and concisely. Do NOT generate internal reasoning or thought blocks. Provide the direct answer immediately.';
+      prompt = prompt.isEmpty ? noReasoningInstruction : '$prompt\n\n$noReasoningInstruction';
+    } else if (effort == 'deep') {
+      final deepReasoningInstruction =
+          'DEEP REASONING DIRECTIVE: Perform exhaustive, step-by-step reasoning inside <think> tags. Explore assumptions, multiple angles, and verify edge cases thoroughly before writing your final answer.';
+      prompt = prompt.isEmpty ? deepReasoningInstruction : '$prompt\n\n$deepReasoningInstruction';
+    }
+
     return prompt;
   }
 

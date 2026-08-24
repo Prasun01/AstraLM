@@ -56,6 +56,7 @@ class SettingsController extends GetxController {
   final imageGenGpuGuardMb = AppConstants.defaultImageGenGpuGuardMb.obs;
   final imageGenSize = AppConstants.defaultImageGenSize.obs;
   final fontScale = AppConstants.defaultFontScale.obs;
+  final reasoningEffort = 'standard'.obs; // 'none', 'standard', 'deep'
   final appVersion = ''.obs;
 
   // Persistent text controllers for settings fields
@@ -198,6 +199,9 @@ class SettingsController extends GetxController {
           defaultValue: AppConstants.defaultLiteRtPerformanceMode,
         ) ??
         AppConstants.defaultLiteRtPerformanceMode;
+    reasoningEffort.value = _hive.getSetting('reasoning_effort',
+            defaultValue: 'standard') ??
+        'standard';
     imageSteps.value = _hive.getSetting(AppConstants.keyImageSteps,
             defaultValue: AppConstants.defaultImageSteps) ??
         AppConstants.defaultImageSteps;
@@ -337,6 +341,11 @@ class SettingsController extends GetxController {
   Future<void> setCloudProvider(String provider) async {
     cloudProvider.value = provider;
     await _hive.setSetting(AppConstants.keyCloudProvider, provider);
+  }
+
+  Future<void> setReasoningEffort(String effort) async {
+    reasoningEffort.value = effort;
+    await _hive.setSetting('reasoning_effort', effort);
   }
 
   Future<void> setApiKey(String provider, String key) async {

@@ -1106,7 +1106,53 @@ Widget _buildLiteRtCard(BuildContext context, SettingsController controller) {
 }
 
 Widget _buildModelParametersCard(BuildContext context, SettingsController controller) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
   return _monoGroupedCard(context, children: [
+    Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              PhosphorIcon(
+                PhosphorIconsBold.brain,
+                size: 17,
+                color: isDark ? const Color(0xFFBAC0CC) : const Color(0xFF5A6070),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Reasoning Effort',
+                style: GoogleFonts.manrope(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Obx(() {
+            final current = controller.reasoningEffort.value;
+            return Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1B1E28) : const Color(0xFFE8ECF4),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  _effortOption('none', 'Direct (Off)', PhosphorIconsBold.lightning, current == 'none', isDark, () => controller.setReasoningEffort('none')),
+                  _effortOption('standard', 'Standard', PhosphorIconsBold.brain, current == 'standard', isDark, () => controller.setReasoningEffort('standard')),
+                  _effortOption('deep', 'Deep', PhosphorIconsBold.sparkle, current == 'deep', isDark, () => controller.setReasoningEffort('deep')),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    ),
+    const Divider(height: 1),
     _modelParameterSlider(
       context,
       label: 'Temperature',
@@ -1409,5 +1455,61 @@ Widget _modelParameterSlider(
         },
       ),
     ]),
+  );
+}
+
+Widget _effortOption(
+  String effort,
+  String label,
+  PhosphorIconData icon,
+  bool isSelected,
+  bool isDark,
+  VoidCallback onTap,
+) {
+  return Expanded(
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark ? const Color(0xFF2E3342) : Colors.white)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            PhosphorIcon(
+              icon,
+              size: 13,
+              color: isSelected
+                  ? (isDark ? Colors.white : Colors.black)
+                  : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284)),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected
+                    ? (isDark ? Colors.white : Colors.black)
+                    : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
   );
 }

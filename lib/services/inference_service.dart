@@ -105,6 +105,7 @@ class InferenceService extends GetxService {
           isLiteRt && !forceLiteRtCpu && liteRtMode != 'cpu_safe';
 
       await unloadModel();
+      await Future.delayed(const Duration(milliseconds: 500));
       isLoadingModel.value = true;
       loadingModelName.value = modelName ?? modelPath.split('/').last;
       modelLoadProgress.value = 0.0;

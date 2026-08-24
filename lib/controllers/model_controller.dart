@@ -571,11 +571,11 @@ class ModelController extends GetxController {
     // Proactively unload any currently active model first to completely free RAM/VRAM
     if (_inference.isModelLoaded.value && _inference.loadedModelName.value != filename) {
       await _inference.unloadModel();
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 500));
     }
     if (_localImage.isModelLoaded.value && _localImage.loadedModelName.value != filename) {
       await _localImage.unloadModel();
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 500));
     }
     final fileBytes = await _modelFileBytes(filename, path, model);
     if (model != null && _isIncompleteCatalogFile(model, fileBytes)) {
