@@ -111,12 +111,12 @@ class ChatView extends GetView<ChatController> {
                     ),
                   ),
                 ),
-                // Spread bottom gradient fade behind floating input bar
+                // Reduced bottom gradient fade just above floating input bar
                 Positioned(
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  height: 64,
+                  height: 24,
                   child: IgnorePointer(
                     child: Container(
                       decoration: BoxDecoration(
@@ -124,17 +124,11 @@ class ChatView extends GetView<ChatController> {
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
                           colors: [
-                            Theme.of(context)
-                                .scaffoldBackgroundColor
-                                .withValues(alpha: 0.95),
-                            Theme.of(context)
-                                .scaffoldBackgroundColor
-                                .withValues(alpha: 0.5),
+                            Theme.of(context).scaffoldBackgroundColor,
                             Theme.of(context)
                                 .scaffoldBackgroundColor
                                 .withValues(alpha: 0.0),
                           ],
-                          stops: const [0.0, 0.5, 1.0],
                         ),
                       ),
                     ),
@@ -2713,7 +2707,6 @@ class _AnimatedThinkingIndicatorState extends State<_AnimatedThinkingIndicator>
 
   static const List<String> _lateTexts = [
     'bro, your cpu is slow 💀',
-    'CPU fans spinning at 100% 💨',
     'Silicon is getting toasty 🔥',
     'Sweating through these tokens…',
     'Fighting for every single token…',
