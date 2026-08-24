@@ -581,17 +581,83 @@ class ModelController extends GetxController {
       );
       if (_inference.isModelLoaded.value) {
         await _settings.setInferenceMode('local');
-        Get.snackbar(
-          'Model Loaded',
-          result,
+        final isDark = Get.isDarkMode;
+        Get.rawSnackbar(
           snackPosition: SnackPosition.TOP,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          borderRadius: 14,
+          backgroundColor: isDark ? const Color(0xFF161822) : const Color(0xFFFFFFFF),
+          boxShadows: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          icon: Padding(
+            padding: const EdgeInsets.only(left: 14, right: 10),
+            child: PhosphorIcon(
+              PhosphorIconsBold.checkCircle,
+              color: const Color(0xFF34C759),
+              size: 22,
+            ),
+          ),
+          titleText: Text(
+            'Model Loaded',
+            style: GoogleFonts.manrope(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : const Color(0xFF0E1017),
+            ),
+          ),
+          messageText: Text(
+            result,
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF555E72),
+            ),
+          ),
           duration: const Duration(seconds: 2),
         );
       } else {
-        Get.snackbar(
-          'Failed to load model',
-          result,
+        final isDark = Get.isDarkMode;
+        Get.rawSnackbar(
           snackPosition: SnackPosition.TOP,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          borderRadius: 14,
+          backgroundColor: isDark ? const Color(0xFF161822) : const Color(0xFFFFFFFF),
+          boxShadows: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          icon: Padding(
+            padding: const EdgeInsets.only(left: 14, right: 10),
+            child: PhosphorIcon(
+              PhosphorIconsBold.xCircle,
+              color: const Color(0xFFFF453A),
+              size: 22,
+            ),
+          ),
+          titleText: Text(
+            'Model Load Failed',
+            style: GoogleFonts.manrope(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : const Color(0xFF0E1017),
+            ),
+          ),
+          messageText: Text(
+            result,
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF555E72),
+            ),
+          ),
           duration: const Duration(seconds: 4),
         );
       }

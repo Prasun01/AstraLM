@@ -149,10 +149,10 @@ class DeviceInfoService extends GetxService {
     String modelTier;
 
     if (isSmall) {
-      modelTier = '1.5B–2B Ultra-Fast';
+      modelTier = '1.5B–2.6B Ultra-Fast';
       if (ram <= 4) {
-        contextSize = 2048;
-        maxTokens = isThinking ? 1280 : 512;
+        contextSize = 1536;
+        maxTokens = isThinking ? 1024 : 512;
       } else if (ram <= 6) {
         contextSize = 2048;
         maxTokens = isThinking ? 2048 : 1024;
