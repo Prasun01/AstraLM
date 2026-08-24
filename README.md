@@ -7,7 +7,7 @@
 [![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device-blueviolet?style=for-the-badge)](PRIVACY_POLICY.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-A high-performance, private, on-device AI chat client built with Flutter. AstraLM runs Large Language Models (LLMs) and Vision models 100% locally on device hardware (CPU & GPU) with zero data leaving your phone.
+A high-performance, private, on-device AI chat client built with Flutter. AstraLM runs Large Language Models (LLMs) and Vision models 100% locally on device hardware (CPU & GPU) with zero data leaving your phone.(until you choose to use cloud model which is completely OPTIONAL)
 
 ---
 
@@ -181,6 +181,11 @@ flutter build web --release
 ```
 
 ---
+### 📥 Installation & Updates
+
+    - **New Users:** Download `app-release.apk` from [Releases](https://github.com/Prasun01/AstraLM/releases) and install.          
+    - **Upgrading from v1.x:** Please **uninstall your previous app first**, then install the v2.0.0 APK.
+for v2.x.x
 
 ## License
 
