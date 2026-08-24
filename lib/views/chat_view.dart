@@ -22,7 +22,6 @@ import '../widgets/canvas_workspace.dart';
 import 'model_view.dart';
 import 'settings_view.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import '../core/icons.dart';
 
 class ChatView extends GetView<ChatController> {
   const ChatView({super.key});
@@ -2253,11 +2252,7 @@ class _AttachButtonState extends State<_AttachButton> {
                           onTap: () {
                             _overlayController.hide();
                             final chatCtrl = Get.find<ChatController>();
-                            if (chatCtrl.canvasContent.value.isNotEmpty) {
-                              chatCtrl.openCanvas();
-                            } else {
-                              chatCtrl.toggleCanvasMode();
-                            }
+                            chatCtrl.toggleCanvasMode(true);
                           },
                         ),
                       ],

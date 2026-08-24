@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -83,6 +85,9 @@ String _generateFullHtmlDocument(String content, bool isDark) {
       background-color: $bg;
       color: $fg;
       word-wrap: break-word;
+      -webkit-touch-callout: default;
+      -webkit-user-select: auto;
+      user-select: auto;
     }
   </style>
 </head>
@@ -145,6 +150,26 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
     }
   }
 
+  Widget _wrapVerticalFade(Widget child) {
+    return ShaderMask(
+      shaderCallback: (Rect bounds) {
+        return const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.transparent,
+            Colors.black,
+            Colors.black,
+            Colors.transparent,
+          ],
+          stops: [0.0, 0.08, 0.92, 1.0],
+        ).createShader(bounds);
+      },
+      blendMode: BlendMode.dstIn,
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<ChatController>();
@@ -163,34 +188,18 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
           bottom: false,
           child: Stack(
             children: [
-              // ── Main Content Area with Top & Bottom Fade ──
+              // ── Main Content Area ──
               Positioned.fill(
-                child: ShaderMask(
-                  shaderCallback: (Rect bounds) {
-                    return const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black,
-                        Colors.black,
-                        Colors.transparent,
-                      ],
-                      stops: [0.0, 0.08, 0.92, 1.0],
-                    ).createShader(bounds);
-                  },
-                  blendMode: BlendMode.dstIn,
-                  child: isEditing
-                      ? _buildEditor(controller, isDark)
-                      : TabBarView(
-                          controller: _tabController,
-                          physics: const BouncingScrollPhysics(),
-                          children: [
-                            _buildCodeView(context, content, isDark),
-                            _buildPreviewView(context, content, isHtml, isDark),
-                          ],
-                        ),
-                ),
+                child: isEditing
+                    ? _wrapVerticalFade(_buildEditor(controller, isDark))
+                    : TabBarView(
+                        controller: _tabController,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: [
+                          _wrapVerticalFade(_buildCodeView(context, content, isDark)),
+                          _buildPreviewView(context, content, isHtml, isDark),
+                        ],
+                      ),
               ),
 
               // ── Floating Top Actions Bar (No Grey Outlines) ──
@@ -438,7 +447,7 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
     );
   }
 
-  /// Live Web / Markdown Preview View
+  /// Live Web / Markdown Preview View with 0ms native touch response
   Widget _buildPreviewView(
       BuildContext context, String content, bool isHtml, bool isDark) {
     if (content.trim().isEmpty) return _empty(isDark);
@@ -448,64 +457,67 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
 
       return Padding(
         padding: const EdgeInsets.fromLTRB(0, 56, 0, 72),
-        child: ClipRect(
-          child: InAppWebView(
-            key: const ValueKey('canvas_inappwebview_persistent'),
-            initialData: InAppWebViewInitialData(
-              data: fullHtml,
-              baseUrl: WebUri('about:blank'),
-              mimeType: 'text/html',
-              encoding: 'utf-8',
-            ),
-            initialSettings: InAppWebViewSettings(
-              javaScriptEnabled: true,
-              javaScriptCanOpenWindowsAutomatically: true,
-              domStorageEnabled: true,
-              databaseEnabled: true,
-              allowFileAccessFromFileURLs: true,
-              allowUniversalAccessFromFileURLs: true,
-              allowContentAccess: true,
-              allowFileAccess: true,
-              mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
-              hardwareAcceleration: true,
-              useHybridComposition: true,
-              transparentBackground: false,
-              supportZoom: true,
-              builtInZoomControls: true,
-              displayZoomControls: false,
-              verticalScrollBarEnabled: true,
-              horizontalScrollBarEnabled: true,
-              overScrollMode: OverScrollMode.IF_CONTENT_SCROLLS,
-            ),
-            onWebViewCreated: (c) {
-              _webController = c;
-              _lastLoadedHtml = fullHtml;
-            },
-            onLoadStop: (c, url) {
-              if (isDark) {
-                c.evaluateJavascript(source: '''
-                  if (!document.getElementById('_dark_style')) {
-                    var s = document.createElement('style');
-                    s.id = '_dark_style';
-                    s.textContent = 'html,body{background:#0A0C11!important;color:#E2E6F2!important}';
-                    document.head.appendChild(s);
-                  }
-                ''');
-              }
-            },
+        child: InAppWebView(
+          key: const ValueKey('canvas_inappwebview_persistent'),
+          initialData: InAppWebViewInitialData(
+            data: fullHtml,
+            baseUrl: WebUri('about:blank'),
+            mimeType: 'text/html',
+            encoding: 'utf-8',
           ),
+          gestureRecognizers: {
+            Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+          },
+          initialSettings: InAppWebViewSettings(
+            javaScriptEnabled: true,
+            javaScriptCanOpenWindowsAutomatically: true,
+            domStorageEnabled: true,
+            databaseEnabled: true,
+            allowFileAccessFromFileURLs: true,
+            allowUniversalAccessFromFileURLs: true,
+            allowContentAccess: true,
+            allowFileAccess: true,
+            mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+            hardwareAcceleration: true,
+            useHybridComposition: true,
+            transparentBackground: false,
+            supportZoom: true,
+            builtInZoomControls: false,
+            displayZoomControls: false,
+            verticalScrollBarEnabled: true,
+            horizontalScrollBarEnabled: true,
+            overScrollMode: OverScrollMode.IF_CONTENT_SCROLLS,
+          ),
+          onWebViewCreated: (c) {
+            _webController = c;
+            _lastLoadedHtml = fullHtml;
+          },
+          onLoadStop: (c, url) {
+            if (isDark) {
+              c.evaluateJavascript(source: '''
+                if (!document.getElementById('_dark_style')) {
+                  var s = document.createElement('style');
+                  s.id = '_dark_style';
+                  s.textContent = 'html,body{background:#0A0C11!important;color:#E2E6F2!important}';
+                  document.head.appendChild(s);
+                }
+              ''');
+            }
+          },
         ),
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 68, 20, 84),
-      physics: const BouncingScrollPhysics(),
-      child: MarkdownBody(
-        data: content,
-        selectable: true,
-        builders: {'code': CodeBlockBuilder(isDark: isDark)},
-        styleSheet: _canvasMarkdownStyle(context, isDark),
+    return _wrapVerticalFade(
+      SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 68, 20, 84),
+        physics: const BouncingScrollPhysics(),
+        child: MarkdownBody(
+          data: content,
+          selectable: true,
+          builders: {'code': CodeBlockBuilder(isDark: isDark)},
+          styleSheet: _canvasMarkdownStyle(context, isDark),
+        ),
       ),
     );
   }

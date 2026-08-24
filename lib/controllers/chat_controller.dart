@@ -110,8 +110,23 @@ class ChatController extends GetxController {
     }
   }
 
+  void openNewCanvas() {
+    canvasTitle.value = 'New Canvas';
+    canvasContent.value = '';
+    canvasTextController.clear();
+    canvasHistory.clear();
+    isCanvasEditing.value = true;
+    isCanvasOpen.value = true;
+    isCanvasMode.value = true;
+  }
+
   void openCanvas({String? title, String? content, String? language}) {
-    if (title != null && title.trim().isNotEmpty) canvasTitle.value = title;
+    if (title != null && title.trim().isNotEmpty) {
+      canvasTitle.value = title;
+    } else if (content == null) {
+      canvasTitle.value = 'New Canvas';
+    }
+
     if (content != null) {
       final codeOnly = _extractCodeOnly(content);
       canvasContent.value = codeOnly;
@@ -119,9 +134,15 @@ class ChatController extends GetxController {
       if (!canvasHistory.contains(codeOnly)) {
         canvasHistory.add(codeOnly);
       }
+      isCanvasEditing.value = false;
+    } else {
+      canvasContent.value = '';
+      canvasTextController.clear();
+      canvasHistory.clear();
+      isCanvasEditing.value = true;
     }
+
     if (language != null) canvasLanguage.value = language;
-    isCanvasEditing.value = false; // Always default to read/view format
     isCanvasOpen.value = true;
   }
 
