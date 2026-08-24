@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io' show Platform, Directory;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_litert_lm/flutter_litert_lm.dart';
+import 'package:get/get.dart';
 import 'package:llama_flutter_android/llama_flutter_android.dart';
+import 'hive_service.dart';
 
 /// Whether the current platform supports local inference.
 bool get supportsLocalInference => Platform.isAndroid || Platform.isIOS;
@@ -180,7 +182,8 @@ class InferenceEngine {
     _controller = null;
 
     final tempDir = await getTemporaryDirectory();
-    final cacheDir = Directory('${tempDir.path}/litert_cache');
+    final safeHash = modelPath.hashCode.abs();
+    final cacheDir = Directory('${tempDir.path}/litert_cache_$safeHash');
     final backend = forceCpu || performanceMode == 'cpu_safe'
         ? LiteLmBackend.cpu
         : LiteLmBackend.gpu;
@@ -447,7 +450,11 @@ class InferenceEngine {
         if (clean.isEmpty) return;
         if (tokenCount == 0) {
           print('[Inference] ✓ FIRST TOKEN received! Prefill done.');
+          final effort = Get.find<HiveService>()
+              .getSetting<String>('reasoning_effort', defaultValue: 'standard') ??
+              'standard';
           if (isReasoning &&
+              effort != 'none' &&
               !clean.trimLeft().startsWith('<think>') &&
               !clean.trimLeft().startsWith('<thought>') &&
               !clean.trimLeft().startsWith('<reasoning>')) {
@@ -633,7 +640,11 @@ class InferenceEngine {
 
         if (tokenCount == 0) {
           print('[Inference] LiteRT-LM FIRST TOKEN received');
+          final effort = Get.find<HiveService>()
+              .getSetting<String>('reasoning_effort', defaultValue: 'standard') ??
+              'standard';
           if (isReasoning &&
+              effort != 'none' &&
               !text.trimLeft().startsWith('<think>') &&
               !text.trimLeft().startsWith('<thought>') &&
               !text.trimLeft().startsWith('<reasoning>')) {

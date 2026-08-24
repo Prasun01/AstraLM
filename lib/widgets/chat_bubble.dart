@@ -3,6 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/chat_controller.dart';
+import '../controllers/settings_controller.dart';
 import '../models/chat_message.dart';
 import '../utils/thought_parser.dart';
 import 'attachment_preview.dart';
@@ -26,9 +27,11 @@ class ChatBubble extends StatelessWidget {
     final visibleContent = message.fileName == null
         ? message.content
         : message.content.split('\n\nAttached file:').first;
+    final suppress = Get.find<SettingsController>().reasoningEffort.value == 'none';
     final thoughtParts = isUser
         ? const ThoughtParts(thought: '', answer: '', isThinking: false)
-        : splitThoughtTags(_cleanAssistantText(visibleContent));
+        : splitThoughtTags(_cleanAssistantText(visibleContent),
+            suppressThoughts: suppress);
     final answerContent = isUser ? visibleContent : thoughtParts.answer.trim();
 
     return TweenAnimationBuilder<double>(

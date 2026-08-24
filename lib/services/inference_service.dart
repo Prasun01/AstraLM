@@ -252,7 +252,9 @@ class InferenceService extends GetxService {
     _engine = null;
     if (engine != null) {
       await stopGeneration();
-      await engine.dispose();
+      try {
+        await engine.dispose();
+      } catch (_) {}
     }
     isModelLoaded.value = false;
     isVisionLoaded.value = false;
@@ -265,6 +267,7 @@ class InferenceService extends GetxService {
     gpuName.value = '';
     contextTokensUsed.value = 0;
     contextTokensTotal.value = 0;
+    await Future.delayed(const Duration(milliseconds: 600));
   }
 
   Future<String> generate({

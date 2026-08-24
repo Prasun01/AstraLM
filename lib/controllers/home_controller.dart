@@ -34,6 +34,18 @@ class HomeController extends GetxController {
     final hive = Get.find<HiveService>();
     final downloadService = Get.find<DownloadService>();
 
+    // Check if the previous model load crashed the app on startup
+    final pendingCrashModel =
+        hive.getSetting<String>('startup_model_load_pending');
+    if (pendingCrashModel != null && pendingCrashModel.isNotEmpty) {
+      print('[Startup] Detected crash on last model load ($pendingCrashModel). Resetting local model.');
+      await hive.setSetting(AppConstants.keyLocalModelPath, '');
+      await hive.setSetting(AppConstants.keyLocalModelName, '');
+      await hive.setSetting(AppConstants.keyLocalModelRuntime, '');
+      await hive.setSetting('startup_model_load_pending', '');
+      return;
+    }
+
     // Check text model
     final textName = hive.getSetting<String>(AppConstants.keyLocalModelName);
     final textPath = hive.getSetting<String>(AppConstants.keyLocalModelPath);
@@ -53,25 +65,47 @@ class HomeController extends GetxController {
         imagePath.isNotEmpty &&
         await downloadService.isModelDownloaded(imageName);
 
-    if (hasText) {
-      final inf = Get.find<InferenceService>();
-      if (!inf.isModelLoaded.value && !inf.isLoadingModel.value) {
-        inf.loadModel(
-          textPath,
-          modelName: textName,
-          modelRuntime: textRuntime,
-        );
+    // Load models safely in the background after UI renders
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(milliseconds: 600));
+
+      if (hasText) {
+        final inf = Get.find<InferenceService>();
+        if (!inf.isModelLoaded.value && !inf.isLoadingModel.value) {
+          try {
+            await hive.setSetting('startup_model_load_pending', textName);
+            final result = await inf.loadModel(
+              textPath,
+              modelName: textName,
+              modelRuntime: textRuntime,
+            );
+            if (result.startsWith('ERROR:')) {
+              await hive.setSetting(AppConstants.keyLocalModelPath, '');
+              await hive.setSetting(AppConstants.keyLocalModelName, '');
+            }
+          } catch (e) {
+            print('[Startup] Text model auto-load failed: $e');
+            await hive.setSetting(AppConstants.keyLocalModelPath, '');
+            await hive.setSetting(AppConstants.keyLocalModelName, '');
+          } finally {
+            await hive.setSetting('startup_model_load_pending', '');
+          }
+        }
       }
-    }
-    if (hasImage) {
-      final localImage = Get.find<LocalImageService>();
-      if (!localImage.isModelLoaded.value && !localImage.isLoadingModel.value) {
-        localImage.loadModel(
-          imagePath,
-          modelName: imageName,
-        );
+
+      if (hasImage) {
+        final localImage = Get.find<LocalImageService>();
+        if (!localImage.isModelLoaded.value && !localImage.isLoadingModel.value) {
+          try {
+            await localImage.loadModel(
+              imagePath,
+              modelName: imageName,
+            );
+          } catch (e) {
+            print('[Startup] Image model auto-load failed: $e');
+          }
+        }
       }
-    }
-    return;
+    });
   }
 }

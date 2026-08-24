@@ -13,11 +13,45 @@ class ThoughtParts {
   bool get hasAnswer => answer.trim().isNotEmpty;
 }
 
-ThoughtParts splitThoughtTags(String text, {bool isStreaming = false}) {
+ThoughtParts splitThoughtTags(
+  String text, {
+  bool isStreaming = false,
+  bool suppressThoughts = false,
+}) {
   final startExp = RegExp(r'<(think|thought|reasoning)>', caseSensitive: false);
   final endExp = RegExp(r'</(think|thought|reasoning)>', caseSensitive: false);
   final start = startExp.firstMatch(text);
   final end = endExp.firstMatch(text);
+
+  if (suppressThoughts) {
+    if (start != null) {
+      final before = text.substring(0, start.start);
+      final afterStart = text.substring(start.end);
+      final endAfter = endExp.firstMatch(afterStart);
+      if (endAfter != null) {
+        final after = afterStart.substring(endAfter.end);
+        return ThoughtParts(
+          thought: '',
+          answer: '$before$after'.trim(),
+          isThinking: false,
+        );
+      }
+      return ThoughtParts(
+        thought: '',
+        answer: isStreaming ? '' : before.trim(),
+        isThinking: isStreaming,
+      );
+    }
+    if (end != null) {
+      final answer = text.substring(end.end).trim();
+      return ThoughtParts(
+        thought: '',
+        answer: answer,
+        isThinking: false,
+      );
+    }
+    return ThoughtParts(thought: '', answer: text, isThinking: false);
+  }
 
   if (start != null) {
     final before = text.substring(0, start.start);
