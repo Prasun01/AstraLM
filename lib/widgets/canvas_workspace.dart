@@ -109,19 +109,29 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (mounted) setState(() {});
-    });
+    _tabController.addListener(_onTabChanged);
+  }
+
+  void _onTabChanged() {
+    if (mounted) {
+      setState(() {});
+      if (_tabController.index == 1) {
+        final controller = Get.find<ChatController>();
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        _syncHtmlIfChanged(controller.canvasContent.value, isDark);
+      }
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
 
   void _syncHtmlIfChanged(String content, bool isDark) {
-    if (_webController != null) {
+    if (_webController != null && content.isNotEmpty) {
       final fullHtml = _generateFullHtmlDocument(content, isDark);
       if (fullHtml.isNotEmpty && fullHtml != _lastLoadedHtml) {
         _lastLoadedHtml = fullHtml;
@@ -153,10 +163,6 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
       final wordCount = content.trim().isEmpty
           ? 0
           : content.trim().split(RegExp(r'\s+')).length;
-
-      if (!isEditing && isHtml) {
-        _syncHtmlIfChanged(content, isDark);
-      }
 
       return Container(
         color: isDark ? const Color(0xFF0A0C11) : const Color(0xFFFAFBFD),
@@ -445,7 +451,7 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
       final fullHtml = _generateFullHtmlDocument(content, isDark);
 
       return InAppWebView(
-        key: ValueKey(fullHtml.hashCode),
+        key: const ValueKey('canvas_inappwebview_persistent'),
         initialData: InAppWebViewInitialData(
           data: fullHtml,
           baseUrl: WebUri('about:blank'),
@@ -465,8 +471,12 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
           hardwareAcceleration: true,
           useHybridComposition: true,
           transparentBackground: false,
+          supportZoom: true,
+          builtInZoomControls: true,
+          displayZoomControls: false,
           verticalScrollBarEnabled: true,
           horizontalScrollBarEnabled: true,
+          overScrollMode: OverScrollMode.IF_CONTENT_SCROLLS,
         ),
         onWebViewCreated: (c) {
           _webController = c;

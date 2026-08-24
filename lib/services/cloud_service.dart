@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io' show HttpClient, HttpHeaders;
+import 'dart:io' show HttpClient;
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import '../core/constants.dart';
@@ -466,45 +466,110 @@ class CloudService extends GetxService {
 
   // ─── Google Gemini ──────────────────────────────
 
+  Map<String, dynamic> _buildGooglePayload({
+    required List<Map<String, String>> messages,
+    String? imageBase64,
+    double? temperature,
+    int? maxTokens,
+  }) {
+    String? systemInstruction;
+    final contents = <Map<String, dynamic>>[];
+
+    for (final msg in messages) {
+      final role = msg['role'];
+      final content = msg['content']?.trim() ?? '';
+      if (content.isEmpty) continue;
+
+      if (role == 'system') {
+        systemInstruction = systemInstruction == null
+            ? content
+            : '$systemInstruction\n\n$content';
+        continue;
+      }
+
+      final geminiRole = role == 'assistant' ? 'model' : 'user';
+      final parts = <Map<String, dynamic>>[
+        {'text': content}
+      ];
+
+      if (imageBase64 != null && msg == messages.last && geminiRole == 'user') {
+        parts.add({
+          'inline_data': {
+            'mime_type': 'image/jpeg',
+            'data': imageBase64,
+          }
+        });
+      }
+
+      // Merge consecutive turns of same role to avoid Gemini 400 Alternation error
+      if (contents.isNotEmpty && contents.last['role'] == geminiRole) {
+        final existingParts =
+            contents.last['parts'] as List<Map<String, dynamic>>;
+        existingParts.addAll(parts);
+      } else {
+        contents.add({'role': geminiRole, 'parts': parts});
+      }
+    }
+
+    if (contents.isNotEmpty && contents.first['role'] == 'model') {
+      contents.insert(0, {
+        'role': 'user',
+        'parts': [
+          {'text': 'Hello'}
+        ]
+      });
+    }
+
+    final payload = <String, dynamic>{
+      'contents': contents.isEmpty
+          ? [
+              {
+                'role': 'user',
+                'parts': [
+                  {'text': 'Hi'}
+                ]
+              }
+            ]
+          : contents,
+      'generationConfig': {
+        'temperature': temperature ?? AppConstants.defaultTemperature,
+        'maxOutputTokens': maxTokens ?? AppConstants.defaultMaxTokens,
+      },
+    };
+
+    if (systemInstruction != null && systemInstruction.isNotEmpty) {
+      payload['system_instruction'] = {
+        'parts': [
+          {'text': systemInstruction}
+        ]
+      };
+    }
+
+    return payload;
+  }
+
   Future<String> _sendGoogle(
     List<Map<String, String>> messages,
     String? imageBase64,
     double? temperature,
     int? maxTokens,
   ) async {
-    final parts = <Map<String, dynamic>>[];
+    final payload = _buildGooglePayload(
+      messages: messages,
+      imageBase64: imageBase64,
+      temperature: temperature,
+      maxTokens: maxTokens,
+    );
 
-    // Combine all messages into parts
-    for (final msg in messages) {
-      parts.add({'text': '${msg['role']}: ${msg['content']}'});
-    }
-
-    // Add image if present
-    if (imageBase64 != null) {
-      parts.add({
-        'inline_data': {
-          'mime_type': 'image/jpeg',
-          'data': imageBase64,
-        }
-      });
-    }
-
-    final cleanModel = _model.startsWith('models/') ? _model.substring(7) : _model;
+    final cleanModel =
+        _model.startsWith('models/') ? _model.substring(7) : _model;
     final url =
         '${AppConstants.googleEndpoint}/$cleanModel:generateContent?key=$_apiKey';
 
     final response = await http.post(
       Uri.parse(url),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'contents': [
-          {'parts': parts}
-        ],
-        'generationConfig': {
-          'temperature': temperature ?? AppConstants.defaultTemperature,
-          'maxOutputTokens': maxTokens ?? AppConstants.defaultMaxTokens,
-        },
-      }),
+      body: jsonEncode(payload),
     );
 
     if (response.statusCode != 200) {
@@ -537,41 +602,26 @@ class CloudService extends GetxService {
     int? maxTokens,
     required void Function(String token) onToken,
   }) async {
-    final contents = <Map<String, dynamic>>[];
-    for (final msg in messages) {
-      final role = msg['role'] == 'assistant' ? 'model' : 'user';
-      final parts = <Map<String, dynamic>>[
-        {'text': msg['content']}
-      ];
-      if (imageBase64 != null && msg == messages.last && role == 'user') {
-        parts.add({
-          'inline_data': {
-            'mime_type': 'image/jpeg',
-            'data': imageBase64,
-          }
-        });
-      }
-      contents.add({'role': role, 'parts': parts});
-    }
+    final payload = _buildGooglePayload(
+      messages: messages,
+      imageBase64: imageBase64,
+      temperature: temperature,
+      maxTokens: maxTokens,
+    );
 
-    final cleanModel = _model.startsWith('models/') ? _model.substring(7) : _model;
+    final cleanModel =
+        _model.startsWith('models/') ? _model.substring(7) : _model;
     final url =
         '${AppConstants.googleEndpoint}/$cleanModel:streamGenerateContent?alt=sse&key=$_apiKey';
 
     final client = HttpClient();
-    client.connectionTimeout = const Duration(seconds: 25);
+    client.connectionTimeout = const Duration(seconds: 35);
     try {
       final request = await client.postUrl(Uri.parse(url));
       request.headers.set('Content-Type', 'application/json');
       request.headers.set('Accept', 'text/event-stream');
       request.headers.set('Cache-Control', 'no-cache');
-      request.write(jsonEncode({
-        'contents': contents,
-        'generationConfig': {
-          'temperature': temperature ?? AppConstants.defaultTemperature,
-          'maxOutputTokens': maxTokens ?? AppConstants.defaultMaxTokens,
-        },
-      }));
+      request.write(jsonEncode(payload));
 
       final response = await request.close();
       if (response.statusCode != 200) {
