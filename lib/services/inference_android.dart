@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' show Platform, Directory;
+import 'dart:io' show Platform, Directory, File;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_litert_lm/flutter_litert_lm.dart';
 import 'package:get/get.dart';
@@ -66,6 +66,14 @@ class InferenceEngine {
         clearCache: clearLiteRtCache,
         enableVision: enableLiteRtVision,
         onProgress: onProgress,
+      );
+    }
+
+    final modelFile = File(modelPath);
+    if (!await modelFile.exists()) {
+      return LoadResult(
+        success: false,
+        message: 'ERROR: Model file not found on device ($modelPath).',
       );
     }
 

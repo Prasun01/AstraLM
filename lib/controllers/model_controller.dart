@@ -553,128 +553,15 @@ class ModelController extends GetxController {
     }
 
     final path = await _download.modelPath(filename);
-    final isLiteRt = filename.toLowerCase().endsWith('.litertlm') ||
-        model?.runtime == AiModel.runtimeLiteRt;
-    final targetRuntime =
-        model?.runtime ?? AiModel.runtimeFromFilename(filename);
+    final isImage = filename.toLowerCase().endsWith('.safetensors') ||
+        (model != null && isImageModel(model));
 
-    if (_inference.requiresAppRestartForRuntime(targetRuntime)) {
-      await _showRuntimeRestartDialog(
-        currentRuntime: _inference.sessionNativeRuntime,
-        targetRuntime: targetRuntime,
-        pendingModelName: filename,
-        pendingModelPath: path,
-      );
-      return;
-    }
-
-    // Proactively unload any currently active model first to completely free RAM/VRAM
-    if (_inference.isModelLoaded.value && _inference.loadedModelName.value != filename) {
-      await _inference.unloadModel();
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-    if (_localImage.isModelLoaded.value && _localImage.loadedModelName.value != filename) {
-      await _localImage.unloadModel();
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-    final fileBytes = await _modelFileBytes(filename, path, model);
-    if (model != null && _isIncompleteCatalogFile(model, fileBytes)) {
-      final actual = DownloadService.formatBytes(fileBytes);
-      Get.find<AppLogService>().error(
-        'Incomplete model file blocked',
-        details:
-            '$filename is $actual, expected about ${model.size}',
-      );
-      Get.snackbar(
-        'Incomplete Model File',
-        '$filename is only $actual. Delete it and download again.',
-        snackPosition: SnackPosition.TOP,
-        barBlur: 0,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        duration: const Duration(seconds: 5),
-      );
-      return;
-    }
-    if (filename.toLowerCase().endsWith('.safetensors') &&
-        !await _hasValidSafetensorsHeader(path)) {
-      Get.find<AppLogService>().error(
-        'Corrupt safetensors file blocked',
-        details: '$filename failed safetensors header validation',
-      );
-      Get.snackbar(
-        'Corrupt Model File',
-        '$filename did not download correctly. Delete it and download again.',
-        snackPosition: SnackPosition.TOP,
-        barBlur: 0,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        duration: const Duration(seconds: 5),
-      );
-      return;
-    }
-    if (isLiteRt && !await _hasLikelyValidLiteRtFile(path, fileBytes)) {
-      Get.find<AppLogService>().error(
-        'Corrupt LiteRT model file blocked',
-        details: '$filename failed LiteRT file validation; size=$fileBytes',
-      );
-      Get.snackbar(
-        'Corrupt Model File',
-        '$filename is not a valid LiteRT-LM file. Delete it and download again.',
-        snackPosition: SnackPosition.TOP,
-        barBlur: 0,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        duration: const Duration(seconds: 5),
-      );
-      return;
-    }
-    final loadAction = await _confirmModelLoadSafety(
-      filename: filename,
-      fileBytes: fileBytes,
-      isLiteRt: isLiteRt,
-    );
-    if (loadAction == _ModelLoadAction.cancel) return;
-    if (loadAction == _ModelLoadAction.unload) {
-      await unloadModel();
-      return;
-    }
-    if (isLiteRt && !await _confirmLiteRtGpuWarning()) return;
-
-    if (isImageModel(model ??
-        AiModel(
-          name: filename,
-          filename: filename,
-          url: '',
-          size: '',
-          description: '',
-          template: '',
-        ))) {
-      // Auto-download TAESD for fast VAE decode if not present
-      String? taesdPath;
-      try {
-        const taesdFilename = 'taesd.safetensors';
-        const taesdUrl = 'https://huggingface.co/madebyollin/taesd/resolve/main/diffusion_pytorch_model.safetensors';
-        final hasTaesd = await _download.isModelDownloaded(taesdFilename);
-        if (!hasTaesd) {
-          print('[ModelController] TAESD not found, downloading...');
-          await _download.downloadModel(url: taesdUrl, filename: taesdFilename);
-          print('[ModelController] TAESD downloaded successfully');
-        } else {
-          print('[ModelController] TAESD already present');
-        }
-        taesdPath = await _download.modelPath(taesdFilename);
-      } catch (e) {
-        print('[ModelController] TAESD download failed (will use standard VAE): $e');
-      }
-
-      // Proactively unload previous image model if loaded
+    if (isImage) {
       if (_localImage.isModelLoaded.value) {
         await _localImage.unloadModel();
-        await Future.delayed(const Duration(milliseconds: 100));
       }
-
-      // Show loading dialog with live logs
       _showImageModelLoadingDialog(filename);
-      final result = await _localImage.loadModel(path, modelName: filename, taesdPath: taesdPath);
-      // Close loading dialog
+      final result = await _localImage.loadModel(path, modelName: filename);
       if (Get.isDialogOpen ?? false) Get.back();
 
       final isError = !_localImage.isModelLoaded.value;
@@ -682,51 +569,10 @@ class ModelController extends GetxController {
         isError ? 'Model Not Loaded' : 'Image Model',
         result,
         snackPosition: SnackPosition.TOP,
-        barBlur: 0,
-        overlayBlur: 0,
-        backgroundColor:
-            Get.isDarkMode ? const Color(0xFF141416) : Colors.white,
-        colorText: Get.isDarkMode ? Colors.white : Colors.black,
-        titleText: Text(
-          isError ? 'Model Not Loaded' : 'Image Model',
-          style: GoogleFonts.manrope(
-            fontSize: 14.5,
-            fontWeight: FontWeight.w700,
-            color: Get.isDarkMode ? Colors.white : Colors.black,
-          ),
-        ),
-        messageText: Text(
-          result,
-          style: GoogleFonts.inter(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w500,
-            color: Get.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF555555),
-          ),
-        ),
-        borderRadius: 20,
-        boxShadows: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: Get.isDarkMode ? 0.40 : 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        icon: PhosphorIcon(
-          isError ? PhosphorIconsBold.warning : PhosphorIconsBold.checkCircle,
-          color: isError ? const Color(0xFFFF9500) : (Get.isDarkMode ? Colors.white : Colors.black),
-          size: 22,
-        ),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         duration:
             isError ? const Duration(seconds: 5) : const Duration(seconds: 2),
       );
     } else {
-      // Proactively unload previous local model and flush memory
-      if (_inference.isModelLoaded.value) {
-        await _inference.unloadModel();
-        await Future.delayed(const Duration(milliseconds: 150));
-      }
-
       final result = await _inference.loadModel(
         path,
         modelName: filename,
@@ -734,216 +580,19 @@ class ModelController extends GetxController {
         enableLiteRtVision: model == null ? false : isVisionModel(model),
       );
       if (_inference.isModelLoaded.value) {
-        final fallbackToText = result.toLowerCase().contains('text-only');
-        _inference.isVisionLoaded.value =
-            fallbackToText ? false : (model == null ? false : isVisionModel(model));
         await _settings.setInferenceMode('local');
-
-        final currentCtx = _settings.contextSize.value;
-        final currentTokens = _settings.maxTokens.value;
-        final isThinking = Get.find<DeviceInfoService>()
-            .calculateOptimalParameters(
-              modelName: filename,
-              runtime: model?.runtime ?? 'llama',
-            )
-            .isThinkingModel;
-
         Get.snackbar(
           'Model Loaded',
-          '$result · $currentCtx Ctx · $currentTokens Tokens${isThinking ? " · Reasoning Mode" : ""}',
+          result,
           snackPosition: SnackPosition.TOP,
-          barBlur: 0,
-          overlayBlur: 0,
-          backgroundColor:
-              Get.isDarkMode ? const Color(0xFF141416) : Colors.white,
-          colorText: Get.isDarkMode ? Colors.white : Colors.black,
-          titleText: Text(
-            'Model Loaded',
-            style: GoogleFonts.manrope(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w700,
-              color: Get.isDarkMode ? Colors.white : Colors.black,
-            ),
-          ),
-          messageText: Text(
-            '$result · $currentCtx Ctx · $currentTokens Tokens${isThinking ? " · Reasoning Mode" : ""}',
-            style: GoogleFonts.inter(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w500,
-              color: Get.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF555555),
-            ),
-          ),
-          borderRadius: 20,
-          boxShadows: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: Get.isDarkMode ? 0.40 : 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          icon: PhosphorIcon(
-            PhosphorIconsBold.checkCircle,
-            color: Get.isDarkMode ? Colors.white : Colors.black,
-            size: 22,
-          ),
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 2),
         );
       } else {
-        bool showDetails = false;
-        Get.dialog(
-          StatefulBuilder(
-            builder: (context, setState) {
-              final friendlyMsg = _getFriendlyErrorMessage(result);
-              final isDark = Theme.of(context).brightness == Brightness.dark;
-              final detailBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC);
-              final detailBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-              
-              return AlertDialog(
-                backgroundColor: Theme.of(context).dialogTheme.backgroundColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
-                contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-                actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                title: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.error.withValues(alpha: isDark ? 0.15 : 0.08),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        PhosphorIconsBold.xCircle,
-                        color: Theme.of(context).colorScheme.error,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Model Load Failed',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        friendlyMsg,
-                        style: GoogleFonts.inter(
-                          fontSize: 14, 
-                          height: 1.5,
-                          color: isDark ? Colors.white70 : Colors.black87,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'TROUBLESHOOTING TIPS',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildTipRow(context, PhosphorIconsBold.trash, 'Delete the model and try redownloading it completely.'),
-                      _buildTipRow(context, PhosphorIconsBold.cpu, 'Ensure your device has at least 2-3 GB of free RAM.'),
-                      if (result.toLowerCase().contains('litert') || filename.toLowerCase().endsWith('.litertlm'))
-                        _buildTipRow(context, PhosphorIconsBold.gearSix, 'Double check if this LiteRT-LM file matches your architecture.'),
-                      const SizedBox(height: 12),
-
-                      // Technical Details Toggle Button
-                      InkWell(
-                        onTap: () => setState(() => showDetails = !showDetails),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                showDetails ? 'Hide Technical Details' : 'Show Technical Details',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12, 
-                                  fontWeight: FontWeight.w600,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              ),
-                              Icon(
-                                showDetails ? PhosphorIconsBold.caretUp : PhosphorIconsBold.caretDown,
-                                size: 16,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeInOut,
-                        child: showDetails
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    constraints: const BoxConstraints(maxHeight: 180),
-                                    width: double.maxFinite,
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: detailBg,
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: detailBorder, width: 1),
-                                    ),
-                                    child: SingleChildScrollView(
-                                      child: SelectableText(
-                                        result,
-                                        style: GoogleFonts.firaCode(
-                                          fontSize: 11,
-                                          height: 1.4,
-                                          color: isDark ? const Color(0xFFFDA4AF) : const Color(0xFF9F1239),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Get.back(),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: Text(
-                      'Close',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+        Get.snackbar(
+          'Failed to load model',
+          result,
+          snackPosition: SnackPosition.TOP,
+          duration: const Duration(seconds: 4),
         );
       }
     }

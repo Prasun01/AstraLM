@@ -30,16 +30,38 @@ Future<bool> isModelDownloaded(String path) async {
 }
 
 Future<List<String>> getDownloadedModels(String modelsDir) async {
+  final result = <String>{};
   final dir = Directory(modelsDir);
-  if (!await dir.exists()) return [];
-  return dir
-      .listSync()
-      .where((f) =>
-          f.path.endsWith('.gguf') ||
-          f.path.endsWith('.litertlm') ||
-          f.path.endsWith('.safetensors'))
-      .map((f) => f.path.split('/').last)
-      .toList();
+  if (await dir.exists()) {
+    try {
+      for (final f in dir.listSync()) {
+        final p = f.path.toLowerCase();
+        if (p.endsWith('.gguf') ||
+            p.endsWith('.litertlm') ||
+            p.endsWith('.safetensors')) {
+          result.add(f.path.split('/').last);
+        }
+      }
+    } catch (_) {}
+  }
+  if (Platform.isAndroid) {
+    for (final dlPath in ['/storage/emulated/0/Download', '/sdcard/Download']) {
+      try {
+        final dlDir = Directory(dlPath);
+        if (await dlDir.exists()) {
+          for (final f in dlDir.listSync()) {
+            final p = f.path.toLowerCase();
+            if (p.endsWith('.gguf') ||
+                p.endsWith('.litertlm') ||
+                p.endsWith('.safetensors')) {
+              result.add(f.path.split('/').last);
+            }
+          }
+        }
+      } catch (_) {}
+    }
+  }
+  return result.toList();
 }
 
 Future<int> getModelSize(String path) async {
