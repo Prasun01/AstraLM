@@ -10,14 +10,99 @@ import '../controllers/chat_controller.dart';
 import 'code_block_widget.dart';
 import 'pressable_scale.dart';
 
+String _extractRenderableHtml(String content) {
+  var text = content.trim();
+  final codeFenceRegex = RegExp(
+      r'^```(?:html|xml|svg|htm)?\s*\n([\s\S]*?)\n?```$',
+      caseSensitive: false);
+  final match = codeFenceRegex.firstMatch(text);
+  if (match != null) {
+    text = match.group(1)!.trim();
+  } else if (text.startsWith('```')) {
+    final lines = text.split('\n');
+    if (lines.first.startsWith('```')) {
+      lines.removeAt(0);
+      if (lines.isNotEmpty && lines.last.trim() == '```') {
+        lines.removeLast();
+      }
+      text = lines.join('\n').trim();
+    }
+  }
+  return text;
+}
+
 bool _isHtmlContent(String content) {
-  final lower = content.trimLeft().toLowerCase();
-  return lower.startsWith('<!doctype') ||
+  final clean = _extractRenderableHtml(content);
+  final lower = clean.toLowerCase();
+  return lower.startsWith('<!doctype html') ||
+      lower.startsWith('<!doctype') ||
       lower.startsWith('<html') ||
+      (lower.contains('<html') && lower.contains('</html>')) ||
       (lower.contains('<body') && lower.contains('</body>')) ||
-      (lower.contains('<div') && lower.contains('</div>') && lower.contains('<head')) ||
+      (lower.contains('<head') && lower.contains('</head>')) ||
       (lower.contains('<script') && lower.contains('</script>')) ||
-      (lower.contains('<style') && lower.contains('</style>'));
+      (lower.contains('<style') && lower.contains('</style>')) ||
+      (lower.contains('<div') && lower.contains('</div>')) ||
+      (lower.contains('<svg') && lower.contains('</svg>') && clean.startsWith('<svg')) ||
+      (lower.contains('<canvas') && lower.contains('</canvas>'));
+}
+
+String _detectLanguage(String content) {
+  final clean = _extractRenderableHtml(content).trim();
+  final lower = clean.toLowerCase();
+  if (lower.startsWith('import flutter') ||
+      (lower.contains('class ') && lower.contains('extends')) ||
+      lower.contains('widget build(')) {
+    return 'dart';
+  }
+  if (lower.startsWith('import ') ||
+      lower.startsWith('def ') ||
+      lower.startsWith('from ') ||
+      lower.contains('if __name__ ==')) {
+    return 'python';
+  }
+  if (lower.startsWith('function ') ||
+      lower.startsWith('const ') ||
+      lower.startsWith('let ') ||
+      lower.startsWith('var ') ||
+      lower.contains('console.log') ||
+      lower.contains('document.getelementbyid')) {
+    return 'javascript';
+  }
+  if (lower.startsWith('{') && lower.endsWith('}') ||
+      lower.startsWith('[') && lower.endsWith(']')) {
+    return 'json';
+  }
+  if (lower.startsWith('select ') || lower.startsWith('create table')) {
+    return 'sql';
+  }
+  if (lower.startsWith('#include') || lower.contains('int main(')) {
+    return 'cpp';
+  }
+  if (lower.startsWith('package main') || lower.startsWith('func main(')) {
+    return 'go';
+  }
+  if (lower.startsWith('fn main(') || lower.contains('pub struct')) {
+    return 'rust';
+  }
+  return 'code';
+}
+
+String _preparePreviewContent(String content) {
+  final trimmed = content.trim();
+  if (trimmed.isEmpty) return trimmed;
+  if (trimmed.contains('```') ||
+      trimmed.startsWith('#') ||
+      trimmed.contains('\n# ') ||
+      trimmed.contains('\n## ') ||
+      trimmed.contains('\n### ') ||
+      trimmed.startsWith('> ') ||
+      trimmed.startsWith('- ') ||
+      trimmed.startsWith('* ')) {
+    return content;
+  }
+  final lang = _detectLanguage(content);
+  return '```$lang\n$trimmed\n```';
 }
 
 class CanvasWorkspace extends StatefulWidget {
@@ -49,13 +134,20 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
   }
 
   void _syncHtmlIfChanged(String content, bool isHtml) {
-    if (isHtml && _webController != null && content != _lastLoadedHtml) {
-      _lastLoadedHtml = content;
-      _webController!.loadData(
-        data: content,
-        mimeType: 'text/html',
-        encoding: 'utf-8',
-      );
+    if (isHtml && _webController != null) {
+      final cleanHtml = _extractRenderableHtml(content);
+      final fullHtml = (cleanHtml.toLowerCase().contains('<html') ||
+              cleanHtml.toLowerCase().contains('<!doctype'))
+          ? cleanHtml
+          : '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{font-family:system-ui,-apple-system,sans-serif;padding:16px;margin:0;line-height:1.5;color:#E2E6F2;}}</style></head><body>$cleanHtml</body></html>';
+      if (fullHtml != _lastLoadedHtml) {
+        _lastLoadedHtml = fullHtml;
+        _webController!.loadData(
+          data: fullHtml,
+          mimeType: 'text/html',
+          encoding: 'utf-8',
+        );
+      }
     }
   }
 
@@ -71,7 +163,6 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
       final isEditing = controller.isCanvasEditing.value;
       final isHtml = _isHtmlContent(content);
 
-      // Only sync if content actually changed
       if (!isEditing) {
         _syncHtmlIfChanged(content, isHtml);
       }
@@ -81,12 +172,13 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
         child: SafeArea(
           child: Stack(
             children: [
-              // ── Main Content Area (IndexedStack for 0ms instantaneous tab switching) ──
+              // ── Main Content Area ──
               Positioned.fill(
                 child: isEditing
                     ? _buildEditor(controller, isDark)
-                    : IndexedStack(
-                        index: _tabController.index.clamp(0, 1),
+                    : TabBarView(
+                        controller: _tabController,
+                        physics: const BouncingScrollPhysics(),
                         children: [
                           _buildCodeView(context, content, isDark),
                           _buildPreviewView(context, content, isHtml, isDark),
@@ -319,17 +411,28 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
     if (content.trim().isEmpty) return _empty(isDark);
 
     if (isHtml) {
+      final cleanHtml = _extractRenderableHtml(content);
+      final fullHtml = (cleanHtml.toLowerCase().contains('<html') ||
+              cleanHtml.toLowerCase().contains('<!doctype'))
+          ? cleanHtml
+          : '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{font-family:system-ui,-apple-system,sans-serif;padding:16px;margin:0;line-height:1.5;${isDark ? 'background:#0A0C11;color:#E2E6F2;' : 'background:#FFFFFF;color:#0F172A;'}}</style></head><body>$cleanHtml</body></html>';
+
       return Padding(
         padding: const EdgeInsets.fromLTRB(0, 58, 0, 80),
         child: ClipRect(
           child: InAppWebView(
+            key: ValueKey(fullHtml.hashCode),
             initialData: InAppWebViewInitialData(
-              data: content,
+              data: fullHtml,
               mimeType: 'text/html',
               encoding: 'utf-8',
             ),
             initialSettings: InAppWebViewSettings(
               javaScriptEnabled: true,
+              domStorageEnabled: true,
+              allowFileAccessFromFileURLs: true,
+              allowUniversalAccessFromFileURLs: true,
+              mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
               hardwareAcceleration: true,
               useHybridComposition: true,
               transparentBackground: false,
@@ -339,7 +442,7 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
             ),
             onWebViewCreated: (c) {
               _webController = c;
-              _lastLoadedHtml = content;
+              _lastLoadedHtml = fullHtml;
             },
             onLoadStop: (c, url) {
               if (isDark) {
@@ -358,11 +461,12 @@ class _CanvasWorkspaceState extends State<CanvasWorkspace>
       );
     }
 
+    final previewMarkdown = _preparePreviewContent(content);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(18, 62, 18, 90),
       physics: const BouncingScrollPhysics(),
       child: MarkdownBody(
-        data: content,
+        data: previewMarkdown,
         selectable: true,
         builders: {'code': CodeBlockBuilder(isDark: isDark)},
         styleSheet: _canvasMarkdownStyle(context, isDark),
