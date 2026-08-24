@@ -154,10 +154,10 @@ class DeviceInfoService extends GetxService {
         contextSize = 2048;
         maxTokens = isThinking ? 1280 : 512;
       } else if (ram <= 6) {
-        contextSize = 4096;
+        contextSize = 2048;
         maxTokens = isThinking ? 2048 : 1024;
       } else {
-        contextSize = isLiteRt ? 4096 : 8192;
+        contextSize = isLiteRt ? 4096 : 2048;
         maxTokens = isThinking ? 3072 : 1536;
       }
     } else if (isMid) {
@@ -169,10 +169,10 @@ class DeviceInfoService extends GetxService {
         contextSize = 2048;
         maxTokens = isThinking ? 1536 : 768;
       } else if (ram <= 8) {
-        contextSize = 4096;
+        contextSize = 2048;
         maxTokens = isThinking ? 2560 : 1024;
       } else {
-        contextSize = isLiteRt ? 4096 : 8192;
+        contextSize = isLiteRt ? 4096 : 2048;
         maxTokens = isThinking ? 3072 : 2048;
       }
     } else if (isLarge) {
