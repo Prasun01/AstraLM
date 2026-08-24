@@ -27,11 +27,9 @@ class ChatBubble extends StatelessWidget {
     final visibleContent = message.fileName == null
         ? message.content
         : message.content.split('\n\nAttached file:').first;
-    final suppress = Get.find<SettingsController>().reasoningEffort.value == 'none';
     final thoughtParts = isUser
         ? const ThoughtParts(thought: '', answer: '', isThinking: false)
-        : splitThoughtTags(_cleanAssistantText(visibleContent),
-            suppressThoughts: suppress);
+        : splitThoughtTags(_cleanAssistantText(visibleContent));
     final answerContent = isUser ? visibleContent : thoughtParts.answer.trim();
 
     return TweenAnimationBuilder<double>(

@@ -433,11 +433,7 @@ class InferenceEngine {
         if (clean.isEmpty) return;
         if (tokenCount == 0) {
           print('[Inference] ✓ FIRST TOKEN received! Prefill done.');
-          final effort = Get.find<HiveService>()
-              .getSetting<String>('reasoning_effort', defaultValue: 'standard') ??
-              'standard';
           if (isReasoning &&
-              effort != 'none' &&
               !clean.trimLeft().startsWith('<think>') &&
               !clean.trimLeft().startsWith('<thought>') &&
               !clean.trimLeft().startsWith('<reasoning>')) {
@@ -623,11 +619,7 @@ class InferenceEngine {
 
         if (tokenCount == 0) {
           print('[Inference] LiteRT-LM FIRST TOKEN received');
-          final effort = Get.find<HiveService>()
-              .getSetting<String>('reasoning_effort', defaultValue: 'standard') ??
-              'standard';
           if (isReasoning &&
-              effort != 'none' &&
               !text.trimLeft().startsWith('<think>') &&
               !text.trimLeft().startsWith('<thought>') &&
               !text.trimLeft().startsWith('<reasoning>')) {

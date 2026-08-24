@@ -635,8 +635,7 @@ class ChatView extends GetView<ChatController> {
     final attType = controller.streamingAttachmentType.value;
     final isImageGen = controller.imageGenTotal.value > 0;
     final clean = _cleanStream(text).trimLeft();
-    final suppress = Get.find<SettingsController>().reasoningEffort.value == 'none';
-    final parts = splitThoughtTags(clean, isStreaming: true, suppressThoughts: suppress);
+    final parts = splitThoughtTags(clean, isStreaming: true);
     final answer = parts.answer.trimLeft();
     final hasThought = parts.hasThought;
     final hasAnswer = _hasPrintable(answer);

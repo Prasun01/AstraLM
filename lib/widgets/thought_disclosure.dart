@@ -36,13 +36,13 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
   @override
   void initState() {
     super.initState();
-    _expanded = widget.isThinking;
+    _expanded = false;
     _startedAt = DateTime.now();
 
     _expandAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 320),
-      value: _expanded ? 1.0 : 0.0,
+      value: 0.0,
     );
     _expandAnimation = CurvedAnimation(
       parent: _expandAnimController,
@@ -62,10 +62,8 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
     super.didUpdateWidget(oldWidget);
 
     if (widget.isThinking && !oldWidget.isThinking) {
-      _expanded = true;
       _startedAt = DateTime.now();
       _liveSeconds = 0.0;
-      _expandAnimController.forward();
     } else if (!widget.isThinking && oldWidget.isThinking) {
       _liveSeconds = (widget.durationSeconds ?? _liveSeconds.toInt()).toDouble();
     }
