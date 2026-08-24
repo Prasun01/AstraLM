@@ -708,24 +708,7 @@ class ChatView extends GetView<ChatController> {
   }
 
   Widget _typingHint(BuildContext context, {String? attachmentType}) {
-    final scheme = Theme.of(context).colorScheme;
-    final msg = attachmentType == 'image'
-        ? 'Reading image…'
-        : attachmentType == 'audio'
-            ? 'Listening to audio…'
-            : null;
-    if (msg == null) return _TypingDots(isDark: false);
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      _TypingDots(isDark: false),
-      const SizedBox(width: 10),
-      Flexible(
-          child: Text(msg,
-              style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontStyle: FontStyle.italic,
-                  color: scheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w400))),
-    ]);
+    return _AnimatedThinkingIndicator(attachmentType: attachmentType);
   }
 
   // ── Input Bar (Floating Space Gray Island) ──
@@ -2689,80 +2672,161 @@ class _RotatingAppLogoState extends State<_RotatingAppLogo>
 }
 
 
-// ── 60fps Silky Typing Dots ──
-class _TypingDots extends StatefulWidget {
-  final bool isDark;
-  const _TypingDots({required this.isDark});
+// ── Dynamic 60fps Animated Thinking Indicator ──
+class _AnimatedThinkingIndicator extends StatefulWidget {
+  final String? attachmentType;
+  const _AnimatedThinkingIndicator({this.attachmentType});
+
   @override
-  State<_TypingDots> createState() => _TypingDotsState();
+  State<_AnimatedThinkingIndicator> createState() =>
+      _AnimatedThinkingIndicatorState();
 }
 
-class _TypingDotsState extends State<_TypingDots>
+class _AnimatedThinkingIndicatorState extends State<_AnimatedThinkingIndicator>
     with SingleTickerProviderStateMixin {
-  late AnimationController _c;
+  late AnimationController _dotsController;
+  Timer? _textTimer;
+  int _textIndex = 0;
+
+  static const List<String> _generalTexts = [
+    'Thinking…',
+    'Cooking…',
+    'Thinking harder…',
+    'Formulating response…',
+    'Connecting dots…',
+    'Polishing answer…',
+  ];
+
+  static const List<String> _imageTexts = [
+    'Reading image…',
+    'Analyzing visual details…',
+    'Inspecting pixels…',
+    'Extracting context…',
+  ];
+
+  static const List<String> _audioTexts = [
+    'Listening to audio…',
+    'Processing sound stream…',
+    'Transcribing words…',
+  ];
+
+  List<String> get _currentTexts {
+    if (widget.attachmentType == 'image') return _imageTexts;
+    if (widget.attachmentType == 'audio') return _audioTexts;
+    return _generalTexts;
+  }
 
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(
+    _dotsController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1100),
     )..repeat();
+
+    _textTimer = Timer.periodic(const Duration(milliseconds: 2200), (t) {
+      if (mounted) {
+        setState(() {
+          _textIndex = (_textIndex + 1) % _currentTexts.length;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
-    _c.dispose();
+    _textTimer?.cancel();
+    _dotsController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final dotColor = scheme.onSurfaceVariant;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dotColor = isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB);
+    final currentList = _currentTexts;
+    final currentText = currentList[_textIndex % currentList.length];
 
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (_, __) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(3, (i) {
-            final phase = (_c.value * 2 * math.pi) - (i * 0.6);
-            final bounce = math.sin(phase).clamp(-1.0, 1.0);
-            final normalized = (bounce + 1.0) / 2.0; // 0.0 -> 1.0
-            final dy = -4.5 * normalized;
-            final scale = 0.85 + 0.28 * normalized;
-            final opacity = 0.35 + 0.65 * normalized;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // 3 Silky Bouncing Dots
+        AnimatedBuilder(
+          animation: _dotsController,
+          builder: (_, __) {
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (i) {
+                final phase = (_dotsController.value * 2 * math.pi) - (i * 0.6);
+                final bounce = math.sin(phase).clamp(-1.0, 1.0);
+                final normalized = (bounce + 1.0) / 2.0;
+                final dy = -3.5 * normalized;
+                final scale = 0.85 + 0.25 * normalized;
+                final opacity = 0.40 + 0.60 * normalized;
 
-            return Padding(
-              padding: EdgeInsets.only(right: i < 2 ? 6 : 0),
-              child: Transform.translate(
-                offset: Offset(0, dy),
-                child: Transform.scale(
-                  scale: scale,
-                  child: Opacity(
-                    opacity: opacity,
-                    child: Container(
-                      width: 7.5,
-                      height: 7.5,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: dotColor,
-                        boxShadow: [
-                          BoxShadow(
-                            color: dotColor.withValues(alpha: 0.25 * normalized),
-                            blurRadius: 4,
+                return Padding(
+                  padding: EdgeInsets.only(right: i < 2 ? 5 : 0),
+                  child: Transform.translate(
+                    offset: Offset(0, dy),
+                    child: Transform.scale(
+                      scale: scale,
+                      child: Opacity(
+                        opacity: opacity,
+                        child: Container(
+                          width: 6.5,
+                          height: 6.5,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: dotColor,
+                            boxShadow: [
+                              BoxShadow(
+                                color: dotColor.withValues(alpha: 0.3 * normalized),
+                                blurRadius: 4,
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
+                );
+              }),
+            );
+          },
+        ),
+        const SizedBox(width: 10),
+
+        // Dynamic Animated Text Transition
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.0, 0.25),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                )),
+                child: child,
               ),
             );
-          }),
-        );
-      },
+          },
+          child: Text(
+            currentText,
+            key: ValueKey(currentText),
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isDark ? const Color(0xFF9AA0B2) : const Color(0xFF5A6074),
+              letterSpacing: -0.1,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
