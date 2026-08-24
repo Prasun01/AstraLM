@@ -964,44 +964,56 @@ class ModelController extends GetxController {
 
   void _showImageModelLoadingDialog(String filename) {
     final localImage = Get.find<LocalImageService>();
+    final isDark = Get.isDarkMode;
     Get.dialog(
       Dialog(
         backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
         child: Container(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           decoration: BoxDecoration(
-            color: Get.isDarkMode ? const Color(0xFF1C1C1E) : Colors.white,
+            color: isDark ? const Color(0xFF161822) : Colors.white,
             borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.10),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(
-                width: 48,
-                height: 48,
-                child: CircularProgressIndicator(strokeWidth: 3),
+              SizedBox(
+                width: 36,
+                height: 36,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               Text(
                 'Loading $filename',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                style: GoogleFonts.manrope(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF0E1017),
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Obx(() {
                 final log = localImage.latestLog.value;
-                if (log.isEmpty) {
-                  return const Text(
-                    'Initializing model...',
-                    style: TextStyle(fontSize: 13, color: Colors.grey),
-                  );
-                }
                 return Text(
-                  log,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  log.isEmpty ? 'Initializing on-device engine...' : log,
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B),
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,

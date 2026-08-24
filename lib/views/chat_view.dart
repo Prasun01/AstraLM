@@ -897,7 +897,7 @@ class ChatView extends GetView<ChatController> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Canvas Mode Active',
+                          'Canvas',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -2247,7 +2247,7 @@ class _AttachButtonState extends State<_AttachButton> {
                         ),
                         _compactItem(
                           icon: PhosphorIconsBold.notepad,
-                          title: 'Canvas Mode',
+                          title: 'Canvas',
                           textColor: textColor,
                           iconColor: iconColor,
                           onTap: () {
@@ -2257,17 +2257,6 @@ class _AttachButtonState extends State<_AttachButton> {
                               chatCtrl.openCanvas();
                             } else {
                               chatCtrl.toggleCanvasMode();
-                              Get.snackbar(
-                                chatCtrl.isCanvasMode.value
-                                    ? 'Canvas Mode Enabled'
-                                    : 'Canvas Mode Disabled',
-                                chatCtrl.isCanvasMode.value
-                                    ? 'AI will write answers directly into the Canvas editor.'
-                                    : 'Standard chat mode active.',
-                                snackPosition: SnackPosition.BOTTOM,
-                                duration: const Duration(seconds: 2),
-                                margin: const EdgeInsets.all(12),
-                              );
                             }
                           },
                         ),

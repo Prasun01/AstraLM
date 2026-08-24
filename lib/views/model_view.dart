@@ -55,9 +55,10 @@ class ModelView extends GetView<ModelController> {
           }
         },
         color: Theme.of(context).colorScheme.primary,
-        child: Obx(() => ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
+        child: _buildVerticalFadingEdge(
+          child: Obx(() => ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
                 _buildScopeToggle(context),
                 const SizedBox(height: 14),
                 // Active model banner
@@ -97,6 +98,7 @@ class ModelView extends GetView<ModelController> {
                 ],
               ],
             )),
+        ),
       ),
     );
   }
@@ -185,9 +187,10 @@ class ModelView extends GetView<ModelController> {
           ],
         ),
         const SizedBox(height: 10),
-        SizedBox(
-          height: 128,
-          child: ListView.separated(
+        _buildHorizontalFadingEdge(
+          child: SizedBox(
+            height: 128,
+            child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             itemCount: recommended.length,
@@ -311,7 +314,7 @@ class ModelView extends GetView<ModelController> {
               );
             },
           ),
-        ),
+        )),
         const SizedBox(height: 18),
       ],
     );
@@ -398,108 +401,112 @@ class ModelView extends GetView<ModelController> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Category Chips Row
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: [
-                for (final entry in categoryLabels.entries) ...[
-                  Builder(builder: (ctx) {
-                    final isSel = selectedCategory == entry.key;
-                    final bgColor = isSel
-                        ? (isDark ? Colors.white : Colors.black)
-                        : (isDark
-                            ? const Color(0xFF14161E)
-                            : const Color(0xFFF0F2F6));
-                    final fgColor = isSel
-                        ? (isDark ? Colors.black : Colors.white)
-                        : (isDark
-                            ? const Color(0xFFBAC0D0)
-                            : const Color(0xFF505462));
-                    return PressableScale(
-                      onTap: () => controller.setLocalFilter(entry.key),
-                      pressedScale: 0.93,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 13, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: bgColor,
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+          _buildHorizontalFadingEdge(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: [
+                  for (final entry in categoryLabels.entries) ...[
+                    Builder(builder: (ctx) {
+                      final isSel = selectedCategory == entry.key;
+                      final bgColor = isSel
+                          ? (isDark ? Colors.white : Colors.black)
+                          : (isDark
+                              ? const Color(0xFF14161E)
+                              : const Color(0xFFF0F2F6));
+                      final fgColor = isSel
+                          ? (isDark ? Colors.black : Colors.white)
+                          : (isDark
+                              ? const Color(0xFFBAC0D0)
+                              : const Color(0xFF505462));
+                      return PressableScale(
+                        onTap: () => controller.setLocalFilter(entry.key),
+                        pressedScale: 0.93,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 13, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: bgColor,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            entry.value,
+                            style: GoogleFonts.manrope(
+                              fontSize: 12,
+                              fontWeight:
+                                  isSel ? FontWeight.w700 : FontWeight.w600,
+                              color: fgColor,
                             ),
-                          ],
-                        ),
-                        child: Text(
-                          entry.value,
-                          style: GoogleFonts.manrope(
-                            fontSize: 12,
-                            fontWeight:
-                                isSel ? FontWeight.w700 : FontWeight.w600,
-                            color: fgColor,
                           ),
                         ),
-                      ),
-                    );
-                  }),
-                  const SizedBox(width: 6),
+                      );
+                    }),
+                    const SizedBox(width: 6),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
 
           // Size Filter Pills Row
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: [
-                for (final entry in sizeLabels.entries) ...[
-                  Builder(builder: (ctx) {
-                    final isSel = selectedSize == entry.key;
-                    final bgColor = isSel
-                        ? (isDark ? const Color(0xFF282D3D) : const Color(0xFFD6DBE8))
-                        : (isDark ? const Color(0xFF12141C) : const Color(0xFFEAEDF4));
-                    final fgColor = isSel
-                        ? (isDark ? Colors.white : const Color(0xFF12141D))
-                        : (isDark
-                            ? const Color(0xFF8E95A8)
-                            : const Color(0xFF6B7284));
-                    return PressableScale(
-                      onTap: () => controller.setSizeFilter(entry.key),
-                      pressedScale: 0.94,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: bgColor,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
+          _buildHorizontalFadingEdge(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: [
+                  for (final entry in sizeLabels.entries) ...[
+                    Builder(builder: (ctx) {
+                      final isSel = selectedSize == entry.key;
+                      final bgColor = isSel
+                          ? (isDark ? const Color(0xFF282D3D) : const Color(0xFFD6DBE8))
+                          : (isDark ? const Color(0xFF12141C) : const Color(0xFFEAEDF4));
+                      final fgColor = isSel
+                          ? (isDark ? Colors.white : const Color(0xFF12141D))
+                          : (isDark
+                              ? const Color(0xFF8E95A8)
+                              : const Color(0xFF6B7284));
+                      return PressableScale(
+                        onTap: () => controller.setSizeFilter(entry.key),
+                        pressedScale: 0.94,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: bgColor,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            entry.value,
+                            style: GoogleFonts.manrope(
+                              fontSize: 11,
+                              fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                              color: fgColor,
                             ),
-                          ],
-                        ),
-                        child: Text(
-                          entry.value,
-                          style: GoogleFonts.manrope(
-                            fontSize: 11,
-                            fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
-                            color: fgColor,
                           ),
                         ),
-                      ),
-                    );
-                  }),
-                  const SizedBox(width: 6),
+                      );
+                    }),
+                    const SizedBox(width: 6),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ],
@@ -2825,81 +2832,74 @@ class ModelView extends GetView<ModelController> {
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: ListView(
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    // Headline
-                    Text(
-                      model.name,
-                      style: GoogleFonts.playfairDisplay(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      model.description.isNotEmpty
-                          ? model.description
-                          : 'Optimized on-device AI model for local inference.',
-                      style: GoogleFonts.openSans(
-                        fontSize: 15,
-                        color: scheme.onSurfaceVariant,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Details Section
-                    Container(
-                      decoration: BoxDecoration(
-                        color: scheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: scheme.outlineVariant.withValues(alpha: 0.35),
-                          width: 1,
+                child: _buildVerticalFadingEdge(
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
+                    children: [
+                      // Headline
+                      Text(
+                        model.name,
+                        style: GoogleFonts.playfairDisplay(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
                         ),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      child: Column(
-                        children: [
-                          _buildDetailRow(context, 'File Size',
-                              controller.modelSizeLabel(model)),
-                          const Divider(height: 1),
-                          _buildDetailRow(context, 'Template',
-                              model.template.isNotEmpty ? model.template : 'chatml'),
-                          const Divider(height: 1),
-                          _buildDetailRow(context, 'Format', 'GGUF / Quantized'),
-                          const Divider(height: 1),
-                          _buildDetailRow(context, 'Architecture',
-                              model.isVision ? 'Multimodal (Vision)' : 'Transformer (Decoder-only)'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Variants Section
-                    Text(
-                      'Available Variants',
-                      style: GoogleFonts.manrope(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: scheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: scheme.primary,
-                          width: 1.5,
+                      const SizedBox(height: 8),
+                      Text(
+                        model.description.isNotEmpty
+                            ? model.description
+                            : 'Optimized on-device AI model for local inference.',
+                        style: GoogleFonts.openSans(
+                          fontSize: 15,
+                          color: scheme.onSurfaceVariant,
+                          height: 1.5,
                         ),
                       ),
-                      child: Row(
+                      const SizedBox(height: 24),
+
+                      // Details Section
+                      Container(
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Column(
+                          children: [
+                            _buildDetailRow(context, 'File Size',
+                                controller.modelSizeLabel(model)),
+                            const Divider(height: 1),
+                            _buildDetailRow(context, 'Template',
+                                model.template.isNotEmpty ? model.template : 'chatml'),
+                            const Divider(height: 1),
+                            _buildDetailRow(context, 'Format', 'GGUF / Quantized'),
+                            const Divider(height: 1),
+                            _buildDetailRow(context, 'Architecture',
+                                model.isVision ? 'Multimodal (Vision)' : 'Transformer (Decoder-only)'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Variants Section
+                      Text(
+                        'Available Variants',
+                        style: GoogleFonts.manrope(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Row(
                         children: [
                           Expanded(
                             child: Row(
@@ -2962,7 +2962,7 @@ class ModelView extends GetView<ModelController> {
                     ),
                   ],
                 ),
-              ),
+              )),
               const SizedBox(height: 16),
               // Bottom Action Button
               SizedBox(
@@ -3147,6 +3147,46 @@ class ModelView extends GetView<ModelController> {
         ],
       );
     });
+  }
+
+  Widget _buildVerticalFadingEdge({required Widget child}) {
+    return ShaderMask(
+      shaderCallback: (Rect bounds) {
+        return const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.transparent,
+            Colors.black,
+            Colors.black,
+            Colors.transparent,
+          ],
+          stops: [0.0, 0.02, 0.98, 1.0],
+        ).createShader(bounds);
+      },
+      blendMode: BlendMode.dstIn,
+      child: child,
+    );
+  }
+
+  Widget _buildHorizontalFadingEdge({required Widget child}) {
+    return ShaderMask(
+      shaderCallback: (Rect bounds) {
+        return const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            Colors.transparent,
+            Colors.black,
+            Colors.black,
+            Colors.transparent,
+          ],
+          stops: [0.0, 0.03, 0.97, 1.0],
+        ).createShader(bounds);
+      },
+      blendMode: BlendMode.dstIn,
+      child: child,
+    );
   }
 }
 
