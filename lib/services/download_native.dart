@@ -3,7 +3,18 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 
-final Dio _dio = Dio();
+final Dio _dio = Dio(
+  BaseOptions(
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 120),
+    sendTimeout: const Duration(seconds: 30),
+    headers: {
+      'User-Agent':
+          'Mozilla/5.0 (Linux; Android 14; Mobile; arm64-v8a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36 AstraLM/2.0',
+      'Accept': '*/*',
+    },
+  ),
+);
 final Map<String, CancelToken> _cancelTokens = {};
 const _channel = MethodChannel('com.aichat.ai_chat/model_import');
 
@@ -108,8 +119,11 @@ Future<String> downloadModel({
     if (await oldTempFile.exists()) {
       await oldTempFile.delete();
     }
+
+    // Check if we can resume an existing partial download
+    var startByte = 0;
     if (await tempFile.exists()) {
-      await tempFile.delete();
+      startByte = await tempFile.length();
     }
 
     final headers = <String, dynamic>{};
@@ -117,23 +131,56 @@ Future<String> downloadModel({
       headers['Authorization'] = 'Bearer $authToken';
     }
 
-    await _dio.download(
+    if (startByte > 0) {
+      headers['Range'] = 'bytes=$startByte-';
+    }
+
+    final response = await _dio.get<ResponseBody>(
       url,
-      tempPath,
       cancelToken: cancelToken,
-      deleteOnError: false,
       options: Options(
         headers: headers,
         responseType: ResponseType.stream,
         followRedirects: true,
       ),
-      onReceiveProgress: (received, total) {
-        if (total > 0) {
-          expectedTotalBytes = total;
-        }
-        onProgress?.call(received, total > 0 ? total : 0);
-      },
     );
+
+    final isPartial = response.statusCode == 206;
+    final sink = tempFile.openWrite(
+      mode: isPartial ? FileMode.append : FileMode.write,
+    );
+
+    final streamLength = int.tryParse(
+          response.headers.value(Headers.contentLengthHeader) ?? '',
+        ) ??
+        0;
+
+    if (isPartial) {
+      expectedTotalBytes = startByte + streamLength;
+    } else {
+      startByte = 0;
+      expectedTotalBytes = streamLength;
+    }
+
+    var receivedBytes = startByte;
+    if (onProgress != null && expectedTotalBytes > 0) {
+      onProgress(receivedBytes, expectedTotalBytes);
+    }
+
+    await for (final chunk in response.data!.stream) {
+      if (cancelToken.isCancelled) {
+        await sink.flush();
+        await sink.close();
+        _cancelTokens.remove(filename);
+        return 'PAUSED';
+      }
+      sink.add(chunk);
+      receivedBytes += chunk.length;
+      onProgress?.call(receivedBytes, expectedTotalBytes > 0 ? expectedTotalBytes : 0);
+    }
+
+    await sink.flush();
+    await sink.close();
 
     final downloadedBytes = await tempFile.length();
     if (expectedTotalBytes > 0 && downloadedBytes < expectedTotalBytes) {

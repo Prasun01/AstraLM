@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 
@@ -77,37 +78,37 @@ class CloudModelController extends GetxController {
       id: 'openrouter',
       name: 'OpenRouter',
       description: 'Free model list · OpenAI compatible',
-      icon: Icons.hub_outlined,
+      icon: PhosphorIconsBold.gitBranch,
     ),
     CloudProviderInfo(
       id: 'openai',
       name: 'OpenAI',
       description: 'Native OpenAI chat models',
-      icon: Icons.auto_awesome,
+      icon: PhosphorIconsBold.sparkle,
     ),
     CloudProviderInfo(
       id: 'deepseek',
       name: 'DeepSeek',
       description: 'OpenAI compatible V4 models',
-      icon: Icons.psychology_alt_outlined,
+      icon: PhosphorIconsBold.brain,
     ),
     CloudProviderInfo(
       id: 'google',
       name: 'Google Gemini',
       description: 'Gemini native API models',
-      icon: Icons.diamond_outlined,
+      icon: PhosphorIconsBold.diamond,
     ),
     CloudProviderInfo(
       id: 'nvidia',
       name: 'NVIDIA NIM',
       description: 'OpenAI compatible hosted NIM models',
-      icon: Icons.memory_outlined,
+      icon: PhosphorIconsBold.cpu,
     ),
     CloudProviderInfo(
       id: 'custom',
       name: 'Custom API',
       description: 'Manual OpenAI-compatible endpoint',
-      icon: Icons.tune,
+      icon: PhosphorIconsBold.sliders,
       supportsFetch: false,
     ),
   ];

@@ -5,6 +5,7 @@ import '../services/inference_service.dart';
 import '../services/local_image_service.dart';
 import '../services/download_service.dart';
 import '../core/constants.dart';
+import '../controllers/settings_controller.dart';
 
 class HomeController extends GetxController {
   final currentTab = 0.obs;
@@ -14,11 +15,21 @@ class HomeController extends GetxController {
     currentTab.value = index;
   }
 
-  /// Shows a one-time bottom sheet on startup asking if the user wants to reload
-  /// the last used model (text or image). Does not auto-load anything.
+  /// Checks and restores the last active model on startup.
+  /// If cloud mode is selected, local models are kept unloaded.
   void checkResumeModel(BuildContext context) async {
     if (_resumeDialogShown) return;
     _resumeDialogShown = true;
+
+    final settings = Get.find<SettingsController>();
+    if (settings.inferenceMode.value == 'cloud') {
+      // User is in online/cloud mode: ensure local model is unloaded and do not load local model.
+      final inf = Get.find<InferenceService>();
+      if (inf.isModelLoaded.value) {
+        await inf.unloadModel();
+      }
+      return;
+    }
 
     final hive = Get.find<HiveService>();
     final downloadService = Get.find<DownloadService>();

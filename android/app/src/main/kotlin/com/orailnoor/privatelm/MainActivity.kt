@@ -164,10 +164,11 @@ class MainActivity : FlutterActivity() {
             setTitle(safeName)
             setDescription("Downloading AI model")
             setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
             setAllowedOverMetered(true)
             setAllowedOverRoaming(true)
             setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeName)
-            addRequestHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36")
+            addRequestHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36")
             addRequestHeader("Accept", "*/*")
         }
         val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
@@ -215,6 +216,8 @@ class MainActivity : FlutterActivity() {
                             } else if (status == DownloadManager.STATUS_FAILED) {
                                 isFinished = true
                                 emitProgress(safeName, downloaded, total, 0.0, "Download failed")
+                            } else if (status == DownloadManager.STATUS_PAUSED) {
+                                emitProgress(safeName, downloaded, total, 0.0, "Downloading (waiting for connection)...")
                             } else {
                                 emitProgress(safeName, downloaded, total, bytesPerSecond, "Downloading to phone...")
                             }
@@ -242,10 +245,11 @@ class MainActivity : FlutterActivity() {
             setTitle(safeName)
             setDescription("Downloading local AI model")
             setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+            setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
             setAllowedOverMetered(true)
             setAllowedOverRoaming(true)
             setDestinationUri(Uri.fromFile(destFile))
-            addRequestHeader("User-Agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36")
+            addRequestHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36")
             addRequestHeader("Accept", "*/*")
         }
         val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
@@ -302,6 +306,8 @@ class MainActivity : FlutterActivity() {
                                 isFinished = true
                                 removeInAppDownload(downloadId)
                                 emitProgress(safeName, downloaded, total, 0.0, "Download failed")
+                            } else if (status == DownloadManager.STATUS_PAUSED) {
+                                emitProgress(safeName, downloaded, total, 0.0, "Downloading (waiting for network)...")
                             } else {
                                 emitProgress(safeName, downloaded, total, bytesPerSecond, "Downloading...")
                             }
@@ -331,8 +337,6 @@ class MainActivity : FlutterActivity() {
             emitProgress(safeName, downloaded, total, 0.0, "Importing to app storage...")
             val targetFile = File(modelsDir, safeName)
             targetFile.parentFile?.mkdirs()
-            val partFile = File(targetFile.parentFile, "${targetFile.name}.part")
-            if (partFile.exists()) partFile.delete()
             if (!destFile.exists()) {
                 if (targetFile.exists() && targetFile.length() > 0L) {
                     removeInAppDownload(downloadId)
@@ -341,17 +345,22 @@ class MainActivity : FlutterActivity() {
                 }
                 throw IllegalStateException("Downloaded temporary file is missing.")
             }
-            destFile.copyTo(partFile, overwrite = true)
             if (targetFile.exists()) targetFile.delete()
-            if (!partFile.renameTo(targetFile)) {
-                throw IllegalStateException("Unable to finalize downloaded model.")
+            val moved = destFile.renameTo(targetFile)
+            if (!moved) {
+                val partFile = File(targetFile.parentFile, "${targetFile.name}.part")
+                if (partFile.exists()) partFile.delete()
+                destFile.copyTo(partFile, overwrite = true)
+                if (!partFile.renameTo(targetFile)) {
+                    throw IllegalStateException("Unable to finalize downloaded model.")
+                }
+                destFile.delete()
             }
-            destFile.delete()
             removeInAppDownload(downloadId)
             emitProgress(safeName, total, total, 0.0, "Download complete")
         } catch (e: Exception) {
             Log.e("MainActivity", "Failed to import downloaded model: ${e.message}", e)
-            emitProgress(safeName, downloaded, total, 0.0, "Download failed: import error")
+            emitProgress(safeName, downloaded, total, 0.0, "Download failed: ${e.message}")
         }
     }
 

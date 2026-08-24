@@ -100,4 +100,6 @@ reference_local_diffusion/
 # Android APK / AAB binaries
 *.apk
 *.aab
+.flutter-plugins
+.flutter-plugins-dependencies
 

@@ -9,6 +9,7 @@ import '../core/constants.dart';
 import '../services/hive_service.dart';
 import '../services/app_log_service.dart';
 import '../services/local_image_service.dart';
+import '../services/inference_service.dart';
 import '../ffi/sd_ffi_bindings.dart';
 import 'package:sd_flutter_android/sd_flutter_android.dart';
 
@@ -323,6 +324,14 @@ class SettingsController extends GetxController {
   Future<void> setInferenceMode(String mode) async {
     inferenceMode.value = mode;
     await _hive.setSetting(AppConstants.keyInferenceMode, mode);
+    if (mode == 'cloud') {
+      try {
+        final inf = Get.find<InferenceService>();
+        if (inf.isModelLoaded.value) {
+          await inf.unloadModel();
+        }
+      } catch (_) {}
+    }
   }
 
   Future<void> setCloudProvider(String provider) async {
@@ -485,6 +494,27 @@ class SettingsController extends GetxController {
     await _hive.setSetting(
         AppConstants.keyCustomCloudModel, customCloudModel.value);
     await _saveCustomCloudProfiles();
+  }
+
+  Future<void> setCustomCloudBaseUrl(String url) async {
+    final trimmed = url.trim().replaceAll(RegExp(r'/+$'), '');
+    customCloudBaseUrl.value = trimmed;
+    customCloudBaseUrlController.text = trimmed;
+    await _hive.setSetting(AppConstants.keyCustomCloudBaseUrl, trimmed);
+  }
+
+  Future<void> setCustomCloudKey(String key) async {
+    final trimmed = key.trim();
+    customCloudKey.value = trimmed;
+    customCloudKeyController.text = trimmed;
+    await _hive.setSetting(AppConstants.keyCustomCloudKey, trimmed);
+  }
+
+  Future<void> setCustomCloudModel(String model) async {
+    final trimmed = model.trim();
+    customCloudModel.value = trimmed;
+    customCloudModelController.text = trimmed;
+    await _hive.setSetting(AppConstants.keyCustomCloudModel, trimmed);
   }
 
   Future<void> clearCustomCloudConfig() async {

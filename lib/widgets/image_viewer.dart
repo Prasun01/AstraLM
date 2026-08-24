@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -108,7 +109,7 @@ class _ImageViewerState extends State<ImageViewer> {
                 _bytes,
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Center(
-                  child: Icon(Icons.broken_image_rounded, color: Colors.white, size: 64),
+                  child: Icon(PhosphorIconsBold.imageBroken, color: Colors.white, size: 64),
                 ),
               ),
             ),
@@ -125,7 +126,7 @@ class _ImageViewerState extends State<ImageViewer> {
                   shape: const CircleBorder(),
                   clipBehavior: Clip.antiAlias,
                   child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
+                    icon: Icon(PhosphorIconsBold.x, color: Colors.white),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ),
@@ -148,14 +149,14 @@ class _ImageViewerState extends State<ImageViewer> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _ActionButton(
-                      icon: Icons.download_rounded,
+                      icon: PhosphorIconsBold.arrowDown,
                       label: 'Download',
                       isLoading: _isSaving,
                       onTap: _download,
                     ),
                     const SizedBox(width: 24),
                     _ActionButton(
-                      icon: Icons.share_rounded,
+                      icon: PhosphorIconsBold.shareNetwork,
                       label: 'Share',
                       isLoading: _isSharing,
                       onTap: _share,

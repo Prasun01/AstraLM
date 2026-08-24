@@ -165,7 +165,7 @@ class AppConstants {
       'filename': 'qwen2-vl-2b-instruct-q4_k_m.gguf',
       'url':
           'https://huggingface.co/bartowski/Qwen2-VL-2B-Instruct-GGUF/resolve/main/Qwen2-VL-2B-Instruct-Q4_K_M.gguf',
-      'size': '1.5 GB',
+      'size': '1.3 GB',
       'description': 'Vision-capable — can understand images',
       'template': 'chatml',
       'vision': 'true',

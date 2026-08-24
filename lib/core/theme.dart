@@ -71,43 +71,42 @@ class AppTheme {
       surfaceTint: AppColors.primaryDeep,
     );
 
-    // Open Sans for body reading text; Playfair Display for headlines/editorial display; Manrope for UI controls/labels.
-    final baseText = GoogleFonts.openSansTextTheme(
+    // Unified modern typography: Manrope for display/headlines/UI, Inter for body reading text.
+    final baseText = GoogleFonts.interTextTheme(
       isDark ? ThemeData.dark().textTheme : ThemeData.light().textTheme,
     ).apply(bodyColor: onSurface, displayColor: onSurface);
 
-    final playfair = GoogleFonts.playfairDisplayTextTheme(baseText);
     final manrope = GoogleFonts.manropeTextTheme(baseText);
 
     final textTheme = baseText.copyWith(
-      displayLarge: playfair.displayLarge?.copyWith(
-        fontSize: 38,
-        fontWeight: FontWeight.w700,
+      displayLarge: manrope.displayLarge?.copyWith(
+        fontSize: 34,
+        fontWeight: FontWeight.w800,
         height: 1.2,
         letterSpacing: -0.5,
       ),
-      displayMedium: playfair.displayMedium?.copyWith(
-        fontSize: 32,
+      displayMedium: manrope.displayMedium?.copyWith(
+        fontSize: 28,
         fontWeight: FontWeight.w700,
-        letterSpacing: -0.5,
+        letterSpacing: -0.4,
       ),
-      headlineLarge: playfair.headlineLarge?.copyWith(
-        fontSize: 30,
-        fontWeight: FontWeight.w700,
-        height: 1.25,
-      ),
-      headlineMedium: playfair.headlineMedium?.copyWith(
-        fontSize: 26,
+      headlineLarge: manrope.headlineLarge?.copyWith(
+        fontSize: 24,
         fontWeight: FontWeight.w700,
         height: 1.25,
       ),
-      headlineSmall: playfair.headlineSmall?.copyWith(
-        fontSize: 22,
+      headlineMedium: manrope.headlineMedium?.copyWith(
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        height: 1.25,
+      ),
+      headlineSmall: manrope.headlineSmall?.copyWith(
+        fontSize: 18,
         fontWeight: FontWeight.w600,
         height: 1.3,
       ),
       titleLarge: manrope.titleLarge?.copyWith(
-        fontSize: 19,
+        fontSize: 17,
         fontWeight: FontWeight.w700,
         height: 1.35,
       ),

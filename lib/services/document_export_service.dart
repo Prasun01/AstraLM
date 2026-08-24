@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -216,7 +217,7 @@ class DocumentExportService extends GetxService {
         duration: const Duration(seconds: 3),
         backgroundColor: const Color(0xFF141620),
         colorText: Colors.white,
-        icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white),
+        icon: Icon(PhosphorIconsBold.filePdf, color: Colors.white),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         borderRadius: 16,
       );
@@ -451,7 +452,7 @@ ${bodyXmlBuffer.toString()}
         duration: const Duration(seconds: 3),
         backgroundColor: const Color(0xFF141620),
         colorText: Colors.white,
-        icon: const Icon(Icons.description_rounded, color: Colors.white),
+        icon: Icon(PhosphorIconsBold.fileText, color: Colors.white),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         borderRadius: 16,
       );

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/constants.dart';
@@ -30,7 +31,7 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
       title: 'Next-Gen Intelligence.\nUncompromising Privacy.',
       description:
           'Experience state-of-the-art AI right in your hands. Fast, completely offline-capable, and universally extensible across local hardware and global cloud APIs.',
-      icon: Icons.auto_awesome_rounded,
+      icon: PhosphorIconsBold.sparkle,
     ),
     const _MonochromeGuideItem(
       tag: '02 / LOCAL INFERENCE',
@@ -38,7 +39,7 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
       title: 'On-Device Engine.\nZero Telemetry.',
       description:
           'Run cutting-edge GGUF & LiteRT open-weight language models locally on your phone. Your conversations, prompts, and personal data never leave your physical device.',
-      icon: Icons.memory_rounded,
+      icon: PhosphorIconsBold.cpu,
     ),
     const _MonochromeGuideItem(
       tag: '03 / CLOUD ECOSYSTEM',
@@ -46,7 +47,7 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
       title: 'Connect Any Provider.\nYour Own Keys.',
       description:
           'Switch seamlessly to Claude, OpenAI, OpenRouter, DeepSeek, Kimi, Nvidia NIM, or any custom OpenAI-compatible endpoint with your private API credentials.',
-      icon: Icons.hub_rounded,
+      icon: PhosphorIconsBold.gitBranch,
     ),
     const _MonochromeGuideItem(
       tag: '04 / MULTIMODAL & CREATIVE',
@@ -54,7 +55,7 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
       title: 'Vision & Generation.\nAll in One Place.',
       description:
           'Inspect documents and analyze photos with multimodal vision models, or generate high-fidelity art on-device with built-in Stable Diffusion isolate engines.',
-      icon: Icons.palette_rounded,
+      icon: PhosphorIconsBold.palette,
     ),
     const _MonochromeGuideItem(
       tag: '05 / READY',
@@ -62,7 +63,7 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
       title: 'Tailored Performance\nfor Your Device.',
       description:
           'AstraLM has automatically benchmarked and optimized context size, RAM allocation, and GPU acceleration for your hardware.',
-      icon: Icons.rocket_launch_rounded,
+      icon: PhosphorIconsBold.rocket,
       isFinal: true,
     ),
   ];
@@ -242,7 +243,7 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
                           children: [
                             _buildSolidWhiteButton(
                               label: 'Explore Local Models',
-                              icon: Icons.arrow_downward_rounded,
+                              icon: PhosphorIconsBold.arrowDown,
                               onTap: () => _completeGuide(
                                 nextAction: () => Navigator.of(context).push(
                                   MaterialPageRoute(
@@ -260,7 +261,7 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
                       else
                         _buildSolidWhiteButton(
                           label: 'Continue',
-                          icon: Icons.arrow_forward_rounded,
+                          icon: PhosphorIconsBold.arrowRight,
                           onTap: () {
                             _pageController.nextPage(
                               duration: const Duration(milliseconds: 420),

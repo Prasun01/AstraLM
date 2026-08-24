@@ -89,6 +89,19 @@ class ChatController extends GetxController {
   final canvasHistory = <String>[].obs;
   final canvasLanguage = 'markdown'.obs;
 
+  // Incognito Mode State (private session, chats not saved to history)
+  final isIncognito = false.obs;
+
+  void toggleIncognito() {
+    isIncognito.value = !isIncognito.value;
+    if (isIncognito.value) {
+      messages.clear();
+      currentSessionId.value = 'incognito_${_uuid.v4()}';
+    } else {
+      createNewChat();
+    }
+  }
+
   void toggleCanvasMode([bool? force]) {
     if (force != null) {
       isCanvasMode.value = force;
@@ -100,14 +113,83 @@ class ChatController extends GetxController {
   void openCanvas({String? title, String? content, String? language}) {
     if (title != null && title.trim().isNotEmpty) canvasTitle.value = title;
     if (content != null) {
-      canvasContent.value = content;
-      canvasTextController.text = content;
-      if (!canvasHistory.contains(content)) {
-        canvasHistory.add(content);
+      final codeOnly = _extractCodeOnly(content);
+      canvasContent.value = codeOnly;
+      canvasTextController.text = codeOnly;
+      if (!canvasHistory.contains(codeOnly)) {
+        canvasHistory.add(codeOnly);
       }
     }
     if (language != null) canvasLanguage.value = language;
+    isCanvasEditing.value = false; // Always default to read/view format
     isCanvasOpen.value = true;
+  }
+
+  static String _extractCodeOnly(String raw) {
+    var text = raw.trim();
+    if (text.isEmpty) return '';
+
+    // Strip thought/think reasoning tags if present
+    text = text.replaceAll(
+      RegExp(r'<(?:thought|think)>[\s\S]*?</(?:thought|think)>', caseSensitive: false),
+      '',
+    ).trim();
+
+    // 1. If text contains markdown code block fences (``` ... ```)
+    final firstFenceStart = text.indexOf('```');
+    if (firstFenceStart != -1) {
+      final newlineAfterStart = text.indexOf('\n', firstFenceStart);
+      if (newlineAfterStart != -1) {
+        // Collect all closed code blocks
+        final codeBlocks = <String>[];
+        final fenceRegex = RegExp(r'```[^\n]*\r?\n([\s\S]*?)```', multiLine: true);
+        for (final match in fenceRegex.allMatches(text)) {
+          final block = match.group(1)?.trimRight();
+          if (block != null && block.isNotEmpty) {
+            codeBlocks.add(block);
+          }
+        }
+        if (codeBlocks.isNotEmpty) {
+          return codeBlocks.join('\n\n').trim();
+        }
+
+        // Partial / unclosed code block (e.g. streaming or truncated)
+        final codeAfterOpen = text.substring(newlineAfterStart + 1);
+        final closingFence = codeAfterOpen.lastIndexOf('```');
+        if (closingFence != -1) {
+          return codeAfterOpen.substring(0, closingFence).trim();
+        } else {
+          return codeAfterOpen.trim();
+        }
+      }
+    }
+
+    // 2. Check for pure HTML markup tags (e.g. <!DOCTYPE, <html>...</html>)
+    final lower = text.toLowerCase();
+    if (lower.contains('<html') && lower.contains('</html>')) {
+      final start = lower.indexOf('<html');
+      final end = lower.lastIndexOf('</html>');
+      if (start != -1 && end != -1) {
+        return text.substring(start, end + 7).trim();
+      }
+    } else if (lower.contains('<!doctype html>')) {
+      final start = lower.indexOf('<!doctype html>');
+      if (start != -1) {
+        final end = lower.lastIndexOf('</html>');
+        if (end != -1) {
+          return text.substring(start, end + 7).trim();
+        }
+        return text.substring(start).trim();
+      }
+    }
+
+    // 3. For Markdown documents, strip conversational intro/greeting before first heading
+    final firstHeading = RegExp(r'^#{1,4}\s+', multiLine: true).firstMatch(text);
+    if (firstHeading != null && firstHeading.start > 0) {
+      return text.substring(firstHeading.start).trim();
+    }
+
+    return text;
   }
 
   void closeCanvas() {
@@ -247,6 +329,12 @@ class ChatController extends GetxController {
   }
 
   String _ensureActiveSession() {
+    if (isIncognito.value) {
+      if (currentSessionId.value.isEmpty) {
+        currentSessionId.value = 'incognito_${_uuid.v4()}';
+      }
+      return currentSessionId.value;
+    }
     if (currentSessionId.value.isNotEmpty) {
       final exists = sessions.any((s) => s.id == currentSessionId.value);
       if (exists) return currentSessionId.value;
@@ -260,6 +348,12 @@ class ChatController extends GetxController {
   }
 
   void createNewChat() {
+    // If exiting an incognito session, automatically terminate incognito and clear private chat
+    if (isIncognito.value) {
+      isIncognito.value = false;
+      messages.clear();
+      currentSessionId.value = '';
+    }
     // Do not allow new chat window if the current window is empty
     if (messages.isEmpty) {
       return;
@@ -280,6 +374,11 @@ class ChatController extends GetxController {
 
   void openChat(String sessionId) {
     stopGenerating();
+    // Switching chats automatically exits and deletes single-session incognito mode
+    if (isIncognito.value) {
+      isIncognito.value = false;
+      messages.clear();
+    }
     currentSessionId.value = sessionId;
     final raw = _hive.getMessagesForChat(sessionId);
     messages.value = raw.map((m) => ChatMessage.fromMap(m)).toList()
@@ -612,7 +711,9 @@ class ChatController extends GetxController {
       fileSize: fileSize > 0 ? fileSize : null,
     );
     messages.add(userMsg);
-    _hive.saveMessage(userMsg.id, userMsg.toMap());
+    if (!isIncognito.value) {
+      _hive.saveMessage(userMsg.id, userMsg.toMap());
+    }
 
     // Clear input preview UI state — but KEEP the physical file on disk 
     // because the native inference engine needs to read it during generation.
@@ -623,7 +724,7 @@ class ChatController extends GetxController {
     _scrollToBottom(force: true);
 
     // Update session title (use first message as title)
-    if (messages.where((m) => m.role == 'user').length == 1) {
+    if (!isIncognito.value && messages.where((m) => m.role == 'user').length == 1) {
       final title = visibleText.length > 40
           ? '${visibleText.substring(0, 40)}...'
           : visibleText;
@@ -818,6 +919,24 @@ class ChatController extends GetxController {
         );
       }
 
+      if (streamingResponse.value.trim().isEmpty &&
+          rawResponse.isNotEmpty &&
+          !rawResponse.startsWith('ERROR:') &&
+          !rawResponse.startsWith('[IMAGE_BASE64]')) {
+        // Smooth progressive stream-of-words for non-SSE responses
+        final words = rawResponse.split(' ');
+        for (int i = 0; i < words.length; i++) {
+          if (generationId != _generationSerial) return;
+          final space = i == 0 ? '' : ' ';
+          streamingResponse.value += '$space${words[i]}';
+          _scrollToBottom();
+          final delayMs =
+              words.length > 200 ? 6 : (words.length > 80 ? 12 : 18);
+          await Future.delayed(Duration(milliseconds: delayMs));
+        }
+        await Future.delayed(const Duration(milliseconds: 80));
+      }
+
       if (thoughtStartedAt != null && thoughtDurationSeconds == null) {
         thoughtDurationSeconds =
             DateTime.now().difference(thoughtStartedAt!).inSeconds;
@@ -866,17 +985,21 @@ class ChatController extends GetxController {
         imageGenDurationMs: genDurationMs,
       );
       messages.add(aiMsg);
-      _hive.saveMessage(aiMsg.id, aiMsg.toMap());
+      if (!isIncognito.value) {
+        _hive.saveMessage(aiMsg.id, aiMsg.toMap());
+      }
       imageGenStartTime.value = null;
 
       // Update session
-      final session =
-          sessions.firstWhereOrNull((s) => s.id == currentSessionId.value);
-      if (session != null) {
-        final updated = session.copyWith(lastMessage: aiMsg.content);
-        _hive.saveSession(updated.id, updated.toMap());
-        final idx = sessions.indexWhere((s) => s.id == updated.id);
-        if (idx >= 0) sessions[idx] = updated;
+      if (!isIncognito.value) {
+        final session =
+            sessions.firstWhereOrNull((s) => s.id == currentSessionId.value);
+        if (session != null) {
+          final updated = session.copyWith(lastMessage: aiMsg.content);
+          _hive.saveSession(updated.id, updated.toMap());
+          final idx = sessions.indexWhere((s) => s.id == updated.id);
+          if (idx >= 0) sessions[idx] = updated;
+        }
       }
     } catch (e) {
       if (generationId != _generationSerial) return;
@@ -928,7 +1051,10 @@ class ChatController extends GetxController {
     imageGenEstimatedSecs.value = 0;
     imageGenStartTime.value = null;
     imageGenDecoding.value = false;
-    unawaited(Get.find<InferenceService>().stopGeneration());
+    // Eagerly mark inference as stopped so next sendMessage() is not blocked.
+    final inf = Get.find<InferenceService>();
+    inf.isGenerating.value = false;
+    unawaited(inf.stopGeneration());
     Get.find<LocalImageService>().cancelGeneration();
   }
 
@@ -948,15 +1074,17 @@ class ChatController extends GetxController {
       thoughtDurationSeconds: thoughtDurationSeconds,
     );
     messages.add(aiMsg);
-    _hive.saveMessage(aiMsg.id, aiMsg.toMap());
+    if (!isIncognito.value) {
+      _hive.saveMessage(aiMsg.id, aiMsg.toMap());
 
-    final session =
-        sessions.firstWhereOrNull((s) => s.id == currentSessionId.value);
-    if (session != null) {
-      final updated = session.copyWith(lastMessage: aiMsg.content);
-      _hive.saveSession(updated.id, updated.toMap());
-      final idx = sessions.indexWhere((s) => s.id == updated.id);
-      if (idx >= 0) sessions[idx] = updated;
+      final session =
+          sessions.firstWhereOrNull((s) => s.id == currentSessionId.value);
+      if (session != null) {
+        final updated = session.copyWith(lastMessage: aiMsg.content);
+        _hive.saveSession(updated.id, updated.toMap());
+        final idx = sessions.indexWhere((s) => s.id == updated.id);
+        if (idx >= 0) sessions[idx] = updated;
+      }
     }
   }
 

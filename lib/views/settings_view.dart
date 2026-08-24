@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -17,6 +18,10 @@ import 'server_view.dart';
 import 'welcome_guide_view.dart';
 import 'license_view.dart';
 
+// ─────────────────────────────────────────────────────────────
+// MAIN SETTINGS HUB (BORDERLESS STRICT MONOCHROME)
+// ─────────────────────────────────────────────────────────────
+
 class SettingsView extends GetView<SettingsController> {
   const SettingsView({super.key});
 
@@ -24,145 +29,318 @@ class SettingsView extends GetView<SettingsController> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final deviceInfo = Get.find<DeviceInfoService>();
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF090A0E) : const Color(0xFFF4F6F9),
+      backgroundColor: isDark ? Colors.black : const Color(0xFFF7F7F8),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: PhosphorIcon(PhosphorIconsBold.caretLeft,
+              size: 20,
+              color: isDark ? Colors.white : Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
-          'Settings & Hardware',
+          'Settings',
           style: GoogleFonts.manrope(
             fontWeight: FontWeight.w700,
-            fontSize: 22,
+            fontSize: 20,
             letterSpacing: -0.3,
-            color: isDark ? Colors.white : const Color(0xFF0E1017),
+            color: isDark ? Colors.white : Colors.black,
           ),
         ),
         toolbarHeight: 56,
       ),
       body: Obx(
         () => ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
           children: [
-            // ── APPEARANCE ──
-            _sectionLabel(context, 'APPEARANCE'),
-            _appleGroupedCard(context, children: [
-              for (final mode in [
-                ThemeMode.light,
-                ThemeMode.dark,
-                ThemeMode.system
-              ])
-                _appleListTile(
-                  context,
-                  leading: _iconBox(context, _themeModeIcon(mode)),
-                  title: _themeModeName(mode),
-                  trailing: controller.themeMode.value == mode
-                      ? Icon(Icons.check_rounded,
-                          size: 18, color: isDark ? Colors.white : const Color(0xFF141620))
-                      : null,
-                  showDivider: mode != ThemeMode.system,
-                  onTap: () => controller.setThemeMode(mode),
-                ),
-            ]),
-            const SizedBox(height: 28),
-
-            // ── INFERENCE ENGINE & MODE ──
-            _sectionLabel(context, 'INFERENCE MODE'),
-            _appleGroupedCard(context, children: [
-              _appleListTile(
+            // ── INTERFACE ──
+            _sectionLabel(context, 'INTERFACE'),
+            _monoGroupedCard(context, children: [
+              _monoListTile(
                 context,
-                leading: _iconBox(context, Icons.memory_rounded),
+                leading: _iconBox(context, PhosphorIconsBold.palette),
+                title: 'Appearance & Theme',
+                subtitle: null,
+                trailing: _chevronTrailing(isDark),
+                showDivider: false,
+                onTap: () => Get.to(() => const AppearanceSubView()),
+              ),
+            ]),
+            const SizedBox(height: 22),
+
+            // ── AI & INFERENCE ──
+            _sectionLabel(context, 'AI & INFERENCE'),
+            _monoGroupedCard(context, children: [
+              _monoListTile(
+                context,
+                leading: _iconBox(context, PhosphorIconsBold.cpu),
+                title: 'Inference & Model Parameters',
+                subtitle: null,
+                trailing: _chevronTrailing(isDark),
+                showDivider: true,
+                onTap: () => Get.to(() => const InferenceSettingsSubView()),
+              ),
+              _monoListTile(
+                context,
+                leading: _iconBox(context, PhosphorIconsBold.cloud),
+                title: 'Cloud Providers & API Keys',
+                subtitle: null,
+                trailing: _chevronTrailing(isDark),
+                showDivider: true,
+                onTap: () => Get.to(() => const CloudProvidersSubView()),
+              ),
+              _monoListTile(
+                context,
+                leading: _iconBox(context, PhosphorIconsBold.database),
+                title: 'Local API Server',
+                subtitle: null,
+                trailing: _chevronTrailing(isDark),
+                showDivider: false,
+                onTap: () => Get.to(() => const ServerView()),
+              ),
+            ]),
+            const SizedBox(height: 22),
+
+            // ── SYSTEM & HARDWARE ──
+            _sectionLabel(context, 'SYSTEM & HARDWARE'),
+            _monoGroupedCard(context, children: [
+              _monoListTile(
+                context,
+                leading: _iconBox(context, PhosphorIconsBold.deviceMobile),
+                title: 'Device Hardware & Calibration',
+                subtitle: '${deviceInfo.tierDescription} · ${deviceInfo.availableRamGB.value.toStringAsFixed(1)}GB RAM Available',
+                trailing: _chevronTrailing(isDark),
+                showDivider: true,
+                onTap: () => Get.to(() => const DeviceCalibrationSubView()),
+              ),
+              _monoListTile(
+                context,
+                leading: _iconBox(context, PhosphorIconsBold.terminal),
+                title: 'Diagnostics & Live Logs',
+                subtitle: null,
+                trailing: _chevronTrailing(isDark),
+                showDivider: false,
+                onTap: () => Get.to(() => const LogView()),
+              ),
+            ]),
+            const SizedBox(height: 22),
+
+            // ── ABOUT ──
+            _sectionLabel(context, 'ABOUT'),
+            _monoGroupedCard(context, children: [
+              _monoListTile(
+                context,
+                leading: _iconBox(context, PhosphorIconsBold.sparkle),
+                title: 'About AstraLM',
+                subtitle: null,
+                trailing: _chevronTrailing(isDark),
+                showDivider: false,
+                onTap: () => Get.to(() => const AboutSubView()),
+              ),
+            ]),
+            const SizedBox(height: 48),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// SUB-VIEW 1: APPEARANCE SUB-SETTINGS
+// ─────────────────────────────────────────────────────────────
+
+class AppearanceSubView extends GetView<SettingsController> {
+  const AppearanceSubView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? Colors.black : const Color(0xFFF7F7F8),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: PhosphorIcon(PhosphorIconsBold.caretLeft,
+              size: 20,
+              color: isDark ? Colors.white : Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Appearance & Theme',
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+      ),
+      body: Obx(
+        () => ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          children: [
+            _sectionLabel(context, 'COLOR THEME'),
+            _monoGroupedCard(context, children: [
+              _monoListTile(
+                context,
+                leading: _iconBox(context, PhosphorIconsBold.sun),
+                title: 'Light',
+                trailing: controller.themeMode.value == ThemeMode.light
+                    ? PhosphorIcon(PhosphorIconsBold.check,
+                        size: 18,
+                        color: isDark ? Colors.white : Colors.black)
+                    : null,
+                showDivider: true,
+                onTap: () => controller.setThemeMode(ThemeMode.light),
+              ),
+              _monoListTile(
+                context,
+                leading: _iconBox(context, PhosphorIconsBold.moon),
+                title: 'Dark',
+                trailing: controller.themeMode.value == ThemeMode.dark
+                    ? PhosphorIcon(PhosphorIconsBold.check,
+                        size: 18,
+                        color: isDark ? Colors.white : Colors.black)
+                    : null,
+                showDivider: true,
+                onTap: () => controller.setThemeMode(ThemeMode.dark),
+              ),
+              _monoListTile(
+                context,
+                leading: _iconBox(context, PhosphorIconsBold.sunDim),
+                title: 'System',
+                trailing: controller.themeMode.value == ThemeMode.system
+                    ? PhosphorIcon(PhosphorIconsBold.check,
+                        size: 18,
+                        color: isDark ? Colors.white : Colors.black)
+                    : null,
+                showDivider: false,
+                onTap: () => controller.setThemeMode(ThemeMode.system),
+              ),
+            ]),
+            const SizedBox(height: 48),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// SUB-VIEW 2: INFERENCE & MODEL PARAMETERS
+// ─────────────────────────────────────────────────────────────
+
+class InferenceSettingsSubView extends GetView<SettingsController> {
+  const InferenceSettingsSubView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? Colors.black : const Color(0xFFF7F7F8),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: PhosphorIcon(PhosphorIconsBold.caretLeft,
+              size: 20,
+              color: isDark ? Colors.white : Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Inference & Parameters',
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+      ),
+      body: Obx(
+        () => ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          children: [
+            // ── INFERENCE MODE ──
+            _sectionLabel(context, 'DEFAULT INFERENCE MODE'),
+            _monoGroupedCard(context, children: [
+              _monoListTile(
+                context,
+                leading: _iconBox(context, PhosphorIconsBold.cpu),
                 title: 'Local On-Device Engine',
-                subtitle: _localSubtitle(),
                 trailing: controller.inferenceMode.value == 'local'
-                    ? Icon(Icons.check_rounded,
-                        size: 18, color: isDark ? Colors.white : const Color(0xFF141620))
+                    ? PhosphorIcon(PhosphorIconsBold.check,
+                        size: 18,
+                        color: isDark ? Colors.white : Colors.black)
                     : null,
                 showDivider: true,
                 onTap: () => controller.setInferenceMode('local'),
               ),
-              _appleListTile(
+              _monoListTile(
                 context,
-                leading: _iconBox(context, Icons.hub_outlined),
+                leading: _iconBox(context, PhosphorIconsBold.gitBranch),
                 title: 'Cloud API Provider',
-                subtitle: controller.cloudProvider.value.toUpperCase(),
                 trailing: controller.inferenceMode.value == 'cloud'
-                    ? Icon(Icons.check_rounded,
-                        size: 18, color: isDark ? Colors.white : const Color(0xFF141620))
+                    ? PhosphorIcon(PhosphorIconsBold.check,
+                        size: 18,
+                        color: isDark ? Colors.white : Colors.black)
                     : null,
                 showDivider: false,
                 onTap: () => controller.setInferenceMode('cloud'),
               ),
             ]),
-            const SizedBox(height: 28),
-
-            // ── DEVICE HARDWARE CALIBRATION ──
-            _sectionLabel(context, 'DEVICE CALIBRATION'),
-            _buildDeviceCard(context),
-            const SizedBox(height: 28),
-
-            // ── LOCAL API SERVER ──
-            _buildServerSection(context),
-            const SizedBox(height: 28),
+            const SizedBox(height: 22),
 
             // ── GLOBAL SYSTEM PROMPT ──
             _sectionLabel(context, 'GLOBAL SYSTEM PROMPT'),
-            _appleGroupedCard(context, children: [
+            _monoGroupedCard(context, children: [
               Padding(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Applies across local GGUF, LiteRT, and cloud sessions',
-                      style: GoogleFonts.openSans(
-                        fontSize: 12.5,
-                        color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     TextField(
                       controller: controller.globalSystemPromptController,
                       minLines: 3,
                       maxLines: 6,
-                      style: GoogleFonts.openSans(
+                      style: GoogleFonts.inter(
                         fontSize: 13.5,
-                        color: isDark ? Colors.white : const Color(0xFF12141D),
+                        color: isDark ? Colors.white : Colors.black,
                       ),
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: isDark ? const Color(0xFF161922) : const Color(0xFFF1F3F8),
+                        fillColor: isDark ? const Color(0xFF181818) : const Color(0xFFEFEFEF),
                         hintText: AppConstants.systemPrompt,
-                        hintStyle: GoogleFonts.openSans(
+                        hintStyle: GoogleFonts.inter(
                           fontSize: 13,
-                          color: isDark ? const Color(0xFF5A6074) : const Color(0xFF9EA5B6),
+                          color: isDark ? const Color(0xFF666666) : const Color(0xFF999999),
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: isDark ? const Color(0xFF282D3D) : const Color(0xFFD6DBE8),
-                          ),
+                          borderSide: BorderSide.none,
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: isDark ? const Color(0xFF282D3D) : const Color(0xFFD6DBE8),
-                          ),
+                          borderSide: BorderSide.none,
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: isDark ? Colors.white : const Color(0xFF12141D),
-                            width: 1.2,
-                          ),
+                          borderSide: BorderSide.none,
                         ),
                         suffixIcon: IconButton(
-                          icon: Icon(
-                            Icons.check_circle_outline_rounded,
+                          icon: PhosphorIcon(
+                            PhosphorIconsBold.checkCircle,
                             size: 20,
-                            color: isDark ? Colors.white : const Color(0xFF12141D),
+                            color: isDark ? Colors.white : Colors.black,
                           ),
                           onPressed: () => controller.setGlobalSystemPrompt(
                             controller.globalSystemPromptController.text,
@@ -175,122 +353,198 @@ class SettingsView extends GetView<SettingsController> {
                 ),
               ),
             ]),
-            const SizedBox(height: 28),
+            const SizedBox(height: 22),
+
+            // ── LITERTLM PERFORMANCE MODE ──
+            _sectionLabel(context, 'LITERTLM GPU/CPU MODE'),
+            _buildLiteRtCard(context, controller),
+            const SizedBox(height: 22),
 
             // ── MODEL PARAMETERS & TUNING ──
-            _sectionLabel(context, 'MODEL PARAMETERS'),
-            _buildLiteRtCard(context),
-            const SizedBox(height: 16),
-            _buildModelParametersCard(context),
-            const SizedBox(height: 28),
+            _sectionLabel(context, 'LOCAL MODEL TUNING'),
+            _buildModelParametersCard(context, controller),
+            const SizedBox(height: 22),
 
             // ── IMAGE GENERATION PARAMETERS ──
             _sectionLabel(context, 'IMAGE GENERATION PARAMETERS'),
-            _buildImageGenerationCard(context),
-            const SizedBox(height: 28),
+            _buildImageGenerationCard(context, controller),
+            const SizedBox(height: 48),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-            // ── DIAGNOSTICS & LOGS ──
-            _sectionLabel(context, 'DIAGNOSTICS & SYSTEM'),
-            _appleGroupedCard(context, children: [
-              _appleListTile(
-                context,
-                leading: _iconBox(context, Icons.terminal_rounded),
-                title: 'Diagnostics & Logs',
-                subtitle: 'Real-time engine logs, token speed & debug events',
-                trailing: const Icon(Icons.chevron_right, size: 18),
-                showDivider: false,
-                onTap: () => Get.to(() => const LogView()),
-              ),
-            ]),
-            const SizedBox(height: 28),
+// ─────────────────────────────────────────────────────────────
+// SUB-VIEW 3: CLOUD API PROVIDERS & KEYS
+// ─────────────────────────────────────────────────────────────
 
-            // ── ABOUT & LEGAL ──
-            _sectionLabel(context, 'ABOUT & LEGAL'),
-            _appleGroupedCard(context, children: [
-              Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1A1D28) : const Color(0xFFE9EDF5),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isDark ? const Color(0xFF2B3042) : const Color(0xFFD4DAE6),
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(11),
-                        child: Image.asset(
-                          'assets/icons/appicon.png',
-                          width: 44,
-                          height: 44,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(
-                            Icons.blur_on_rounded,
-                            size: 24,
-                            color: isDark ? Colors.white : const Color(0xFF141620),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'AstraLM',
-                          style: GoogleFonts.manrope(
-                            fontSize: 16.5,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? Colors.white : const Color(0xFF0E1017),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          controller.appVersion.value.isEmpty
-                              ? 'Version 2.0.0 · Local AI Platform'
-                              : 'v${controller.appVersion.value} · Local AI Platform',
-                          style: GoogleFonts.openSans(
-                            fontSize: 12.5,
-                            color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+class CloudProvidersSubView extends GetView<SettingsController> {
+  const CloudProvidersSubView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final providers = [
+      (id: 'openrouter', name: 'OpenRouter', icon: PhosphorIconsBold.stack),
+      (id: 'openai', name: 'OpenAI', icon: PhosphorIconsBold.sparkle),
+      (id: 'anthropic', name: 'Anthropic Claude', icon: PhosphorIconsBold.brain),
+      (id: 'google', name: 'Google Gemini', icon: PhosphorIconsBold.sparkle),
+      (id: 'deepseek', name: 'DeepSeek', icon: PhosphorIconsBold.lightning),
+      (id: 'kimi', name: 'Moonshot Kimi', icon: PhosphorIconsBold.sparkle),
+      (id: 'nvidia', name: 'NVIDIA NIM', icon: PhosphorIconsBold.cpu),
+      (id: 'stability', name: 'Stability AI', icon: PhosphorIconsBold.image),
+      (id: 'custom', name: 'Custom OpenAI-Compatible', icon: PhosphorIconsBold.database),
+    ];
+
+    return Scaffold(
+      backgroundColor: isDark ? Colors.black : const Color(0xFFF7F7F8),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: PhosphorIcon(PhosphorIconsBold.caretLeft,
+              size: 20,
+              color: isDark ? Colors.white : Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Cloud Providers & Keys',
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+      ),
+      body: Obx(
+        () => ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          children: [
+            _sectionLabel(context, 'ACTIVE CLOUD PROVIDER'),
+            _monoGroupedCard(context, children: [
+              for (var i = 0; i < providers.length; i++)
+                _monoListTile(
+                  context,
+                  leading: _iconBox(context, providers[i].icon),
+                  title: providers[i].name,
+                  trailing: controller.cloudProvider.value == providers[i].id
+                      ? PhosphorIcon(PhosphorIconsBold.check,
+                          size: 18,
+                          color: isDark ? Colors.white : Colors.black)
+                      : null,
+                  showDivider: i < providers.length - 1,
+                  onTap: () {
+                    controller.setCloudProvider(providers[i].id);
+                    controller.setInferenceMode('cloud');
+                  },
                 ),
+            ]),
+            const SizedBox(height: 22),
+
+            _sectionLabel(context, 'API KEYS'),
+            _monoGroupedCard(context, children: [
+              _buildApiKeyField(
+                context,
+                title: 'OpenRouter',
+                controller: controller.openRouterKeyController,
+                onChanged: (v) => controller.setApiKey('openrouter', v),
+                isDark: isDark,
               ),
               const Divider(height: 1),
-              _appleListTile(
+              _buildApiKeyField(
                 context,
-                leading: _iconBox(context, Icons.auto_awesome_rounded),
-                title: 'Welcome Walkthrough',
-                subtitle: 'Replay animated AstraLM introduction tour',
-                trailing: const Icon(Icons.chevron_right, size: 18),
-                showDivider: true,
-                onTap: () => Navigator.of(context).push(
-                  PageRouteBuilder(
-                    opaque: false,
-                    pageBuilder: (_, __, ___) =>
-                        const WelcomeGuideView(isReplay: true),
-                    transitionsBuilder: (_, anim, __, child) =>
-                        FadeTransition(opacity: anim, child: child),
-                    transitionDuration: const Duration(milliseconds: 320),
-                  ),
-                ),
+                title: 'Google Gemini',
+                controller: controller.googleKeyController,
+                onChanged: (v) => controller.setApiKey('google', v),
+                isDark: isDark,
               ),
-              _appleListTile(
+              const Divider(height: 1),
+              _buildApiKeyField(
                 context,
-                leading: _iconBox(context, Icons.gavel_rounded),
-                title: 'Licenses & Legal Policy',
-                subtitle: 'MIT open-source license & privacy guarantees',
-                trailing: const Icon(Icons.chevron_right, size: 18),
-                showDivider: false,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LicenseView()),
+                title: 'DeepSeek',
+                controller: controller.deepSeekKeyController,
+                onChanged: (v) => controller.setApiKey('deepseek', v),
+                isDark: isDark,
+              ),
+              const Divider(height: 1),
+              _buildApiKeyField(
+                context,
+                title: 'OpenAI',
+                controller: controller.openaiKeyController,
+                onChanged: (v) => controller.setApiKey('openai', v),
+                isDark: isDark,
+              ),
+              const Divider(height: 1),
+              _buildApiKeyField(
+                context,
+                title: 'Anthropic Claude',
+                controller: controller.anthropicKeyController,
+                onChanged: (v) => controller.setApiKey('anthropic', v),
+                isDark: isDark,
+              ),
+              const Divider(height: 1),
+              _buildApiKeyField(
+                context,
+                title: 'Moonshot Kimi',
+                controller: controller.kimiKeyController,
+                onChanged: (v) => controller.setApiKey('kimi', v),
+                isDark: isDark,
+              ),
+              const Divider(height: 1),
+              _buildApiKeyField(
+                context,
+                title: 'NVIDIA NIM',
+                controller: controller.nvidiaKeyController,
+                onChanged: (v) => controller.setApiKey('nvidia', v),
+                isDark: isDark,
+              ),
+              const Divider(height: 1),
+              _buildApiKeyField(
+                context,
+                title: 'Stability AI',
+                controller: controller.stabilityKeyController,
+                onChanged: (v) => controller.setApiKey('stability', v),
+                isDark: isDark,
+              ),
+            ]),
+            const SizedBox(height: 22),
+
+            _sectionLabel(context, 'CUSTOM OPENAI ENDPOINT'),
+            _monoGroupedCard(context, children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _customEndpointTextField(
+                      controller: controller.customCloudBaseUrlController,
+                      hint: 'http://192.168.1.100:11434/v1',
+                      label: 'Base URL',
+                      isDark: isDark,
+                      onChanged: (v) => controller.setCustomCloudBaseUrl(v),
+                    ),
+                    const SizedBox(height: 10),
+                    _customEndpointTextField(
+                      controller: controller.customCloudKeyController,
+                      hint: 'API Key (optional)',
+                      label: 'API Key',
+                      isDark: isDark,
+                      obscure: true,
+                      onChanged: (v) => controller.setCustomCloudKey(v),
+                    ),
+                    const SizedBox(height: 10),
+                    _customEndpointTextField(
+                      controller: controller.customCloudModelController,
+                      hint: 'model-id (e.g. llama3:8b)',
+                      label: 'Model Name',
+                      isDark: isDark,
+                      onChanged: (v) => controller.setCustomCloudModel(v),
+                    ),
+                  ],
                 ),
               ),
             ]),
@@ -301,799 +555,859 @@ class SettingsView extends GetView<SettingsController> {
     );
   }
 
-  // ── AstraLM Monochrome Grouped Card Container ──
-  Widget _appleGroupedCard(BuildContext context,
-      {required List<Widget> children}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF13151D) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Column(mainAxisSize: MainAxisSize.min, children: children),
-      ),
-    );
-  }
-
-  // ── AstraLM Monochrome List Tile ──
-  Widget _appleListTile(
+  Widget _buildApiKeyField(
     BuildContext context, {
-    Widget? leading,
     required String title,
-    String? subtitle,
-    Widget? trailing,
-    bool showDivider = true,
-    VoidCallback? onTap,
+    required TextEditingController controller,
+    required ValueChanged<String> onChanged,
+    required bool isDark,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        PressableScale(
-          onTap: onTap,
-          pressedScale: 0.98,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            child: Row(
-              children: [
-                if (leading != null) ...[leading, const SizedBox(width: 14)],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.manrope(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : const Color(0xFF0E1017),
-                        ),
-                      ),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: GoogleFonts.openSans(
-                            fontSize: 12.5,
-                            color: isDark
-                                ? const Color(0xFF8E95A8)
-                                : const Color(0xFF6B7284),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (trailing != null) trailing,
-              ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.manrope(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
-        ),
-        if (showDivider)
-          Divider(
-            height: 1,
-            indent: 64,
-            color: isDark ? const Color(0xFF1D212F) : const Color(0xFFECEFF6),
-          ),
-      ],
-    );
-  }
-
-  // ── Clean Space Gray / Monochrome Icon Badge ──
-  Widget _iconBox(BuildContext context, IconData icon) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1B1D27) : const Color(0xFFECEFF5),
-        borderRadius: BorderRadius.circular(11),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
+          const SizedBox(height: 8),
+          TextField(
+            controller: controller,
+            obscureText: true,
+            onChanged: onChanged,
+            style: GoogleFonts.firaCode(
+              fontSize: 13,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              filled: true,
+              fillColor: isDark ? const Color(0xFF181818) : const Color(0xFFEFEFEF),
+              hintText: 'Paste API key…',
+              hintStyle: GoogleFonts.inter(
+                fontSize: 12.5,
+                color: isDark ? const Color(0xFF666666) : const Color(0xFF999999),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+            ),
           ),
         ],
       ),
-      child: Center(
-        child: Icon(
-          icon,
-          size: 18,
-          color: isDark ? const Color(0xFFE2E6F2) : const Color(0xFF161822),
+    );
+  }
+
+  Widget _customEndpointTextField({
+    required TextEditingController controller,
+    required String hint,
+    required String label,
+    required bool isDark,
+    bool obscure = false,
+    required ValueChanged<String> onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      onChanged: onChanged,
+      style: GoogleFonts.inter(
+        fontSize: 13,
+        color: isDark ? Colors.white : Colors.black,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.inter(
+          fontSize: 12,
+          color: isDark ? const Color(0xFF888888) : const Color(0xFF666666),
+        ),
+        isDense: true,
+        filled: true,
+        fillColor: isDark ? const Color(0xFF181818) : const Color(0xFFEFEFEF),
+        hintText: hint,
+        hintStyle: GoogleFonts.inter(
+          fontSize: 12,
+          color: isDark ? const Color(0xFF666666) : const Color(0xFF999999),
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
         ),
       ),
     );
   }
+}
 
-  Widget _sectionLabel(BuildContext context, String title) {
+// ─────────────────────────────────────────────────────────────
+// SUB-VIEW 4: DEVICE HARDWARE CALIBRATION
+// ─────────────────────────────────────────────────────────────
+
+class DeviceCalibrationSubView extends StatelessWidget {
+  const DeviceCalibrationSubView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
-        title,
-        style: GoogleFonts.manrope(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.2,
-          color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF636A7D),
+    final device = Get.find<DeviceInfoService>();
+
+    return Scaffold(
+      backgroundColor: isDark ? Colors.black : const Color(0xFFF7F7F8),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: PhosphorIcon(PhosphorIconsBold.caretLeft,
+              size: 20,
+              color: isDark ? Colors.white : Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Device Calibration',
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: isDark ? Colors.white : Colors.black,
+          ),
         ),
       ),
-    );
-  }
+      body: Obx(() {
+        final soc = device.socFamily.value;
+        final quantWarning = soc.quantWarning;
 
-  String _localSubtitle() {
-    final inf = Get.find<InferenceService>();
-    final localImage = Get.find<LocalImageService>();
-    if (inf.isModelLoaded.value) {
-      return 'Active: ${inf.loadedModelName.value}';
-    } else if (localImage.isModelLoaded.value) {
-      return 'Active: ${localImage.loadedModelName.value}';
-    }
-    return 'No model loaded';
-  }
-
-  Widget _buildDeviceCard(BuildContext context) {
-    return Obx(() {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final device = Get.find<DeviceInfoService>();
-
-      final soc = device.socFamily.value;
-      final quantWarning = soc.quantWarning;
-
-      return _appleGroupedCard(context, children: [
-        Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              _iconBox(context, Icons.smartphone_rounded),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        return ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          children: [
+            _sectionLabel(context, 'HARDWARE PROFILE'),
+            _monoGroupedCard(context, children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
                   children: [
-                    Text(
-                      device.tierDescription,
-                      style: GoogleFonts.manrope(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : const Color(0xFF0E1017),
+                    _iconBox(context, PhosphorIconsBold.deviceMobile),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            device.tierDescription,
+                            style: GoogleFonts.manrope(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Total RAM: ${device.totalRamGB.value.toStringAsFixed(1)} GB · Available: ${device.availableRamGB.value.toStringAsFixed(1)} GB',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              color: isDark ? const Color(0xFF888888) : const Color(0xFF666666),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Available: ${device.availableRamGB.value.toStringAsFixed(1)}GB · Context: ${device.recommendedContextSize} · Tokens: ${device.recommendedMaxTokens}',
-                      style: GoogleFonts.openSans(
-                        fontSize: 12.5,
-                        color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              _monoListTile(
+                context,
+                leading: _iconBox(context, PhosphorIconsBold.cpu),
+                title: 'Recommended Context Size',
+                subtitle: '${device.recommendedContextSize} tokens',
+                showDivider: true,
+              ),
+              _monoListTile(
+                context,
+                leading: _iconBox(context, PhosphorIconsBold.tag),
+                title: 'Recommended Max Tokens',
+                subtitle: '${device.recommendedMaxTokens} tokens',
+                showDivider: false,
+              ),
+            ]),
+            const SizedBox(height: 22),
+
+            if (soc != platform_info.SocFamily.unknown) ...[
+              _sectionLabel(context, 'CHIPSET & QUANTIZATION'),
+              _monoGroupedCard(context, children: [
+                _monoListTile(
+                  context,
+                  leading: _iconBox(context, PhosphorIconsBold.lightning),
+                  title: soc.displayName,
+                  subtitle: 'Recommended: ${soc.recommendedQuant}',
+                  showDivider: false,
+                ),
+              ]),
+              const SizedBox(height: 22),
+            ],
+
+            if (quantWarning != null) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF141414) : const Color(0xFFEFEFEF),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIconsBold.info,
+                      size: 18,
+                      color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF555555),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        quantWarning,
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF555555),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ],
+            const SizedBox(height: 48),
+          ],
+        );
+      }),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// SUB-VIEW 5: ABOUT & LEGAL SUB-SETTINGS
+// ─────────────────────────────────────────────────────────────
+
+class AboutSubView extends GetView<SettingsController> {
+  const AboutSubView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? Colors.black : const Color(0xFFF7F7F8),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: PhosphorIcon(PhosphorIconsBold.caretLeft,
+              size: 20,
+              color: isDark ? Colors.white : Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'About AstraLM',
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: isDark ? Colors.white : Colors.black,
           ),
         ),
-        // SoC + quantization recommendation
-        if (soc != platform_info.SocFamily.unknown) ...[
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                _iconBox(context, Icons.memory_rounded),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
+      ),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        children: [
+          _sectionLabel(context, 'APPLICATION'),
+          _monoGroupedCard(context, children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF181818) : const Color(0xFFEEEEEE),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(13),
+                      child: Image.asset(
+                        'assets/icons/appicon.png',
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => PhosphorIcon(
+                          PhosphorIconsBold.sparkle,
+                          size: 26,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        soc.displayName,
+                        'AstraLM',
                         style: GoogleFonts.manrope(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : const Color(0xFF0E1017),
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : Colors.black,
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        'Recommended: ${soc.recommendedQuant}',
-                        style: GoogleFonts.openSans(
-                          fontSize: 12,
-                          color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                      Obx(
+                        () => Text(
+                          controller.appVersion.value.isEmpty
+                              ? 'Version 2.0.0 · Local AI Platform'
+                              : 'v${controller.appVersion.value} · Local AI Platform',
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5,
+                            color: isDark ? const Color(0xFF888888) : const Color(0xFF666666),
+                          ),
                         ),
                       ),
                     ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-        // Warning banner for problematic SoCs
-        if (quantWarning != null) ...[
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF222634) : const Color(0xFFECEFF6),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark ? const Color(0xFF32384C) : const Color(0xFFD4DAE8),
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  size: 16,
-                  color: isDark ? const Color(0xFFBAC0D0) : const Color(0xFF4A5060),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    quantWarning,
-                    style: GoogleFonts.openSans(
-                      fontSize: 12,
-                      color: isDark ? const Color(0xFFBAC0D0) : const Color(0xFF4A5060),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ]);
-    });
-  }
-
-  Widget _buildLiteRtCard(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final modes = [
-      (
-        value: 'auto_fast',
-        title: 'Auto Fast',
-        subtitle: 'Try GPU first, then CPU fallback',
-        icon: Icons.auto_awesome_rounded
-      ),
-      (
-        value: 'gpu_fast',
-        title: 'GPU Fast',
-        subtitle: 'Maximum speed, may crash on some devices',
-        icon: Icons.bolt_rounded
-      ),
-      (
-        value: 'cpu_safe',
-        title: 'CPU Safe',
-        subtitle: 'Stable mode with lower speed',
-        icon: Icons.shield_outlined
-      ),
-    ];
-    return _appleGroupedCard(context, children: [
-      for (var i = 0; i < modes.length; i++)
-        _appleListTile(
-          context,
-          leading: _iconBox(context, modes[i].icon),
-          title: modes[i].title,
-          subtitle: modes[i].subtitle,
-          trailing: controller.liteRtPerformanceMode.value == modes[i].value
-              ? Icon(Icons.check_rounded,
-                  size: 18, color: isDark ? Colors.white : const Color(0xFF141620))
-              : null,
-          showDivider: i < modes.length - 1,
-          onTap: () => controller.setLiteRtPerformanceMode(modes[i].value),
-        ),
-    ]);
-  }
-
-  Widget _buildModelParametersCard(BuildContext context) {
-    return _appleGroupedCard(context, children: [
-      _modelParameterSlider(
-        context,
-        label: 'Temperature',
-        value: controller.temperature.value,
-        min: 0.0,
-        max: 2.0,
-        divisions: 20,
-        safeMax: 1.0,
-        onChanged: (v) => controller.setTemperature(v),
-        icon: Icons.thermostat_rounded,
-        warning: 'High temperature = unpredictable output!',
-      ),
-      const Divider(height: 1),
-      _modelParameterSlider(
-        context,
-        label: 'Max Tokens',
-        subtitle:
-            'Local models are strictly instructed and constrained to generate under this token limit.',
-        value: controller.maxTokens.value.toDouble(),
-        min: 64,
-        max: 4096,
-        divisions: 63,
-        safeMax: Get.find<DeviceInfoService>().maxSafeTokens.toDouble(),
-        onChanged: (v) => controller.setMaxTokens(v.toInt()),
-        displayValue: controller.maxTokens.value.toString(),
-        icon: Icons.tag_rounded,
-        warning: 'Your phone may crash with this value!',
-      ),
-      const Divider(height: 1),
-      (() {
-        final inference = Get.find<InferenceService>();
-        final savedRuntime = Get.find<HiveService>()
-                .getSetting<String>(AppConstants.keyLocalModelRuntime) ??
-            '';
-        final isLiteRtActive = (inference.isModelLoaded.value &&
-                inference.loadedModelRuntime.value == 'litert') ||
-            (!inference.isModelLoaded.value &&
-                savedRuntime.toLowerCase() == 'litert');
-        final maxContext = isLiteRtActive ? 4096.0 : 8192.0;
-        final divisions = isLiteRtActive ? 7 : 15;
-        final currentValue =
-            controller.contextSize.value.toDouble().clamp(512.0, maxContext);
-
-        if (currentValue != controller.contextSize.value.toDouble()) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            controller.setContextSize(currentValue.toInt());
-          });
-        }
-
-        return _modelParameterSlider(
-          context,
-          label: 'Context Size',
-          value: currentValue,
-          min: 512,
-          max: maxContext,
-          divisions: divisions,
-          safeMax: Get.find<DeviceInfoService>().maxSafeContextSize.toDouble(),
-          onChanged: (v) => controller.setContextSize(v.toInt()),
-          displayValue: currentValue.toInt().toString(),
-          icon: Icons.memory_rounded,
-          warning: isLiteRtActive
-              ? 'Context capped at 4096 to prevent driver memory crash for LiteRT models.'
-              : 'Context this large will eat all your RAM!',
-        );
-      })(),
-    ]);
-  }
-
-  Widget _buildImageGenerationCard(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final stepsValue = controller.imageSteps.value.toDouble();
-    const safeMax = 8.0;
-    final isOver = stepsValue > safeMax;
-    final selectedBackend = controller.imageGenBackend.value;
-    final gpuBackend = controller.recommendedImageGpuBackend();
-    final gpuAvailable = gpuBackend != Backend.cpu;
-
-    return _appleGroupedCard(context, children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            _iconBox(context, Icons.image_rounded),
-            const SizedBox(width: 12),
-            Text(
-              'Image Gen Steps',
-              style: GoogleFonts.manrope(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : const Color(0xFF0E1017),
-              ),
-            ),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E212E) : const Color(0xFFECEFF6),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDark ? const Color(0xFF2D3346) : const Color(0xFFD4DAE8),
-                ),
-              ),
-              child: Text(
-                controller.imageSteps.value.toString(),
-                style: GoogleFonts.manrope(
-                  fontSize: 13,
-                  color: isDark ? Colors.white : const Color(0xFF141620),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ]),
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              'Recommended max: 8',
-              style: GoogleFonts.openSans(
-                fontSize: 12,
-                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
-              ),
-            ),
-          ),
-          Slider(
-            value: stepsValue.clamp(1, 20),
-            min: 1,
-            max: 20,
-            divisions: 19,
-            activeColor: isDark ? Colors.white : const Color(0xFF141620),
-            inactiveColor: isDark ? const Color(0xFF262B3B) : const Color(0xFFD6DBE8),
-            onChanged: (v) => controller.setImageSteps(v.toInt()),
-          ),
-          if (isOver)
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E212D) : const Color(0xFFECEFF6),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                'More steps = better quality but MUCH slower!',
-                style: GoogleFonts.openSans(
-                  fontSize: 11.5,
-                  color: isDark ? const Color(0xFFBAC0D0) : const Color(0xFF4A5060),
-                ),
-              ),
-            ),
-        ]),
-      ),
-      const Divider(height: 1),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            _iconBox(context, Icons.photo_size_select_large_rounded),
-            const SizedBox(width: 12),
-            Text(
-              'Image Size',
-              style: GoogleFonts.manrope(
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : const Color(0xFF0E1017),
-              ),
-            ),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E212E) : const Color(0xFFECEFF6),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDark ? const Color(0xFF2D3346) : const Color(0xFFD4DAE8),
-                ),
-              ),
-              child: Text(
-                controller.imageGenSize.value == 0
-                    ? 'Auto'
-                    : '${controller.imageGenSize.value}px',
-                style: GoogleFonts.manrope(
-                  fontSize: 13,
-                  color: isDark ? Colors.white : const Color(0xFF141620),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ]),
-          Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 10),
-            child: Text(
-              'Auto recommended. Bigger size = better detail, but much slower.',
-              style: GoogleFonts.openSans(
-                fontSize: 12,
-                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
-              ),
-            ),
-          ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final option in const [
-                (value: 0, label: 'Auto'),
-                (value: 256, label: '256'),
-                (value: 320, label: '320'),
-                (value: 384, label: '384'),
-                (value: 512, label: '512'),
-              ])
-                ChoiceChip(
-                  label: Text(option.label),
-                  selected: controller.imageGenSize.value == option.value,
-                  onSelected: (_) => controller.setImageGenSize(option.value),
-                  visualDensity: VisualDensity.compact,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  side: BorderSide(
-                    color: controller.imageGenSize.value == option.value
-                        ? (isDark ? Colors.white : const Color(0xFF141620))
-                        : (isDark ? const Color(0xFF282D3D) : const Color(0xFFD4D9E6)),
-                  ),
-                  labelStyle: GoogleFonts.manrope(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: controller.imageGenSize.value == option.value
-                        ? (isDark ? const Color(0xFF090A0E) : Colors.white)
-                        : (isDark ? const Color(0xFFBAC0D0) : const Color(0xFF4A5060)),
-                  ),
-                  selectedColor: isDark ? Colors.white : const Color(0xFF141620),
-                  backgroundColor: isDark ? const Color(0xFF181B26) : const Color(0xFFECEFF5),
-                  showCheckmark: false,
-                ),
-            ],
-          ),
-        ]),
-      ),
-      const Divider(height: 1),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            _iconBox(
-              context,
-              selectedBackend == Backend.cpu
-                  ? Icons.memory_rounded
-                  : Icons.bolt_rounded,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Image Backend',
-                    style: GoogleFonts.manrope(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : const Color(0xFF0E1017),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    controller.imageGpuLabel(),
-                    style: GoogleFonts.openSans(
-                      fontSize: 12,
-                      color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
-                    ),
                   ),
                 ],
               ),
             ),
           ]),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(
-                  value: false,
-                  icon: Icon(Icons.memory_rounded, size: 16),
-                  label: Text('CPU'),
-                ),
-                ButtonSegment(
-                  value: true,
-                  icon: Icon(Icons.bolt_rounded, size: 16),
-                  label: Text('GPU'),
-                ),
-              ],
-              selected: {selectedBackend != Backend.cpu},
-              onSelectionChanged: (values) {
-                final useGpu = values.first;
-                if (useGpu && !gpuAvailable) return;
-                controller.setImageBackendMode(useGpu);
-              },
-              showSelectedIcon: false,
-              style: ButtonStyle(
-                shape: WidgetStatePropertyAll(
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                visualDensity: VisualDensity.compact,
-                textStyle: WidgetStatePropertyAll(
-                  GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600),
+          const SizedBox(height: 22),
+
+          _sectionLabel(context, 'LEGAL & TOUR'),
+          _monoGroupedCard(context, children: [
+            _monoListTile(
+              context,
+              leading: _iconBox(context, PhosphorIconsBold.sparkle),
+              title: 'Welcome Walkthrough',
+              subtitle: null,
+              trailing: _chevronTrailing(isDark),
+              showDivider: true,
+              onTap: () => Navigator.of(context).push(
+                PageRouteBuilder(
+                  opaque: false,
+                  pageBuilder: (_, __, ___) =>
+                      const WelcomeGuideView(isReplay: true),
+                  transitionsBuilder: (_, anim, __, child) =>
+                      FadeTransition(opacity: anim, child: child),
+                  transitionDuration: const Duration(milliseconds: 320),
                 ),
               ),
             ),
-          ),
-        ]),
+            _monoListTile(
+              context,
+              leading: _iconBox(context, PhosphorIconsBold.scales),
+              title: 'Licenses & Legal Policy',
+              subtitle: null,
+              trailing: _chevronTrailing(isDark),
+              showDivider: false,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LicenseView()),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 48),
+        ],
       ),
-    ]);
+    );
   }
+}
 
-  Widget _modelParameterSlider(
-    BuildContext context, {
-    required String label,
-    String? subtitle,
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required double safeMax,
-    required ValueChanged<double> onChanged,
-    required IconData icon,
-    required String warning,
-    String? displayValue,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+// ─────────────────────────────────────────────────────────────
+// SHARED BORDERLESS MONOCHROME REUSABLE WIDGETS
+// ─────────────────────────────────────────────────────────────
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+Widget _chevronTrailing(bool isDark) {
+  return PhosphorIcon(
+    PhosphorIconsBold.caretRight,
+    size: 16,
+    color: isDark ? const Color(0xFF666666) : const Color(0xFF999999),
+  );
+}
+
+Widget _monoGroupedCard(BuildContext context,
+    {required List<Widget> children}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return Container(
+    decoration: BoxDecoration(
+      color: isDark ? const Color(0xFF121212) : Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Column(mainAxisSize: MainAxisSize.min, children: children),
+    ),
+  );
+}
+
+Widget _monoListTile(
+  BuildContext context, {
+  Widget? leading,
+  required String title,
+  String? subtitle,
+  Widget? trailing,
+  bool showDivider = true,
+  VoidCallback? onTap,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      PressableScale(
+        onTap: onTap,
+        pressedScale: 0.98,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          child: Row(
+            children: [
+              if (leading != null) ...[leading, const SizedBox(width: 14)],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.manrope(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    if (subtitle != null && subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: isDark
+                              ? const Color(0xFF888888)
+                              : const Color(0xFF666666),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null) trailing,
+            ],
+          ),
+        ),
+      ),
+      if (showDivider)
+        Divider(
+          height: 1,
+          indent: 60,
+          color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFEDEDED),
+        ),
+    ],
+  );
+}
+
+Widget _iconBox(BuildContext context, PhosphorIconData icon) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return Container(
+    width: 34,
+    height: 34,
+    decoration: BoxDecoration(
+      color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFEEEEEE),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Center(
+      child: PhosphorIcon(
+        icon,
+        size: 17,
+        color: isDark ? Colors.white : Colors.black,
+      ),
+    ),
+  );
+}
+
+Widget _sectionLabel(BuildContext context, String title) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return Padding(
+    padding: const EdgeInsets.only(left: 4, bottom: 8),
+    child: Text(
+      title,
+      style: GoogleFonts.manrope(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.1,
+        color: isDark ? const Color(0xFF777777) : const Color(0xFF888888),
+      ),
+    ),
+  );
+}
+
+Widget _buildLiteRtCard(BuildContext context, SettingsController controller) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final modes = [
+    (
+      value: 'auto_fast',
+      title: 'Auto Fast',
+      icon: PhosphorIconsBold.sparkle
+    ),
+    (
+      value: 'gpu_fast',
+      title: 'GPU Fast',
+      icon: PhosphorIconsBold.lightning
+    ),
+    (
+      value: 'cpu_safe',
+      title: 'CPU Safe',
+      icon: PhosphorIconsBold.shieldCheck
+    ),
+  ];
+  return _monoGroupedCard(context, children: [
+    for (var i = 0; i < modes.length; i++)
+      _monoListTile(
+        context,
+        leading: _iconBox(context, modes[i].icon),
+        title: modes[i].title,
+        trailing: controller.liteRtPerformanceMode.value == modes[i].value
+            ? PhosphorIcon(PhosphorIconsBold.check,
+                size: 18, color: isDark ? Colors.white : Colors.black)
+            : null,
+        showDivider: i < modes.length - 1,
+        onTap: () => controller.setLiteRtPerformanceMode(modes[i].value),
+      ),
+  ]);
+}
+
+Widget _buildModelParametersCard(BuildContext context, SettingsController controller) {
+  return _monoGroupedCard(context, children: [
+    _modelParameterSlider(
+      context,
+      label: 'Temperature',
+      value: controller.temperature.value,
+      min: 0.0,
+      max: 2.0,
+      divisions: 20,
+      safeMax: 1.0,
+      onChanged: (v) => controller.setTemperature(v),
+      icon: PhosphorIconsBold.thermometer,
+    ),
+    const Divider(height: 1),
+    _modelParameterSlider(
+      context,
+      label: 'Max Tokens',
+      value: controller.maxTokens.value.toDouble(),
+      min: 64,
+      max: 4096,
+      divisions: 63,
+      safeMax: Get.find<DeviceInfoService>().maxSafeTokens.toDouble(),
+      onChanged: (v) => controller.setMaxTokens(v.toInt()),
+      displayValue: controller.maxTokens.value.toString(),
+      icon: PhosphorIconsBold.tag,
+    ),
+    const Divider(height: 1),
+    (() {
+      final inference = Get.find<InferenceService>();
+      final savedRuntime = Get.find<HiveService>()
+              .getSetting<String>(AppConstants.keyLocalModelRuntime) ??
+          '';
+      final isLiteRtActive = (inference.isModelLoaded.value &&
+              inference.loadedModelRuntime.value == 'litert') ||
+          (!inference.isModelLoaded.value &&
+              savedRuntime.toLowerCase() == 'litert');
+      final maxContext = isLiteRtActive ? 4096.0 : 8192.0;
+      final divisions = isLiteRtActive ? 7 : 15;
+      final currentValue =
+          controller.contextSize.value.toDouble().clamp(512.0, maxContext);
+
+      if (currentValue != controller.contextSize.value.toDouble()) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          controller.setContextSize(currentValue.toInt());
+        });
+      }
+
+      return _modelParameterSlider(
+        context,
+        label: 'Context Size',
+        value: currentValue,
+        min: 512,
+        max: maxContext,
+        divisions: divisions,
+        safeMax: Get.find<DeviceInfoService>().maxSafeContextSize.toDouble(),
+        onChanged: (v) => controller.setContextSize(v.toInt()),
+        displayValue: currentValue.toInt().toString(),
+        icon: PhosphorIconsBold.cpu,
+      );
+    })(),
+  ]);
+}
+
+Widget _buildImageGenerationCard(BuildContext context, SettingsController controller) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final stepsValue = controller.imageSteps.value.toDouble();
+  final selectedBackend = controller.imageGenBackend.value;
+  final gpuBackend = controller.recommendedImageGpuBackend();
+  final gpuAvailable = gpuBackend != Backend.cpu;
+
+  return _monoGroupedCard(context, children: [
+    Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          _iconBox(context, icon),
+          _iconBox(context, PhosphorIconsBold.image),
           const SizedBox(width: 12),
           Text(
-            label,
+            'Image Steps',
             style: GoogleFonts.manrope(
               fontSize: 14.5,
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : const Color(0xFF0E1017),
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E212E) : const Color(0xFFECEFF6),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark ? const Color(0xFF2D3346) : const Color(0xFFD4DAE8),
-              ),
+              color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFEFEFEF),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              displayValue ?? value.toStringAsFixed(2),
+              controller.imageSteps.value.toString(),
               style: GoogleFonts.manrope(
                 fontSize: 13,
-                color: isDark ? Colors.white : const Color(0xFF141620),
+                color: isDark ? Colors.white : Colors.black,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
         ]),
-        if (subtitle != null && subtitle.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 6, bottom: 2),
+        Slider(
+          value: stepsValue.clamp(1, 20),
+          min: 1,
+          max: 20,
+          divisions: 19,
+          activeColor: isDark ? Colors.white : Colors.black,
+          inactiveColor: isDark ? const Color(0xFF262626) : const Color(0xFFDCDCDC),
+          onChanged: (v) => controller.setImageSteps(v.toInt()),
+        ),
+      ]),
+    ),
+    const Divider(height: 1),
+    Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          _iconBox(context, PhosphorIconsBold.frameCorners),
+          const SizedBox(width: 12),
+          Text(
+            'Image Size',
+            style: GoogleFonts.manrope(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFEFEFEF),
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Text(
-              subtitle,
-              style: GoogleFonts.openSans(
-                fontSize: 12,
-                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
-                height: 1.35,
+              controller.imageGenSize.value == 0
+                  ? 'Auto'
+                  : '${controller.imageGenSize.value}px',
+              style: GoogleFonts.manrope(
+                fontSize: 13,
+                color: isDark ? Colors.white : Colors.black,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-        Slider(
-          value: value.clamp(min, max),
-          min: min,
-          max: max,
-          divisions: divisions,
-          activeColor: isDark ? Colors.white : const Color(0xFF141620),
-          inactiveColor: isDark ? const Color(0xFF262B3B) : const Color(0xFFD6DBE8),
-          onChanged: (v) {
-            if (v > safeMax && value <= safeMax) {
-              HapticFeedback.heavyImpact();
-            }
-            onChanged(v);
-          },
+        ]),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final option in const [
+              (value: 0, label: 'Auto'),
+              (value: 256, label: '256'),
+              (value: 320, label: '320'),
+              (value: 384, label: '384'),
+              (value: 512, label: '512'),
+            ])
+              ChoiceChip(
+                label: Text(option.label),
+                selected: controller.imageGenSize.value == option.value,
+                onSelected: (_) => controller.setImageGenSize(option.value),
+                visualDensity: VisualDensity.compact,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                side: BorderSide.none,
+                labelStyle: GoogleFonts.manrope(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: controller.imageGenSize.value == option.value
+                      ? (isDark ? Colors.black : Colors.white)
+                      : (isDark ? const Color(0xFFAAAAAA) : const Color(0xFF444444)),
+                ),
+                selectedColor: isDark ? Colors.white : Colors.black,
+                backgroundColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFEFEFEF),
+                showCheckmark: false,
+              ),
+          ],
         ),
       ]),
-    );
-  }
-
-  IconData _themeModeIcon(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return Icons.light_mode_outlined;
-      case ThemeMode.dark:
-        return Icons.dark_mode_outlined;
-      case ThemeMode.system:
-        return Icons.brightness_auto_outlined;
-    }
-  }
-
-  String _themeModeName(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return 'Light Theme';
-      case ThemeMode.dark:
-        return 'Dark Theme (AstraLM Space Obsidian)';
-      case ThemeMode.system:
-        return 'Match System Appearance';
-    }
-  }
-
-  Widget _buildServerSection(BuildContext context) {
-    final serverController = Get.find<ServerController>();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Obx(() {
-      final isRunning = serverController.isRunning.value;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionLabel(context, 'LOCAL API SERVER'),
-          _appleGroupedCard(context, children: [
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E212E) : const Color(0xFFECEFF6),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? const Color(0xFF2D3346) : const Color(0xFFD4DAE8),
-                      ),
-                    ),
-                    child: Text(
-                      isRunning ? 'RUNNING' : 'STOPPED',
-                      style: GoogleFonts.manrope(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : const Color(0xFF141620),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isRunning ? 'OpenAI API Running' : 'OpenAI API Stopped',
-                          style: GoogleFonts.manrope(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : const Color(0xFF0E1017),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          isRunning
-                              ? 'http://localhost:8080/v1'
-                              : 'Expose local model to other apps & LAN',
-                          style: GoogleFonts.openSans(
-                            fontSize: 12,
-                            color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Switch(
-                    value: isRunning,
-                    activeColor: isDark ? Colors.white : const Color(0xFF141620),
-                    onChanged: serverController.isStarting.value
-                        ? null
-                        : (v) => serverController.toggleServer(v),
-                  ),
-                ],
+    ),
+    const Divider(height: 1),
+    Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          _iconBox(
+            context,
+            selectedBackend == Backend.cpu
+                ? PhosphorIconsBold.cpu
+                : PhosphorIconsBold.lightning,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Image Backend',
+              style: GoogleFonts.manrope(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : Colors.black,
               ),
             ),
-            const Divider(height: 1),
-            _appleListTile(
-              context,
-              leading: _iconBox(context, Icons.dns_outlined),
-              title: 'Server Dashboard & Endpoints',
-              subtitle: 'API keys, CORS, docs & client examples',
-              trailing: const Icon(Icons.chevron_right, size: 18),
-              showDivider: false,
-              onTap: () => Get.to(() => const ServerView()),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SegmentedButton<bool>(
+            segments: [
+              ButtonSegment(
+                value: false,
+                icon: PhosphorIcon(PhosphorIconsBold.cpu, size: 16),
+                label: const Text('CPU'),
+              ),
+              ButtonSegment(
+                value: true,
+                icon: PhosphorIcon(PhosphorIconsBold.lightning, size: 16),
+                label: const Text('GPU'),
+              ),
+            ],
+            selected: {selectedBackend != Backend.cpu},
+            onSelectionChanged: (values) {
+              final useGpu = values.first;
+              if (useGpu && !gpuAvailable) return;
+              controller.setImageBackendMode(useGpu);
+            },
+            showSelectedIcon: false,
+            style: ButtonStyle(
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              side: const WidgetStatePropertyAll(BorderSide.none),
+              visualDensity: VisualDensity.compact,
+              textStyle: WidgetStatePropertyAll(
+                GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
             ),
-          ]),
-        ],
-      );
-    });
-  }
+          ),
+        ),
+      ]),
+    ),
+  ]);
+}
+
+Widget _modelParameterSlider(
+  BuildContext context, {
+  required String label,
+  required double value,
+  required double min,
+  required double max,
+  required int divisions,
+  required double safeMax,
+  required ValueChanged<double> onChanged,
+  required PhosphorIconData icon,
+  String? displayValue,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        _iconBox(context, icon),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: GoogleFonts.manrope(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFEFEFEF),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            displayValue ?? value.toStringAsFixed(2),
+            style: GoogleFonts.manrope(
+              fontSize: 13,
+              color: isDark ? Colors.white : Colors.black,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ]),
+      Slider(
+        value: value.clamp(min, max),
+        min: min,
+        max: max,
+        divisions: divisions,
+        activeColor: isDark ? Colors.white : Colors.black,
+        inactiveColor: isDark ? const Color(0xFF262626) : const Color(0xFFDCDCDC),
+        onChanged: (v) {
+          if (v > safeMax && value <= safeMax) {
+            HapticFeedback.heavyImpact();
+          }
+          onChanged(v);
+        },
+      ),
+    ]),
+  );
 }

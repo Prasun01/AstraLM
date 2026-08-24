@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -95,8 +96,8 @@ class ServerView extends GetView<ServerController> {
                             borderRadius: BorderRadius.circular(10)),
                         child: Icon(
                             controller.hasLocalModel
-                                ? Icons.check_circle_outline
-                                : Icons.info_outline,
+                                ? PhosphorIconsBold.checkCircle
+                                : PhosphorIconsBold.info,
                             size: 16,
                             color: controller.hasLocalModel
                                 ? _successColor(theme)
@@ -151,7 +152,7 @@ class ServerView extends GetView<ServerController> {
                     IconButton(
                         tooltip: 'Generate',
                         onPressed: controller.generateApiKey,
-                        icon: Icon(Icons.auto_awesome_rounded,
+                        icon: Icon(PhosphorIconsBold.sparkle,
                             size: 20, color: scheme.primary)),
                     IconButton(
                         tooltip: 'Copy',
@@ -159,7 +160,7 @@ class ServerView extends GetView<ServerController> {
                             ? () => controller.copyText(
                                 controller.apiKey.value, 'API key')
                             : null,
-                        icon: Icon(Icons.copy_outlined,
+                        icon: Icon(PhosphorIconsBold.copy,
                             size: 18, color: scheme.onSurfaceVariant)),
                   ]),
                 ]),
@@ -188,7 +189,7 @@ class ServerView extends GetView<ServerController> {
                                   ? null
                                   : () =>
                                       _testHealth(controller.localUrl.value!),
-                              icon: const Icon(Icons.wifi, size: 16),
+                              icon: Icon(PhosphorIconsBold.wifiHigh, size: 16),
                               label: const Text('Test local')),
                         ])),
               ]),
@@ -220,7 +221,7 @@ class ServerView extends GetView<ServerController> {
                 child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.error_outline_rounded,
+                      Icon(PhosphorIconsBold.xCircle,
                           color: scheme.error, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
@@ -330,7 +331,7 @@ class ServerView extends GetView<ServerController> {
               onPressed: url == null
                   ? null
                   : () => controller.copyText(url, '$label URL'),
-              icon: Icon(Icons.copy_outlined,
+              icon: Icon(PhosphorIconsBold.copy,
                   size: 16, color: scheme.onSurfaceVariant)),
         ]));
   }
@@ -354,7 +355,7 @@ class ServerView extends GetView<ServerController> {
           IconButton(
               tooltip: 'Copy',
               onPressed: () => controller.copyText(code, title),
-              icon: Icon(Icons.copy_outlined,
+              icon: Icon(PhosphorIconsBold.copy,
                   size: 16, color: scheme.onInverseSurface.withValues(alpha: 0.7))),
         ]),
         SingleChildScrollView(

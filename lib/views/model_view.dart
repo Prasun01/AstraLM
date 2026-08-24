@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/cloud_model_controller.dart';
 import '../controllers/model_controller.dart';
 import '../controllers/settings_controller.dart';
 import '../core/colors.dart';
+import '../core/icons.dart';
 import '../models/ai_model.dart';
 import '../services/device_info_service.dart';
 import '../services/download_service.dart';
@@ -32,12 +34,12 @@ class ModelView extends GetView<ModelController> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.add_link),
+                  icon: Icon(AppIcons.linkUrl),
                   tooltip: 'Add Model URL',
                   onPressed: () => _showAddUrlDialog(context),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.file_upload_outlined),
+                  icon: Icon(AppIcons.importFromStorage),
                   tooltip: 'Import from Storage',
                   onPressed: () => controller.importModelFromStorage(),
                 ),
@@ -105,12 +107,12 @@ class ModelView extends GetView<ModelController> {
         segments: const [
           ButtonSegment(
             value: 'local',
-            icon: Icon(Icons.phone_android),
+            icon: Icon(PhosphorIconsBold.circle),
             label: Text('Local'),
           ),
           ButtonSegment(
             value: 'online',
-            icon: Icon(Icons.cloud_outlined),
+            icon: Icon(PhosphorIconsBold.cloud),
             label: Text('Online'),
           ),
         ],
@@ -131,7 +133,7 @@ class ModelView extends GetView<ModelController> {
                         inference.isLoadingModel.value
                     ? null
                     : () => _showAddUrlDialog(context),
-                icon: const Icon(Icons.add_link, size: 16),
+                icon: Icon(AppIcons.linkUrl, size: 16),
                 label: const Text('URL'),
               )),
         ),
@@ -142,7 +144,7 @@ class ModelView extends GetView<ModelController> {
                         inference.isLoadingModel.value
                     ? null
                     : () => controller.importModelFromStorage(),
-                icon: const Icon(Icons.file_upload_outlined, size: 16),
+                icon: Icon(AppIcons.importFromStorage, size: 16),
                 label: const Text('Import'),
               )),
         ),
@@ -166,7 +168,7 @@ class ModelView extends GetView<ModelController> {
         Row(
           children: [
             Icon(
-              Icons.auto_awesome_rounded,
+              PhosphorIconsBold.sparkle,
               size: 15,
               color: isDark ? const Color(0xFFBAC0D0) : const Color(0xFF4A5060),
             ),
@@ -346,7 +348,7 @@ class ModelView extends GetView<ModelController> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                Icons.swap_vert_rounded,
+                PhosphorIconsBold.circle,
                 size: 14,
                 color: isDark ? Colors.white : const Color(0xFF141620),
               ),
@@ -525,7 +527,7 @@ class ModelView extends GetView<ModelController> {
       ),
       child: Column(
         children: [
-          Icon(Icons.search_off,
+          Icon(PhosphorIconsBold.circle,
               size: 32, color: Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(height: 12),
           Text(
@@ -614,7 +616,7 @@ class ModelView extends GetView<ModelController> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  localImage.isUsingGpu.value ? Icons.bolt_rounded : Icons.memory_rounded,
+                  localImage.isUsingGpu.value ? PhosphorIconsBold.lightning : PhosphorIconsBold.cpu,
                   color: isDark ? Colors.white : const Color(0xFF12141D),
                   size: 20,
                 ),
@@ -701,8 +703,8 @@ class ModelView extends GetView<ModelController> {
               ),
               child: Icon(
                 inference.isGpuAccelerated.value
-                    ? Icons.bolt_rounded
-                    : Icons.memory_rounded,
+                    ? PhosphorIconsBold.lightning
+                    : PhosphorIconsBold.cpu,
                 color: isDark ? Colors.white : const Color(0xFF12141D),
                 size: 20,
               ),
@@ -796,7 +798,7 @@ class ModelView extends GetView<ModelController> {
                   .secondaryContainer,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.cloud_done_outlined,
+            child: Icon(PhosphorIconsBold.circle,
                 color: Theme.of(context).colorScheme.primary, size: 20),
           ),
           const SizedBox(width: 12),
@@ -977,7 +979,7 @@ class ModelView extends GetView<ModelController> {
                           child: InkWell(
                             onTap: controller.cancelExternalDownload,
                             borderRadius: BorderRadius.circular(12),
-                            child: Icon(Icons.close,
+                            child: Icon(PhosphorIconsBold.x,
                                 size: 20,
                                 color: Theme.of(context).colorScheme.error),
                           ),
@@ -1243,7 +1245,7 @@ class ModelView extends GetView<ModelController> {
                       tooltip: 'Provider settings',
                       onPressed: () =>
                           _showProviderActionsSheet(context, cloud, provider),
-                      icon: const Icon(Icons.more_vert, size: 20),
+                      icon: Icon(PhosphorIconsBold.dotsThreeVertical, size: 20),
                     ),
                   ],
                 ),
@@ -1366,7 +1368,7 @@ class ModelView extends GetView<ModelController> {
                       ),
                       IconButton(
                         onPressed: Get.back,
-                        icon: const Icon(Icons.close_rounded),
+                        icon: Icon(PhosphorIconsBold.x),
                       ),
                     ],
                   ),
@@ -1374,7 +1376,7 @@ class ModelView extends GetView<ModelController> {
                   if (!isCustom) ...[
                     ListTile(
                       contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                      leading: const Icon(Icons.key_outlined, size: 26),
+                      leading: Icon(PhosphorIconsBold.key, size: 26),
                       title: Text(
                         configured ? 'Update API key' : 'Add API key',
                         style: GoogleFonts.manrope(
@@ -1401,7 +1403,7 @@ class ModelView extends GetView<ModelController> {
                   ListTile(
                     contentPadding: const EdgeInsets.symmetric(vertical: 4),
                     leading: Icon(
-                        isCustom ? Icons.tune : Icons.smart_toy_outlined,
+                        isCustom ? PhosphorIconsBold.sliders : PhosphorIconsBold.robot,
                         size: 26),
                     title: Text(
                       isCustom ? 'Configure and select' : 'Select model',
@@ -1541,7 +1543,7 @@ class ModelView extends GetView<ModelController> {
                     child: OutlinedButton.icon(
                       onPressed: () =>
                           _showProviderKeyDialog(context, cloud, provider),
-                      icon: const Icon(Icons.key_outlined, size: 16),
+                      icon: Icon(PhosphorIconsBold.key, size: 16),
                       label: Text(configured ? 'Update Key' : 'Add Key'),
                     ),
                   ),
@@ -1553,7 +1555,7 @@ class ModelView extends GetView<ModelController> {
                         ? _showCustomProviderSheet(context, cloud)
                         : _showModelSelectSheet(context, cloud, provider),
                     icon: Icon(
-                      isCustom ? Icons.tune : Icons.smart_toy_outlined,
+                      isCustom ? PhosphorIconsBold.sliders : PhosphorIconsBold.robot,
                       size: 16,
                     ),
                     label: Text(isCustom ? 'Configure' : 'Select Model'),
@@ -1629,14 +1631,14 @@ class ModelView extends GetView<ModelController> {
                 decoration: InputDecoration(
                   labelText: 'API key',
                   hintText: 'Paste ${provider.name} key',
-                  prefixIcon: const Icon(Icons.key_outlined, size: 23),
+                  prefixIcon: Icon(PhosphorIconsBold.key, size: 23),
                   suffixIcon: IconButton(
                     tooltip: obscureKey.value ? 'Show API key' : 'Hide API key',
                     onPressed: () => obscureKey.value = !obscureKey.value,
                     icon: Icon(
                       obscureKey.value
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
+                          ? PhosphorIconsBold.eye
+                          : PhosphorIconsBold.eyeSlash,
                       size: 24,
                     ),
                   ),
@@ -1754,7 +1756,7 @@ class ModelView extends GetView<ModelController> {
                             value: selected >= 0 ? selected : null,
                             decoration: const InputDecoration(
                               labelText: 'Saved provider',
-                              prefixIcon: Icon(Icons.bookmarks_outlined),
+                              prefixIcon: Icon(PhosphorIconsBold.circle),
                             ),
                             items: [
                               for (var i = 0; i < profiles.length; i++)
@@ -1780,7 +1782,7 @@ class ModelView extends GetView<ModelController> {
                         IconButton.filledTonal(
                           tooltip: 'Add another provider',
                           onPressed: cloud.beginNewCustomProfile,
-                          icon: const Icon(Icons.add),
+                          icon: Icon(PhosphorIconsBold.plus),
                         ),
                       ],
                     ),
@@ -1798,7 +1800,7 @@ class ModelView extends GetView<ModelController> {
                   controller: cloud.customNameController,
                   decoration: const InputDecoration(
                     labelText: 'Provider name',
-                    prefixIcon: Icon(Icons.badge_outlined, size: 23),
+                    prefixIcon: Icon(PhosphorIconsBold.circle, size: 23),
                     contentPadding:
                         EdgeInsets.symmetric(vertical: 20, horizontal: 18),
                   ),
@@ -1809,7 +1811,7 @@ class ModelView extends GetView<ModelController> {
                   decoration: const InputDecoration(
                     labelText: 'Base URL',
                     hintText: 'https://example.com/v1',
-                    prefixIcon: Icon(Icons.link, size: 23),
+                    prefixIcon: Icon(PhosphorIconsBold.link, size: 23),
                     contentPadding:
                         EdgeInsets.symmetric(vertical: 20, horizontal: 18),
                   ),
@@ -1821,7 +1823,7 @@ class ModelView extends GetView<ModelController> {
                     obscureText: obscureCustomKey.value,
                     decoration: InputDecoration(
                       labelText: 'API key',
-                      prefixIcon: const Icon(Icons.key_outlined, size: 23),
+                      prefixIcon: Icon(PhosphorIconsBold.key, size: 23),
                       suffixIcon: IconButton(
                         tooltip: obscureCustomKey.value
                             ? 'Show API key'
@@ -1830,8 +1832,8 @@ class ModelView extends GetView<ModelController> {
                             obscureCustomKey.value = !obscureCustomKey.value,
                         icon: Icon(
                           obscureCustomKey.value
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                              ? PhosphorIconsBold.eye
+                              : PhosphorIconsBold.eyeSlash,
                           size: 24,
                         ),
                       ),
@@ -1845,7 +1847,7 @@ class ModelView extends GetView<ModelController> {
                   controller: cloud.customModelController,
                   decoration: const InputDecoration(
                     labelText: 'Model ID',
-                    prefixIcon: Icon(Icons.smart_toy_outlined, size: 23),
+                    prefixIcon: Icon(PhosphorIconsBold.robot, size: 23),
                     contentPadding:
                         EdgeInsets.symmetric(vertical: 20, horizontal: 18),
                   ),
@@ -1863,7 +1865,7 @@ class ModelView extends GetView<ModelController> {
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 18),
                     ),
-                    icon: const Icon(Icons.check, size: 22),
+                    icon: Icon(PhosphorIconsBold.check, size: 22),
                     label: const Text('Save and Select'),
                   ),
                 ),
@@ -1992,7 +1994,7 @@ class ModelView extends GetView<ModelController> {
                       ),
                       IconButton(
                         onPressed: Get.back,
-                        icon: const Icon(Icons.close),
+                        icon: Icon(PhosphorIconsBold.x),
                       ),
                     ],
                   ),
@@ -2004,7 +2006,7 @@ class ModelView extends GetView<ModelController> {
                     decoration: InputDecoration(
                       hintText: 'Search models...',
                       prefixIcon: Icon(
-                        Icons.search,
+                        PhosphorIconsBold.magnifyingGlass,
                         size: 23,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -2049,8 +2051,8 @@ class ModelView extends GetView<ModelController> {
                               : () => cloud.toggleFreeFirst(provider.id),
                           icon: Icon(
                             freeFirst
-                                ? Icons.check_circle
-                                : Icons.local_offer_outlined,
+                                ? PhosphorIconsBold.checkCircle
+                                : PhosphorIconsBold.circle,
                             size: 16,
                           ),
                           label: Text(
@@ -2072,7 +2074,7 @@ class ModelView extends GetView<ModelController> {
                                 child:
                                     CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Icon(Icons.refresh, size: 16),
+                            : Icon(PhosphorIconsBold.arrowsCounterClockwise, size: 16),
                         label: const Text('Refresh'),
                       ),
                     ],
@@ -2092,7 +2094,7 @@ class ModelView extends GetView<ModelController> {
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      icon: const Icon(Icons.add, size: 20),
+                      icon: Icon(PhosphorIconsBold.plus, size: 20),
                       label: const Text('Use custom model ID'),
                     ),
                   ),
@@ -2147,7 +2149,7 @@ class ModelView extends GetView<ModelController> {
         style: GoogleFonts.firaCode(fontSize: 12),
         decoration: const InputDecoration(
           labelText: 'Model ID',
-          prefixIcon: Icon(Icons.smart_toy_outlined, size: 18),
+          prefixIcon: Icon(PhosphorIconsBold.robot, size: 18),
         ),
       ),
       actions: [
@@ -2346,7 +2348,7 @@ class ModelView extends GetView<ModelController> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline,
+          Icon(PhosphorIconsBold.info,
               size: 16, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 8),
           Expanded(
@@ -2429,8 +2431,8 @@ class ModelView extends GetView<ModelController> {
           children: [
             Icon(
               isToDownloadsFolder
-                  ? Icons.save_alt
-                  : Icons.cloud_download_outlined,
+                  ? PhosphorIconsBold.circle
+                  : PhosphorIconsBold.circle,
               color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(width: 10),
@@ -2463,7 +2465,7 @@ class ModelView extends GetView<ModelController> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.sd_storage_outlined, size: 16),
+                  Icon(PhosphorIconsBold.circle, size: 16),
                   const SizedBox(width: 8),
                   Text(
                     'Size: ${controller.modelSizeLabel(model)}',
@@ -2482,7 +2484,7 @@ class ModelView extends GetView<ModelController> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.wifi, color: AppColors.warning, size: 24),
+                  Icon(PhosphorIconsBold.wifiHigh, color: AppColors.warning, size: 24),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -2709,8 +2711,8 @@ class ModelView extends GetView<ModelController> {
                                         context, model.filename),
                             icon: Icon(
                               isActive
-                                  ? Icons.eject_outlined
-                                  : Icons.delete_outline,
+                                  ? PhosphorIconsBold.circle
+                                  : PhosphorIconsBold.circle,
                               size: 20,
                               color: isActive
                                   ? Theme.of(context)
@@ -2799,7 +2801,7 @@ class ModelView extends GetView<ModelController> {
               Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded),
+                    icon: Icon(PhosphorIconsBold.arrowLeft),
                     onPressed: () => Navigator.pop(ctx),
                   ),
                   const SizedBox(width: 4),
@@ -2989,8 +2991,8 @@ class ModelView extends GetView<ModelController> {
                     children: [
                       Icon(
                         isDownloaded
-                            ? (isActive ? Icons.eject_rounded : Icons.play_arrow_rounded)
-                            : Icons.download_rounded,
+                            ? (isActive ? PhosphorIconsBold.circle : PhosphorIconsBold.play)
+                            : PhosphorIconsBold.arrowDown,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
@@ -3105,7 +3107,7 @@ class ModelView extends GetView<ModelController> {
               const Spacer(),
               TextButton.icon(
                 onPressed: () => controller.pauseDownload(model.filename),
-                icon: const Icon(Icons.close, size: 16),
+                icon: Icon(PhosphorIconsBold.x, size: 16),
                 label: const Text('Cancel'),
                 style: TextButton.styleFrom(
                   foregroundColor: Theme.of(context).colorScheme.error,
@@ -3346,7 +3348,7 @@ class _AddModelUrlSheetState extends State<_AddModelUrlSheet> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child:
-                        Icon(Icons.add_link_rounded, color: scheme.primary, size: 20),
+                        Icon(PhosphorIconsBold.link, color: scheme.primary, size: 20),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -3370,7 +3372,7 @@ class _AddModelUrlSheetState extends State<_AddModelUrlSheet> {
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: Icon(Icons.close_rounded,
+                    icon: Icon(PhosphorIconsBold.x,
                         color: scheme.onSurfaceVariant, size: 20),
                     style: IconButton.styleFrom(
                       backgroundColor: scheme.surfaceContainerHigh,
@@ -3396,7 +3398,7 @@ class _AddModelUrlSheetState extends State<_AddModelUrlSheet> {
                     _SheetTextField(
                       controller: widget.urlController,
                       hint: 'https://huggingface.co/…/model.gguf',
-                      prefixIcon: Icons.link_rounded,
+                      prefixIcon: PhosphorIconsBold.link,
                       keyboardType: TextInputType.url,
                       bg: fieldBg,
                       border: Colors.transparent,
@@ -3407,7 +3409,7 @@ class _AddModelUrlSheetState extends State<_AddModelUrlSheet> {
                           padding: const EdgeInsets.only(top: 6, left: 4),
                           child: Row(
                             children: [
-                              Icon(Icons.error_outline_rounded,
+                              Icon(PhosphorIconsBold.xCircle,
                                   size: 13,
                                   color: Theme.of(context).colorScheme.error),
                               const SizedBox(width: 6),
@@ -3429,7 +3431,7 @@ class _AddModelUrlSheetState extends State<_AddModelUrlSheet> {
                           padding: const EdgeInsets.only(top: 6, left: 4),
                           child: Row(
                             children: [
-                              const Icon(Icons.warning_amber_rounded,
+                              Icon(PhosphorIconsBold.warning,
                                   size: 13, color: Colors.orange),
                               const SizedBox(width: 6),
                               Expanded(
@@ -3455,7 +3457,7 @@ class _AddModelUrlSheetState extends State<_AddModelUrlSheet> {
                     _SheetTextField(
                       controller: widget.nameController,
                       hint: 'Display name  (e.g. Qwen3-0.6B)',
-                      prefixIcon: Icons.label_outline_rounded,
+                      prefixIcon: PhosphorIconsBold.tag,
                       bg: fieldBg,
                       border: Colors.transparent,
                     ),
@@ -3463,7 +3465,7 @@ class _AddModelUrlSheetState extends State<_AddModelUrlSheet> {
                     _SheetTextField(
                       controller: widget.filenameController,
                       hint: 'Filename  (e.g. qwen3-0.6b.gguf)',
-                      prefixIcon: Icons.insert_drive_file_outlined,
+                      prefixIcon: PhosphorIconsBold.file,
                       bg: fieldBg,
                       border: Colors.transparent,
                     ),
@@ -3477,7 +3479,7 @@ class _AddModelUrlSheetState extends State<_AddModelUrlSheet> {
                           child: _SheetTextField(
                             controller: widget.sizeController,
                             hint: 'e.g. 1.2 GB',
-                            prefixIcon: Icons.data_usage_rounded,
+                            prefixIcon: PhosphorIconsBold.chartDonut,
                             bg: fieldBg,
                             border: Colors.transparent,
                           ),
@@ -3546,8 +3548,7 @@ class _AddModelUrlSheetState extends State<_AddModelUrlSheet> {
                                   borderRadius: BorderRadius.circular(16)),
                               elevation: 0,
                             ),
-                            icon: const Icon(
-                                Icons.download_for_offline_rounded,
+                            icon: Icon(PhosphorIconsBold.arrowDown,
                                 size: 18),
                             label: Text(
                               'Add Model',
@@ -3670,7 +3671,7 @@ class _DetectSizeButton extends StatelessWidget {
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: scheme.primary),
                 )
-              : Icon(Icons.radar_rounded, color: scheme.primary, size: 22),
+              : Icon(PhosphorIconsBold.broadcast, color: scheme.primary, size: 22),
         ),
       ),
     );
@@ -3781,7 +3782,7 @@ class _VisionToggle extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                value ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                value ? PhosphorIconsBold.eye : PhosphorIconsBold.eyeSlash,
                 color:
                     value ? scheme.primary : scheme.onSurfaceVariant,
                 size: 16,

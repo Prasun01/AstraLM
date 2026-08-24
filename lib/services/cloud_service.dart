@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show HttpClient, HttpHeaders;
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import '../core/constants.dart';
@@ -89,17 +90,37 @@ class CloudService extends GetxService {
     }
 
     try {
-      if (onToken != null && _supportsStreaming) {
-        return await _streamOpenAICompatible(
-          endpoint: _openAICompatibleEndpoint,
-          providerLabel: _providerLabel,
-          messages: messages,
-          imageBase64: imageBase64,
-          temperature: temperature,
-          maxTokens: maxTokens,
-          extraHeaders: _openAICompatibleExtraHeaders,
-          onToken: onToken,
-        );
+      if (onToken != null) {
+        if (_provider == 'google') {
+          return await _streamGoogle(
+            messages: messages,
+            imageBase64: imageBase64,
+            temperature: temperature,
+            maxTokens: maxTokens,
+            onToken: onToken,
+          );
+        }
+        if (_provider == 'anthropic') {
+          return await _streamAnthropic(
+            messages: messages,
+            imageBase64: imageBase64,
+            temperature: temperature,
+            maxTokens: maxTokens,
+            onToken: onToken,
+          );
+        }
+        if (_supportsStreaming) {
+          return await _streamOpenAICompatible(
+            endpoint: _openAICompatibleEndpoint,
+            providerLabel: _providerLabel,
+            messages: messages,
+            imageBase64: imageBase64,
+            temperature: temperature,
+            maxTokens: maxTokens,
+            extraHeaders: _openAICompatibleExtraHeaders,
+            onToken: onToken,
+          );
+        }
       }
 
       switch (_provider) {
@@ -141,7 +162,9 @@ class CloudService extends GetxService {
       _provider == 'openrouter' ||
       _provider == 'deepseek' ||
       _provider == 'custom' ||
-      _provider == 'kimi';
+      _provider == 'kimi' ||
+      _provider == 'google' ||
+      _provider == 'anthropic';
 
   String get _openAICompatibleEndpoint {
     switch (_provider) {
@@ -313,6 +336,108 @@ class CloudService extends GetxService {
     return content.isNotEmpty ? content[0]['text'] ?? '' : '';
   }
 
+  Future<String> _streamAnthropic({
+    required List<Map<String, String>> messages,
+    String? imageBase64,
+    double? temperature,
+    int? maxTokens,
+    required void Function(String token) onToken,
+  }) async {
+    String? systemMsg;
+    final apiMessages = <Map<String, dynamic>>[];
+
+    for (final msg in messages) {
+      if (msg['role'] == 'system') {
+        systemMsg = msg['content'];
+        continue;
+      }
+
+      if (msg['role'] == 'user' &&
+          imageBase64 != null &&
+          msg == messages.last) {
+        apiMessages.add({
+          'role': 'user',
+          'content': [
+            {
+              'type': 'image',
+              'source': {
+                'type': 'base64',
+                'media_type': 'image/jpeg',
+                'data': imageBase64,
+              }
+            },
+            {'type': 'text', 'text': msg['content']},
+          ],
+        });
+      } else {
+        apiMessages.add({
+          'role': msg['role'],
+          'content': msg['content'],
+        });
+      }
+    }
+
+    final body = <String, dynamic>{
+      'model': _model,
+      'messages': apiMessages,
+      'max_tokens': maxTokens ?? AppConstants.defaultMaxTokens,
+      'temperature': temperature ?? AppConstants.defaultTemperature,
+      'stream': true,
+    };
+    if (systemMsg != null) body['system'] = systemMsg;
+
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 25);
+    try {
+      final request = await client.postUrl(Uri.parse(AppConstants.anthropicEndpoint));
+      request.headers.set('x-api-key', _apiKey);
+      request.headers.set('anthropic-version', '2023-06-01');
+      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('Accept', 'text/event-stream');
+      request.headers.set('Cache-Control', 'no-cache');
+      request.write(jsonEncode(body));
+
+      final response = await request.close();
+      if (response.statusCode != 200) {
+        final errBody = await response.transform(utf8.decoder).join();
+        return 'ERROR: Anthropic returned ${response.statusCode} — $errBody';
+      }
+
+      final fullText = StringBuffer();
+      String remainder = '';
+
+      await for (final chunk in response.transform(utf8.decoder)) {
+        final text = remainder + chunk;
+        final lines = text.split('\n');
+        remainder = lines.removeLast();
+
+        for (final line in lines) {
+          final trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          final jsonStr = trimmed.substring(5).trim();
+          if (jsonStr.isEmpty || jsonStr == '[DONE]') continue;
+
+          try {
+            final data = jsonDecode(jsonStr);
+            if (data['type'] == 'content_block_delta') {
+              final delta = data['delta'];
+              if (delta != null && delta['type'] == 'text_delta') {
+                final t = delta['text'] as String?;
+                if (t != null && t.isNotEmpty) {
+                  fullText.write(t);
+                  onToken(t);
+                }
+              }
+            }
+          } catch (_) {}
+        }
+      }
+      return fullText.toString();
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   // ─── Google Gemini ──────────────────────────────
 
   Future<String> _sendGoogle(
@@ -338,8 +463,9 @@ class CloudService extends GetxService {
       });
     }
 
+    final cleanModel = _model.startsWith('models/') ? _model.substring(7) : _model;
     final url =
-        '${AppConstants.googleEndpoint}/$_model:generateContent?key=$_apiKey';
+        '${AppConstants.googleEndpoint}/$cleanModel:generateContent?key=$_apiKey';
 
     final response = await http.post(
       Uri.parse(url),
@@ -366,6 +492,93 @@ class CloudService extends GetxService {
       return contentParts.map((p) => p['text'] ?? '').join('');
     }
     return '';
+  }
+
+  Future<String> _streamGoogle({
+    required List<Map<String, String>> messages,
+    String? imageBase64,
+    double? temperature,
+    int? maxTokens,
+    required void Function(String token) onToken,
+  }) async {
+    final contents = <Map<String, dynamic>>[];
+    for (final msg in messages) {
+      final role = msg['role'] == 'assistant' ? 'model' : 'user';
+      final parts = <Map<String, dynamic>>[
+        {'text': msg['content']}
+      ];
+      if (imageBase64 != null && msg == messages.last && role == 'user') {
+        parts.add({
+          'inline_data': {
+            'mime_type': 'image/jpeg',
+            'data': imageBase64,
+          }
+        });
+      }
+      contents.add({'role': role, 'parts': parts});
+    }
+
+    final cleanModel = _model.startsWith('models/') ? _model.substring(7) : _model;
+    final url =
+        '${AppConstants.googleEndpoint}/$cleanModel:streamGenerateContent?alt=sse&key=$_apiKey';
+
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 25);
+    try {
+      final request = await client.postUrl(Uri.parse(url));
+      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('Accept', 'text/event-stream');
+      request.headers.set('Cache-Control', 'no-cache');
+      request.write(jsonEncode({
+        'contents': contents,
+        'generationConfig': {
+          'temperature': temperature ?? AppConstants.defaultTemperature,
+          'maxOutputTokens': maxTokens ?? AppConstants.defaultMaxTokens,
+        },
+      }));
+
+      final response = await request.close();
+      if (response.statusCode != 200) {
+        final errBody = await response.transform(utf8.decoder).join();
+        return 'ERROR: Google returned ${response.statusCode} — $errBody';
+      }
+
+      final fullText = StringBuffer();
+      String remainder = '';
+
+      await for (final chunk in response.transform(utf8.decoder)) {
+        final text = remainder + chunk;
+        final lines = text.split('\n');
+        remainder = lines.removeLast();
+
+        for (final line in lines) {
+          final trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          final jsonStr = trimmed.substring(5).trim();
+          if (jsonStr.isEmpty || jsonStr == '[DONE]') continue;
+
+          try {
+            final data = jsonDecode(jsonStr);
+            final candidates = data['candidates'] as List?;
+            if (candidates != null && candidates.isNotEmpty) {
+              final contentParts = candidates[0]['content']?['parts'] as List?;
+              if (contentParts != null) {
+                for (final part in contentParts) {
+                  final t = part['text'] as String?;
+                  if (t != null && t.isNotEmpty) {
+                    fullText.write(t);
+                    onToken(t);
+                  }
+                }
+              }
+            }
+          } catch (_) {}
+        }
+      }
+      return fullText.toString();
+    } finally {
+      client.close(force: true);
+    }
   }
 
   // ─── Kimi (Moonshot AI — OpenAI-compatible) ─────
@@ -555,60 +768,71 @@ class CloudService extends GetxService {
     required void Function(String token) onToken,
     Map<String, String> extraHeaders = const {},
   }) async {
-    final request = http.Request('POST', Uri.parse(endpoint));
-    request.headers.addAll({
-      'Authorization': 'Bearer $_apiKey',
-      'Content-Type': 'application/json',
-      'Accept': 'text/event-stream',
-      ...extraHeaders,
-    });
-    request.body = jsonEncode({
-      'model': _model,
-      'messages': _buildOpenAICompatibleMessages(messages, imageBase64),
-      'temperature': temperature ?? AppConstants.defaultTemperature,
-      'max_tokens': maxTokens ?? AppConstants.defaultMaxTokens,
-      'stream': true,
-    });
-
-    final client = http.Client();
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 25);
     try {
-      final response = await client.send(request);
+      final request = await client.postUrl(Uri.parse(endpoint));
+      request.headers.set('Authorization', 'Bearer $_apiKey');
+      request.headers.set('Content-Type', 'application/json');
+      request.headers.set('Accept', 'text/event-stream');
+      request.headers.set('Cache-Control', 'no-cache');
+      extraHeaders.forEach((k, v) => request.headers.set(k, v));
+
+      request.write(jsonEncode({
+        'model': _model,
+        'messages': _buildOpenAICompatibleMessages(messages, imageBase64),
+        'temperature': temperature ?? AppConstants.defaultTemperature,
+        'max_tokens': maxTokens ?? AppConstants.defaultMaxTokens,
+        'stream': true,
+      }));
+
+      final response = await request.close();
       if (response.statusCode != 200) {
-        final body = await response.stream.bytesToString();
+        final body = await response.transform(utf8.decoder).join();
         return 'ERROR: $providerLabel returned ${response.statusCode} — $body';
       }
 
       final buffer = StringBuffer();
-      final lines = response.stream
-          .transform(utf8.decoder)
-          .transform(const LineSplitter());
+      String remainder = '';
 
-      await for (final line in lines) {
-        final trimmed = line.trim();
-        if (trimmed.isEmpty || !trimmed.startsWith('data:')) continue;
+      await for (final chunk in response.transform(utf8.decoder)) {
+        final text = remainder + chunk;
+        final lines = text.split('\n');
+        remainder = lines.removeLast();
 
-        final payload = trimmed.substring(5).trim();
-        if (payload == '[DONE]') break;
+        for (final line in lines) {
+          final trimmed = line.trim();
+          if (trimmed.isEmpty || !trimmed.startsWith('data:')) continue;
 
-        try {
-          final data = jsonDecode(payload);
-          final choice = (data['choices'] as List?)?.isNotEmpty == true
-              ? data['choices'][0] as Map
-              : null;
-          final delta = choice?['delta'] as Map?;
-          final token = delta?['content']?.toString();
-          if (token != null && token.isNotEmpty) {
-            buffer.write(token);
-            onToken(token);
+          final payload = trimmed.substring(5).trim();
+          if (payload == '[DONE]') break;
+
+          try {
+            final data = jsonDecode(payload);
+            final choice = (data['choices'] as List?)?.isNotEmpty == true
+                ? data['choices'][0] as Map
+                : null;
+            final delta = choice?['delta'] as Map?;
+            final reasoning = delta?['reasoning_content']?.toString() ??
+                delta?['thought']?.toString();
+            if (reasoning != null && reasoning.isNotEmpty) {
+              buffer.write(reasoning);
+              onToken(reasoning);
+            }
+            final token = delta?['content']?.toString();
+            if (token != null && token.isNotEmpty) {
+              buffer.write(token);
+              onToken(token);
+            }
+          } catch (_) {
+            // Ignore malformed keep-alive chunks and continue reading.
           }
-        } catch (_) {
-          // Ignore malformed keep-alive chunks and continue reading.
         }
       }
 
       return buffer.toString();
     } finally {
-      client.close();
+      client.close(force: true);
     }
   }
 

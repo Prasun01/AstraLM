@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/task_controller.dart';
@@ -33,7 +34,7 @@ class TaskView extends GetView<TaskController> {
         if (controller.currentTask.value != null) return const SizedBox.shrink();
         return FloatingActionButton(
           onPressed: () => _showCreateDialog(context),
-          child: const Icon(Icons.add_rounded),
+          child: Icon(PhosphorIconsBold.plus),
         );
       }),
     );
@@ -45,7 +46,7 @@ class TaskView extends GetView<TaskController> {
       return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Container(width: 60, height: 60,
           decoration: BoxDecoration(color: scheme.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(18)),
-          child: Icon(Icons.bolt_rounded, size: 30, color: scheme.primary)),
+          child: Icon(PhosphorIconsBold.lightning, size: 30, color: scheme.primary)),
         const SizedBox(height: 16),
         Text('No Tasks Yet', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600, color: scheme.onSurface)),
         const SizedBox(height: 6),
@@ -80,7 +81,7 @@ class TaskView extends GetView<TaskController> {
             const SizedBox(height: 4),
             Text('${task.steps.length} steps · ${task.status.toUpperCase()}', style: GoogleFonts.inter(fontSize: 12, letterSpacing: 0.4, color: statusColor, fontWeight: FontWeight.w600)),
           ])),
-          IconButton(icon: Icon(Icons.delete_outline_rounded, size: 18, color: scheme.onSurfaceVariant), onPressed: () => controller.deleteTask(task.id)),
+          IconButton(icon: Icon(PhosphorIconsBold.trash, size: 18, color: scheme.onSurfaceVariant), onPressed: () => controller.deleteTask(task.id)),
         ])),
       ),
     );
@@ -96,7 +97,7 @@ class TaskView extends GetView<TaskController> {
           onTap: () => controller.currentTask.value = null,
           child: Container(width: 32, height: 32,
             decoration: BoxDecoration(color: scheme.surfaceContainerHigh, borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: scheme.onSurfaceVariant)),
+            child: Icon(PhosphorIconsBold.caretLeft, size: 14, color: scheme.onSurfaceVariant)),
         ),
         const SizedBox(width: 14),
         Expanded(child: Text(task.goal, style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w600, color: scheme.onSurface), maxLines: 2, overflow: TextOverflow.ellipsis)),
@@ -115,7 +116,7 @@ class TaskView extends GetView<TaskController> {
         }
         if (current.steps.isEmpty) {
           return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.auto_awesome_outlined, size: 32, color: scheme.onSurfaceVariant),
+            Icon(PhosphorIconsBold.sparkle, size: 32, color: scheme.onSurfaceVariant),
             const SizedBox(height: 12),
             Text('No steps generated.', style: GoogleFonts.inter(color: scheme.onSurfaceVariant)),
           ]));
@@ -134,7 +135,7 @@ class TaskView extends GetView<TaskController> {
         if (current == null || current.steps.isEmpty) return const SizedBox.shrink();
         if (current.status == 'completed') {
           return Padding(padding: const EdgeInsets.all(24), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.check_circle_rounded, color: successColor),
+            Icon(PhosphorIconsBold.checkCircle, color: successColor),
             const SizedBox(width: 8),
             Text('Task Completed', style: GoogleFonts.inter(color: successColor, fontWeight: FontWeight.w600)),
           ]));
@@ -152,7 +153,7 @@ class TaskView extends GetView<TaskController> {
             ),
             icon: controller.isExecuting.value
                 ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: scheme.onPrimary))
-                : const Icon(Icons.play_arrow_rounded),
+                : Icon(PhosphorIconsBold.play),
             label: Text(controller.isExecuting.value ? 'Executing…' : 'Execute All Steps'),
           ),
         )));
@@ -199,9 +200,9 @@ class TaskView extends GetView<TaskController> {
     final scheme = Theme.of(context).colorScheme;
     switch (status) {
       case 'running': return SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: scheme.primary));
-      case 'done': return Icon(Icons.check_circle_rounded, size: 18, color: _successColor(Theme.of(context)));
-      case 'failed': return Icon(Icons.error_rounded, size: 18, color: scheme.error);
-      default: return Icon(Icons.circle_outlined, size: 18, color: scheme.onSurfaceVariant);
+      case 'done': return Icon(PhosphorIconsBold.checkCircle, size: 18, color: _successColor(Theme.of(context)));
+      case 'failed': return Icon(PhosphorIconsBold.xCircle, size: 18, color: scheme.error);
+      default: return Icon(PhosphorIconsBold.circle, size: 18, color: scheme.onSurfaceVariant);
     }
   }
 
@@ -217,11 +218,11 @@ class TaskView extends GetView<TaskController> {
 
   IconData _statusIcon(String status) {
     switch (status) {
-      case 'running': return Icons.sync_rounded;
-      case 'completed': return Icons.check_circle_rounded;
-      case 'failed': return Icons.error_rounded;
-      case 'planning': return Icons.auto_awesome_rounded;
-      default: return Icons.circle_outlined;
+      case 'running': return PhosphorIconsBold.arrowsCounterClockwise;
+      case 'completed': return PhosphorIconsBold.checkCircle;
+      case 'failed': return PhosphorIconsBold.xCircle;
+      case 'planning': return PhosphorIconsBold.sparkle;
+      default: return PhosphorIconsBold.circle;
     }
   }
 

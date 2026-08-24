@@ -206,8 +206,22 @@ class DeviceInfoService extends GetxService {
       }
     }
 
+    final bool isGemma = lowerName.contains('gemma');
+    final bool isMaliOrExynos = socFamily.value == platform_info.SocFamily.exynos ||
+        socHardware.value.toLowerCase().contains('mali') ||
+        socHardware.value.toLowerCase().contains('exynos') ||
+        socHardware.value.toLowerCase().contains('s5e8835') ||
+        socHardware.value.toLowerCase().contains('s5e8845');
+
     if (isLiteRt) {
-      contextSize = contextSize.clamp(512, 4096);
+      if (isGemma || isMaliOrExynos) {
+        contextSize = contextSize.clamp(512, 2048);
+        if (ram <= 8 && isGemma) {
+          contextSize = contextSize.clamp(512, 1536);
+        }
+      } else {
+        contextSize = contextSize.clamp(512, 4096);
+      }
     }
 
     // Ensure maxTokens never exceeds contextSize - 256 (leaving space for prompt & history)

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -160,7 +161,7 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
                                 color: isDark ? const Color(0xFF222638) : const Color(0xFFE2E7F5),
                               ),
                               child: Icon(
-                                Icons.lightbulb_rounded,
+                                PhosphorIconsBold.lightbulb,
                                 size: 14,
                                 color: primaryAccent,
                               ),
@@ -176,7 +177,7 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
                           color: isDark ? const Color(0xFF1C1F2B) : const Color(0xFFE5EBF5),
                         ),
                         child: Icon(
-                          Icons.lightbulb_outline_rounded,
+                          PhosphorIconsBold.lightbulb,
                           size: 14,
                           color: mutedText,
                         ),
@@ -220,7 +221,7 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
                       duration: const Duration(milliseconds: 260),
                       curve: Curves.fastOutSlowIn,
                       child: Icon(
-                        Icons.chevron_right_rounded,
+                        PhosphorIconsBold.caretRight,
                         size: 18,
                         color: isThinking ? primaryAccent : mutedText,
                       ),

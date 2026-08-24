@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/home_controller.dart';
@@ -17,16 +18,16 @@ class HomeView extends GetView<HomeController> {
 
   static const _tabs = [
     _NavItem(
-        icon: Icons.bubble_chart_outlined,
-        activeIcon: Icons.bubble_chart,
+        icon: PhosphorIconsBold.chatCircle,
+        activeIcon: PhosphorIconsBold.chatCircleDots,
         label: 'Chat'),
     _NavItem(
-        icon: Icons.dns_outlined,
-        activeIcon: Icons.dns_rounded,
+        icon: PhosphorIconsBold.database,
+        activeIcon: PhosphorIconsBold.database,
         label: 'Server'),
     _NavItem(
-        icon: Icons.settings_outlined,
-        activeIcon: Icons.settings,
+        icon: PhosphorIconsBold.gear,
+        activeIcon: PhosphorIconsBold.gear,
         label: 'Settings'),
   ];
 

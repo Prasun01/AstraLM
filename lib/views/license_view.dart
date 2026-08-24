@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -49,7 +50,7 @@ SOFTWARE.''';
         backgroundColor: scheme.surface,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          icon: Icon(PhosphorIconsBold.caretLeft, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -165,7 +166,7 @@ SOFTWARE.''';
                           color: const Color(0xFF34C759).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.shield_outlined,
+                        child: Icon(PhosphorIconsBold.shieldCheck,
                             color: Color(0xFF34C759), size: 20),
                       ),
                       const SizedBox(width: 12),
@@ -235,7 +236,7 @@ SOFTWARE.''';
                         },
                         child: Row(
                           children: [
-                            Icon(Icons.copy_rounded,
+                            Icon(PhosphorIconsBold.copy,
                                 size: 14, color: scheme.primary),
                             const SizedBox(width: 4),
                             Text(
@@ -373,7 +374,7 @@ SOFTWARE.''';
                         color: scheme.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(Icons.source_rounded,
+                      child: Icon(PhosphorIconsBold.code,
                           color: scheme.primary, size: 22),
                     ),
                     const SizedBox(width: 14),
@@ -399,7 +400,7 @@ SOFTWARE.''';
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded,
+                    Icon(PhosphorIconsBold.caretRight,
                         size: 20, color: scheme.onSurfaceVariant),
                   ],
                 ),

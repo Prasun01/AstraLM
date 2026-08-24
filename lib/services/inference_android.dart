@@ -255,6 +255,32 @@ class InferenceEngine {
           );
         }
       }
+      // If GPU loading failed (e.g. OpenCL driver failure/OOM on Mali/Adreno), automatically fallback to CPU safe mode
+      if (backend == LiteLmBackend.gpu) {
+        print('[Inference] LiteRT GPU initialization failed ($error). Automatically falling back to CPU safe backend...');
+        try {
+          final safeCtx = contextSize > 1536 ? 1536 : contextSize;
+          _liteEngine = await _createLiteRtEngine(
+            modelPath: modelPath,
+            contextSize: safeCtx,
+            cacheDir: cacheDir.path,
+            backend: LiteLmBackend.cpu,
+            enableVision: enableVision,
+          );
+          _hasLoadedModel = true;
+          onProgress?.call(0.92);
+          return LoadResult(
+            success: true,
+            message: 'LiteRT-LM model loaded in CPU safe mode (GPU offload unavailable).',
+            gpuName: '',
+            gpuLayers: 0,
+            runtime: 'litert',
+            backend: 'cpu',
+          );
+        } catch (cpuError) {
+          print('[Inference] LiteRT CPU safe fallback failed: $cpuError');
+        }
+      }
       if (errorStr.contains('exactly one signature but got')) {
         return LoadResult(
           success: false,

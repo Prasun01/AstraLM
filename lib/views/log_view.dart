@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/app_log_service.dart';
@@ -33,15 +34,15 @@ class LogView extends StatelessWidget {
     IconData levelIcon(String level) {
       switch (level) {
         case 'ERROR':
-          return Icons.error_outline_rounded;
+          return PhosphorIconsBold.xCircle;
         case 'WARNING':
-          return Icons.warning_amber_rounded;
+          return PhosphorIconsBold.warning;
         case 'INFO':
-          return Icons.info_outline_rounded;
+          return PhosphorIconsBold.info;
         case 'DEBUG':
-          return Icons.bug_report_outlined;
+          return PhosphorIconsBold.bug;
         default:
-          return Icons.list_alt_rounded;
+          return PhosphorIconsBold.fileText;
       }
     }
 
@@ -55,7 +56,7 @@ class LogView extends StatelessWidget {
         actions: [
           IconButton(
             tooltip: 'Share logs',
-            icon: Icon(Icons.ios_share_rounded, size: 20, color: scheme.primary),
+            icon: Icon(PhosphorIconsBold.shareNetwork, size: 20, color: scheme.primary),
             onPressed: () async {
               await logs.copyImportantLogs();
               Get.snackbar('Copied', 'Important logs copied to clipboard.', snackPosition: SnackPosition.BOTTOM);
@@ -63,7 +64,7 @@ class LogView extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Clear logs',
-            icon: Icon(Icons.delete_outline_rounded, size: 20, color: scheme.onSurfaceVariant),
+            icon: Icon(PhosphorIconsBold.trash, size: 20, color: scheme.onSurfaceVariant),
             onPressed: logs.clear,
           ),
         ],
@@ -128,7 +129,7 @@ class LogView extends StatelessWidget {
                         color: scheme.primary.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Icon(Icons.check_circle_outline_rounded, size: 28, color: scheme.primary),
+                      child: Icon(PhosphorIconsBold.checkCircle, size: 28, color: scheme.primary),
                     ),
                     const SizedBox(height: 16),
                     Text('All Clear', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600, color: scheme.onSurface)),

@@ -21,21 +21,35 @@ import '../widgets/pressable_scale.dart';
 import '../widgets/canvas_workspace.dart';
 import 'model_view.dart';
 import 'settings_view.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../core/icons.dart';
 
 class ChatView extends GetView<ChatController> {
   const ChatView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      drawer: _buildSidebarDrawer(context),
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: _appBar(context),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              _modelLoadingBar(context),
+    return Obx(() {
+      final isCanvasOpen = controller.isCanvasOpen.value;
+      return Scaffold(
+        drawer: _buildSidebarDrawer(context),
+        drawerEnableOpenDragGesture: true,
+        drawerEdgeDragWidth: MediaQuery.of(context).size.width * 0.45,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: isCanvasOpen ? null : _appBar(context),
+        body: Builder(
+          builder: (scaffoldCtx) => GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onHorizontalDragEnd: (details) {
+              if ((details.primaryVelocity ?? 0) > 280) {
+                Scaffold.of(scaffoldCtx).openDrawer();
+              }
+            },
+            child: Stack(
+              children: [
+                Column(
+                  children: [
+                    _modelLoadingBar(context),
               Expanded(
                 child: Stack(
                   children: [
@@ -98,12 +112,12 @@ class ChatView extends GetView<ChatController> {
                     ),
                   ),
                 ),
-                // Slight bottom gradient fade behind floating input bar
+                // Spread bottom gradient fade behind floating input bar
                 Positioned(
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  height: 36,
+                  height: 64,
                   child: IgnorePointer(
                     child: Container(
                       decoration: BoxDecoration(
@@ -113,28 +127,35 @@ class ChatView extends GetView<ChatController> {
                           colors: [
                             Theme.of(context)
                                 .scaffoldBackgroundColor
-                                .withValues(alpha: 0.9),
+                                .withValues(alpha: 0.95),
+                            Theme.of(context)
+                                .scaffoldBackgroundColor
+                                .withValues(alpha: 0.5),
                             Theme.of(context)
                                 .scaffoldBackgroundColor
                                 .withValues(alpha: 0.0),
                           ],
+                          stops: const [0.0, 0.5, 1.0],
                         ),
                       ),
                     ),
                   ),
                 ),
               ],
+              ),
             ),
-          ),
-          _inputBar(context),
-        ],
-      ),
-      const Positioned.fill(
-        child: CanvasWorkspace(),
-      ),
-    ],
+            _inputBar(context),
+          ],
+        ),
+        const Positioned.fill(
+          child: CanvasWorkspace(),
+        ),
+      ],
+    ),
   ),
-);
+),
+      );
+    });
   }
 
   // ── AppBar ──
@@ -170,8 +191,8 @@ class ChatView extends GetView<ChatController> {
                   ],
                 ),
                 child: Center(
-                  child: Icon(
-                    Icons.notes_rounded,
+                  child: PhosphorIcon(
+                    PhosphorIconsBold.list,
                     size: 20,
                     color: isDark ? const Color(0xFFE2E6F2) : const Color(0xFF161822),
                   ),
@@ -303,113 +324,45 @@ class ChatView extends GetView<ChatController> {
         );
       }),
       actions: [
+        // Small Incognito Button
         Padding(
-          padding: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.only(right: 14),
           child: Center(
             child: Obx(() {
-              final isCanvasActive =
-                  controller.isCanvasMode.value || controller.isCanvasOpen.value;
-              return Tooltip(
-                message: controller.isCanvasMode.value
-                    ? 'Canvas Mode Active'
-                    : 'Open Canvas Workspace',
-                child: PressableScale(
-                  onTap: () {
-                    if (controller.canvasContent.value.isNotEmpty) {
-                      controller.openCanvas();
-                    } else {
-                      controller.toggleCanvasMode();
-                      Get.snackbar(
-                        controller.isCanvasMode.value
-                            ? 'Canvas Mode Enabled'
-                            : 'Canvas Mode Disabled',
-                        controller.isCanvasMode.value
-                            ? 'AI will write answers directly into the Canvas editor.'
-                            : 'Standard chat mode active.',
-                        snackPosition: SnackPosition.BOTTOM,
-                        duration: const Duration(seconds: 2),
-                        margin: const EdgeInsets.all(12),
-                      );
-                    }
-                  },
+              final active = controller.isIncognito.value;
+              return PressableScale(
+                onTap: controller.toggleIncognito,
+                child: Tooltip(
+                  message: active ? 'Incognito Mode: ON' : 'Incognito Mode: OFF',
                   child: Container(
-                    width: 40,
-                    height: 40,
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
-                      color: isCanvasActive
-                          ? (isDark
-                              ? const Color(0xFF1E293B)
-                              : const Color(0xFFE2E8F0))
-                          : (isDark
-                              ? const Color(0xFF141620)
-                              : const Color(0xFFE9EDF5)),
+                      color: active
+                          ? (isDark ? Colors.white : Colors.black)
+                          : (isDark ? const Color(0xFF141620) : const Color(0xFFE9EDF5)),
                       shape: BoxShape.circle,
-                      border: isCanvasActive
-                          ? Border.all(
-                              color: isDark
-                                  ? const Color(0xFF3B82F6)
-                                  : const Color(0xFF2563EB),
-                              width: 1.5,
-                            )
-                          : null,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black
-                              .withValues(alpha: isDark ? 0.45 : 0.08),
-                          blurRadius: 12,
-                          offset: const Offset(0, 3),
+                          color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: Center(
-                      child: Icon(
-                        Icons.edit_note_rounded,
-                        size: 20,
-                        color: isCanvasActive
-                            ? (isDark
-                                ? const Color(0xFF93C5FD)
-                                : const Color(0xFF1D4ED8))
-                            : (isDark
-                                ? const Color(0xFFE2E6F2)
-                                : const Color(0xFF161822)),
+                      child: PhosphorIcon(
+                        active ? PhosphorIconsBold.maskHappy : PhosphorIconsBold.detective,
+                        size: 18,
+                        color: active
+                            ? (isDark ? Colors.black : Colors.white)
+                            : (isDark ? const Color(0xFFE2E6F2) : const Color(0xFF161822)),
                       ),
                     ),
                   ),
                 ),
               );
             }),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: 14),
-          child: Center(
-            child: PressableScale(
-              onTap: () => Navigator.of(context).push(
-                _smoothTransitionRoute(const SettingsView()),
-              ),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF141620) : const Color(0xFFE9EDF5),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
-                      blurRadius: 12,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.settings_outlined,
-                    size: 19,
-                    color: isDark ? const Color(0xFFE2E6F2) : const Color(0xFF161822),
-                  ),
-                ),
-              ),
-            ),
           ),
         ),
       ],
@@ -552,18 +505,18 @@ class ChatView extends GetView<ChatController> {
                   Text(
                     modelTitle,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 32,
+                    style: GoogleFonts.manrope(
+                      fontSize: 26,
                       fontWeight: FontWeight.w700,
                       color: scheme.onSurface,
-                      letterSpacing: -0.5,
+                      letterSpacing: -0.3,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'How can I help you today?',
-                    style: GoogleFonts.openSans(
-                      fontSize: 16.5,
+                    style: GoogleFonts.inter(
+                      fontSize: 15.5,
                       color: scheme.onSurfaceVariant,
                       fontWeight: FontWeight.w400,
                     ),
@@ -584,25 +537,25 @@ class ChatView extends GetView<ChatController> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(children: [
-                    Icon(Icons.download_rounded,
+                    PhosphorIcon(PhosphorIconsBold.arrowDown,
                         color: scheme.primary, size: 36),
                     const SizedBox(height: 14),
                     Text('No Local Models',
-                        style: GoogleFonts.playfairDisplay(
-                            fontSize: 22,
+                        style: GoogleFonts.manrope(
+                            fontSize: 20,
                             fontWeight: FontWeight.w700,
                             color: scheme.onSurface)),
                     const SizedBox(height: 6),
                     Text(
                         'You need to download a model to use local inference on your device.',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.openSans(
-                            fontSize: 14.5, color: scheme.onSurfaceVariant)),
+                        style: GoogleFonts.inter(
+                            fontSize: 14, color: scheme.onSurfaceVariant)),
                     const SizedBox(height: 20),
                     FilledButton.icon(
                       onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const ModelView())),
-                      icon: const Icon(Icons.arrow_downward_rounded, size: 18),
+                      icon: PhosphorIcon(PhosphorIconsBold.arrowDown, size: 18),
                       label: const Text('Go to Models'),
                       style: FilledButton.styleFrom(
                           backgroundColor: scheme.primary,
@@ -664,8 +617,8 @@ class ChatView extends GetView<ChatController> {
                   ),
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_rounded,
+              PhosphorIcon(
+                PhosphorIconsBold.arrowRight,
                 size: 16,
                 color: iconColor,
               ),
@@ -710,10 +663,15 @@ class ChatView extends GetView<ChatController> {
                       styleSheet: _thoughtMd(context),
                     ),
                   if (hasAnswer)
-                    MarkdownBody(
-                      data: answer,
-                      selectable: true,
-                      styleSheet: _streamMd(context),
+                    AnimatedOpacity(
+                      opacity: 1.0,
+                      duration: const Duration(milliseconds: 150),
+                      curve: Curves.easeOut,
+                      child: MarkdownBody(
+                        data: answer,
+                        selectable: true,
+                        styleSheet: _streamMd(context),
+                      ),
                     ),
                 ],
                 if (hasText && !isImageGen)
@@ -856,7 +814,7 @@ class ChatView extends GetView<ChatController> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.auto_awesome_rounded,
+                          Icon(PhosphorIconsBold.sparkle,
                               size: 13, color: accent),
                           const SizedBox(width: 6),
                           Flexible(
@@ -885,7 +843,7 @@ class ChatView extends GetView<ChatController> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _StepButton(
-                          icon: Icons.remove_rounded,
+                          icon: PhosphorIconsBold.minus,
                           enabled: steps > 1,
                           onTap: () => settings.setImageSteps(steps - 1),
                         ),
@@ -898,7 +856,7 @@ class ChatView extends GetView<ChatController> {
                           ),
                         ),
                         _StepButton(
-                          icon: Icons.add_rounded,
+                          icon: PhosphorIconsBold.plus,
                           enabled: steps < 20,
                           onTap: () => settings.setImageSteps(steps + 1),
                         ),
@@ -931,7 +889,7 @@ class ChatView extends GetView<ChatController> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.edit_note_rounded,
+                          PhosphorIconsBold.notepad,
                           size: 16,
                           color: isDark
                               ? const Color(0xFF93C5FD)
@@ -952,7 +910,7 @@ class ChatView extends GetView<ChatController> {
                         GestureDetector(
                           onTap: () => controller.toggleCanvasMode(false),
                           child: Icon(
-                            Icons.close_rounded,
+                            PhosphorIconsBold.x,
                             size: 14,
                             color: isDark
                                 ? const Color(0xFF94A3B8)
@@ -1034,28 +992,30 @@ class ChatView extends GetView<ChatController> {
                 ),
                 const SizedBox(width: 4),
                 // Floating Models Icon Button on the Right
-                PressableScale(
-                  onTap: () => _showQuickAvailableModelSelector(context),
-                  pressedScale: 0.90,
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
+                Builder(
+                  builder: (btnCtx) => PressableScale(
+                    onTap: () => _showQuickAvailableModelSelector(btnCtx),
+                    pressedScale: 0.90,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Icon(
+                          PhosphorIconsBold.squaresFour,
+                          size: 17,
+                          color: isDark ? Colors.white : const Color(0xFF12141D),
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.auto_awesome_mosaic_rounded,
-                        size: 17,
-                        color: isDark ? Colors.white : const Color(0xFF12141D),
                       ),
                     ),
                   ),
@@ -1077,21 +1037,21 @@ class ChatView extends GetView<ChatController> {
                   if (loading || listening) {
                     bgColor = scheme.error;
                     fgColor = scheme.onError;
-                    iconData = Icons.stop_rounded;
+                    iconData = PhosphorIconsBold.stop;
                     onTap = loading
                         ? controller.stopGenerating
                         : controller.toggleListening;
                   } else if (hasContent) {
                     bgColor = isDark ? Colors.white : Colors.black;
                     fgColor = isDark ? Colors.black : Colors.white;
-                    iconData = Icons.arrow_upward_rounded;
+                    iconData = PhosphorIconsBold.arrowUp;
                     onTap = controller.sendMessage;
                   } else {
                     bgColor = isDark
                         ? const Color(0xFF1E212A)
                         : const Color(0xFFE4E8F0);
                     fgColor = isDark ? Colors.white : Colors.black;
-                    iconData = Icons.mic_none_rounded;
+                    iconData = PhosphorIconsBold.microphone;
                     onTap = controller.toggleListening;
                   }
 
@@ -1120,7 +1080,7 @@ class ChatView extends GetView<ChatController> {
                           iconData,
                           key: ValueKey(iconData),
                           color: fgColor,
-                          size: iconData == Icons.mic_none_rounded ? 19 : 20,
+                          size: iconData == PhosphorIconsBold.microphone ? 19 : 20,
                         ),
                       ),
                     ),
@@ -1192,7 +1152,7 @@ class ChatView extends GetView<ChatController> {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        Icons.close_rounded,
+                        PhosphorIconsBold.x,
                         size: 17,
                         color: isDark ? const Color(0xFFBAC0D0) : const Color(0xFF5A6074),
                       ),
@@ -1225,7 +1185,7 @@ class ChatView extends GetView<ChatController> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.add_rounded,
+                        PhosphorIconsBold.plus,
                         size: 18,
                         color: isDark ? const Color(0xFF090A0E) : Colors.white,
                       ),
@@ -1254,7 +1214,7 @@ class ChatView extends GetView<ChatController> {
                 child: Row(
                   children: [
                     Icon(
-                      Icons.search_rounded,
+                      PhosphorIconsBold.magnifyingGlass,
                       size: 17,
                       color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
                     ),
@@ -1292,145 +1252,214 @@ class ChatView extends GetView<ChatController> {
 
               // List of conversations with top and bottom fade
               Expanded(
-                child: Obx(() {
-                  final query = searchFilter.value;
-                  final filtered = controller.sessions.where((s) {
-                    if (query.isEmpty) return true;
-                    return s.title.toLowerCase().contains(query);
-                  }).toList();
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Obx(() {
+                        final sessions = controller.sessions;
+                        final q = searchFilter.value.trim().toLowerCase();
+                        final filtered = q.isEmpty
+                            ? sessions
+                            : sessions
+                                .where((s) => s.title.toLowerCase().contains(q))
+                                .toList();
 
-                  if (filtered.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                        child: Text(
-                          'No conversations found',
-                          style: GoogleFonts.manrope(
-                            fontSize: 13,
-                            color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
-                  return ShaderMask(
-                    shaderCallback: (Rect bounds) {
-                      return const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.white,
-                          Colors.white,
-                          Colors.transparent,
-                        ],
-                        stops: [0.0, 0.03, 0.96, 1.0],
-                      ).createShader(bounds);
-                    },
-                    blendMode: BlendMode.dstIn,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 2),
-                      itemBuilder: (c, i) {
-                        final s = filtered[i];
-                        final active = controller.currentSessionId.value == s.id;
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: active
-                                ? (isDark ? const Color(0xFF191D2A) : const Color(0xFFE5EAF3))
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: ListTile(
-                            dense: true,
-                            contentPadding:
-                                const EdgeInsets.only(left: 12, right: 4),
-                            title: Text(
-                              s.title,
-                              style: GoogleFonts.manrope(
-                                fontSize: 13.5,
-                                fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                                color: isDark ? Colors.white : const Color(0xFF0E1017),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              _fmtDate(s.updatedAt),
-                              style: GoogleFonts.openSans(
-                                fontSize: 11.5,
-                                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                        if (filtered.isEmpty) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              child: Text(
+                                q.isEmpty ? 'No conversations yet' : 'No matching chats',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                                ),
                               ),
                             ),
-                            trailing: PopupMenuButton<String>(
-                              icon: Icon(
-                                Icons.more_vert_rounded,
-                                size: 18,
-                                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
-                              ),
-                              color: isDark ? const Color(0xFF181B26) : Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              onSelected: (value) {
-                                if (value == 'share') {
-                                  _shareConversation(s);
-                                } else if (value == 'delete') {
-                                  _confirmDeleteChat(context, s);
-                                }
-                              },
-                              itemBuilder: (BuildContext ctx) => [
-                                PopupMenuItem<String>(
-                                  value: 'share',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.share_rounded,
-                                          size: 16,
-                                          color: isDark ? Colors.white : const Color(0xFF141620)),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        'Share',
-                                        style: GoogleFonts.manrope(
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.w600,
-                                          color: isDark ? Colors.white : const Color(0xFF141620),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                PopupMenuItem<String>(
-                                  value: 'delete',
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.delete_outline_rounded,
-                                          size: 16, color: Colors.redAccent),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        'Delete',
-                                        style: GoogleFonts.manrope(
-                                          fontSize: 13.5,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.redAccent,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                          );
+                        }
+
+                        return ShaderMask(
+                          shaderCallback: (Rect bounds) {
+                            return const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.white,
+                                Colors.white,
+                                Colors.transparent,
                               ],
-                            ),
-                            onTap: () {
-                              controller.openChat(s.id);
-                              Navigator.pop(context);
+                              stops: [0.0, 0.03, 0.85, 1.0],
+                            ).createShader(bounds);
+                          },
+                          blendMode: BlendMode.dstIn,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(0, 4, 0, 16),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 2),
+                            itemBuilder: (c, i) {
+                              final s = filtered[i];
+                              final active = controller.currentSessionId.value == s.id;
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: active
+                                      ? (isDark ? const Color(0xFF191D2A) : const Color(0xFFE5EAF3))
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: ListTile(
+                                  dense: true,
+                                  contentPadding:
+                                      const EdgeInsets.only(left: 12, right: 4),
+                                  title: Text(
+                                    s.title,
+                                    style: GoogleFonts.manrope(
+                                      fontSize: 13.5,
+                                      fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                                      color: isDark ? Colors.white : const Color(0xFF0E1017),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    _fmtDate(s.updatedAt),
+                                    style: GoogleFonts.openSans(
+                                      fontSize: 11.5,
+                                      color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                                    ),
+                                  ),
+                                  trailing: PopupMenuButton<String>(
+                                    icon: Icon(
+                                      PhosphorIconsBold.dotsThreeVertical,
+                                      size: 18,
+                                      color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                                    ),
+                                    color: isDark ? const Color(0xFF181B26) : Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    onSelected: (value) {
+                                      if (value == 'share') {
+                                        _shareConversation(s);
+                                      } else if (value == 'delete') {
+                                        _confirmDeleteChat(context, s);
+                                      }
+                                    },
+                                    itemBuilder: (BuildContext ctx) => [
+                                      PopupMenuItem<String>(
+                                        value: 'share',
+                                        child: Row(
+                                          children: [
+                                            Icon(PhosphorIconsBold.shareNetwork,
+                                                size: 16,
+                                                color: isDark ? Colors.white : const Color(0xFF141620)),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              'Share',
+                                              style: GoogleFonts.manrope(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: isDark ? Colors.white : const Color(0xFF141620),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      PopupMenuItem<String>(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(PhosphorIconsBold.trash,
+                                                size: 16, color: Colors.redAccent),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              'Delete',
+                                              style: GoogleFonts.manrope(
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.redAccent,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  onTap: () {
+                                    controller.openChat(s.id);
+                                    Navigator.pop(context);
+                                  },
+                                ),
+                              );
                             },
                           ),
                         );
-                      },
+                      }),
                     ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: 36,
+                      child: IgnorePointer(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                (isDark ? const Color(0xFF0C0E14) : const Color(0xFFF5F7FA)),
+                                (isDark ? const Color(0xFF0C0E14) : const Color(0xFFF5F7FA)).withValues(alpha: 0.0),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Footer: Settings Button
+              PressableScale(
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    _smoothTransitionRoute(const SettingsView()),
                   );
-                }),
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF141620) : const Color(0xFFE9EDF5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      PhosphorIcon(
+                        PhosphorIconsBold.gear,
+                        size: 20,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Settings',
+                        style: GoogleFonts.manrope(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const Spacer(),
+                      PhosphorIcon(
+                        PhosphorIconsBold.caretRight,
+                        size: 16,
+                        color: isDark ? const Color(0xFF888888) : const Color(0xFF666666),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -1454,7 +1483,7 @@ class ChatView extends GetView<ChatController> {
                 color: Colors.red.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.delete_outline_rounded,
+              child: Icon(PhosphorIconsBold.trash,
                   color: Colors.redAccent, size: 22),
             ),
             const SizedBox(width: 12),
@@ -1527,395 +1556,432 @@ class ChatView extends GetView<ChatController> {
     Share.share(sb.toString().trim(), subject: session.title);
   }
 
-  // ── Quick Available Model Selector (Only Downloaded & Available Online) ──
-  void _showQuickAvailableModelSelector(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  // ── Quick Available Model Selector (Attached Floating Popover - Strict Monochrome) ──
+  void _showQuickAvailableModelSelector(BuildContext buttonContext) {
+    final isDark = Theme.of(buttonContext).brightness == Brightness.dark;
     final settings = Get.find<SettingsController>();
     final modelCtrl = Get.find<ModelController>();
     final inf = Get.find<InferenceService>();
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: isDark ? const Color(0xFF0E1016) : const Color(0xFFF6F8FA),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Obx(() {
-        final downloaded = modelCtrl.downloadedFiles;
-
-        final availableCloud = <Map<String, dynamic>>[];
-        if (settings.openaiKey.value.trim().isNotEmpty) {
-          availableCloud.add({
-            'provider': 'openai',
-            'name': 'OpenAI',
-            'model': settings.openaiModel.value.isNotEmpty
-                ? settings.openaiModel.value
-                : 'gpt-4o',
-            'icon': Icons.cloud_outlined,
-          });
-        }
-        if (settings.anthropicKey.value.trim().isNotEmpty) {
-          availableCloud.add({
-            'provider': 'anthropic',
-            'name': 'Anthropic Claude',
-            'model': settings.anthropicModel.value.isNotEmpty
-                ? settings.anthropicModel.value
-                : 'claude-3-7-sonnet-latest',
-            'icon': Icons.cloud_outlined,
-          });
-        }
-        if (settings.googleKey.value.trim().isNotEmpty) {
-          availableCloud.add({
-            'provider': 'google',
-            'name': 'Google Gemini',
-            'model': settings.googleModel.value.isNotEmpty
-                ? settings.googleModel.value
-                : 'gemini-2.0-flash',
-            'icon': Icons.cloud_outlined,
-          });
-        }
-        if (settings.deepSeekKey.value.trim().isNotEmpty) {
-          availableCloud.add({
-            'provider': 'deepseek',
-            'name': 'DeepSeek',
-            'model': settings.deepSeekModel.value.isNotEmpty
-                ? settings.deepSeekModel.value
-                : 'deepseek-chat',
-            'icon': Icons.psychology_outlined,
-          });
-        }
-        if (settings.openRouterKey.value.trim().isNotEmpty) {
-          availableCloud.add({
-            'provider': 'openrouter',
-            'name': 'OpenRouter',
-            'model': settings.openRouterModel.value,
-            'icon': Icons.hub_outlined,
-          });
-        }
-        if (settings.nvidiaKey.value.trim().isNotEmpty) {
-          availableCloud.add({
-            'provider': 'nvidia',
-            'name': 'NVIDIA NIM',
-            'model': settings.nvidiaModel.value,
-            'icon': Icons.memory_rounded,
-          });
-        }
-        if (settings.kimiKey.value.trim().isNotEmpty) {
-          availableCloud.add({
-            'provider': 'kimi',
-            'name': 'Moonshot Kimi',
-            'model': settings.kimiModel.value,
-            'icon': Icons.auto_awesome_rounded,
-          });
-        }
-        if (settings.customCloudKey.value.trim().isNotEmpty) {
-          availableCloud.add({
-            'provider': 'custom',
-            'name': settings.customCloudName.value.isNotEmpty
-                ? settings.customCloudName.value
-                : 'Custom Cloud',
-            'model': settings.customCloudModel.value,
-            'icon': Icons.dns_outlined,
-          });
-        }
-
-        final hasAnyAvailable = downloaded.isNotEmpty || availableCloud.isNotEmpty;
-
-        return Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.52,
-          ),
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    showGeneralDialog(
+      context: buttonContext,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss Model Selector',
+      barrierColor: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
+      transitionDuration: const Duration(milliseconds: 160),
+      pageBuilder: (ctx, anim1, anim2) {
+        final keyboardBottom = MediaQuery.of(ctx).viewInsets.bottom;
+        return Material(
+          type: MaterialType.transparency,
+          child: Stack(
             children: [
-              // Compact Header
-              Row(
-                children: [
-                  Icon(
-                    Icons.auto_awesome_mosaic_rounded,
-                    size: 16,
-                    color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF2A50C0),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Quick Model Select',
-                    style: GoogleFonts.manrope(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : const Color(0xFF0E1017),
-                    ),
-                  ),
-                  const Spacer(),
-                  PressableScale(
-                    onTap: () => Navigator.pop(ctx),
-                    child: Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.close_rounded,
-                        size: 14,
-                        color: isDark ? const Color(0xFFBAC0D0) : const Color(0xFF5A6074),
-                      ),
-                    ),
-                  ),
-                ],
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.of(ctx).pop(),
+                  child: const SizedBox.expand(),
+                ),
               ),
-              const SizedBox(height: 10),
+              Positioned(
+                bottom: keyboardBottom + 74,
+                right: 14,
+                child: Obx(() {
+                  final downloaded = modelCtrl.downloadedFiles;
+                  final availableCloud = <Map<String, dynamic>>[];
 
-              if (!hasAnyAvailable)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  child: Column(
-                    children: [
-                      Icon(Icons.inventory_2_outlined,
-                          size: 32,
-                          color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284)),
-                      const SizedBox(height: 8),
-                      Text(
-                        'No downloaded models or active API keys',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.openSans(
-                          fontSize: 12.5,
-                          color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                  if (settings.openaiKey.value.trim().isNotEmpty) {
+                    availableCloud.add({
+                      'provider': 'openai',
+                      'name': 'OpenAI',
+                      'model': settings.openaiModel.value.isNotEmpty
+                          ? settings.openaiModel.value
+                          : 'gpt-4o',
+                      'icon': PhosphorIconsBold.sparkle,
+                    });
+                  }
+                  if (settings.anthropicKey.value.trim().isNotEmpty) {
+                    availableCloud.add({
+                      'provider': 'anthropic',
+                      'name': 'Anthropic Claude',
+                      'model': settings.anthropicModel.value.isNotEmpty
+                          ? settings.anthropicModel.value
+                          : 'claude-3-7-sonnet-latest',
+                      'icon': PhosphorIconsBold.brain,
+                    });
+                  }
+                  if (settings.googleKey.value.trim().isNotEmpty) {
+                    availableCloud.add({
+                      'provider': 'google',
+                      'name': 'Google Gemini',
+                      'model': settings.googleModel.value.isNotEmpty
+                          ? settings.googleModel.value
+                          : 'gemini-2.0-flash',
+                      'icon': PhosphorIconsBold.sparkle,
+                    });
+                  }
+                  if (settings.deepSeekKey.value.trim().isNotEmpty) {
+                    availableCloud.add({
+                      'provider': 'deepseek',
+                      'name': 'DeepSeek',
+                      'model': settings.deepSeekModel.value.isNotEmpty
+                          ? settings.deepSeekModel.value
+                          : 'deepseek-chat',
+                      'icon': PhosphorIconsBold.brain,
+                    });
+                  }
+                  if (settings.openRouterKey.value.trim().isNotEmpty) {
+                    availableCloud.add({
+                      'provider': 'openrouter',
+                      'name': 'OpenRouter',
+                      'model': settings.openRouterModel.value,
+                      'icon': PhosphorIconsBold.gitBranch,
+                    });
+                  }
+                  if (settings.nvidiaKey.value.trim().isNotEmpty) {
+                    availableCloud.add({
+                      'provider': 'nvidia',
+                      'name': 'NVIDIA NIM',
+                      'model': settings.nvidiaModel.value,
+                      'icon': PhosphorIconsBold.cpu,
+                    });
+                  }
+                  if (settings.kimiKey.value.trim().isNotEmpty) {
+                    availableCloud.add({
+                      'provider': 'kimi',
+                      'name': 'Moonshot Kimi',
+                      'model': settings.kimiModel.value,
+                      'icon': PhosphorIconsBold.moon,
+                    });
+                  }
+                  if (settings.customCloudKey.value.trim().isNotEmpty) {
+                    availableCloud.add({
+                      'provider': 'custom',
+                      'name': settings.customCloudName.value.isNotEmpty
+                          ? settings.customCloudName.value
+                          : 'Custom Cloud',
+                      'model': settings.customCloudModel.value,
+                      'icon': PhosphorIconsBold.database,
+                    });
+                  }
+
+                  final hasAny = downloaded.isNotEmpty || availableCloud.isNotEmpty;
+
+                  return Container(
+                    width: 260,
+                    constraints: const BoxConstraints(maxHeight: 330),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF14161C) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.60 : 0.15),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      FilledButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          Navigator.of(context).push(_topFillTransitionRoute(const ModelView()));
-                        },
-                        icon: const Icon(Icons.download_rounded, size: 14),
-                        label: const Text('Download Models / Add Keys', style: TextStyle(fontSize: 12)),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: isDark ? Colors.white : const Color(0xFF141620),
-                          foregroundColor: isDark ? const Color(0xFF0E1016) : Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                Flexible(
-                  child: ListView(
-                    shrinkWrap: true,
-                    padding: EdgeInsets.zero,
-                    children: [
-                      if (downloaded.isNotEmpty) ...[
-                        Text(
-                          'DOWNLOADED LOCAL',
-                          style: GoogleFonts.firaCode(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        ...downloaded.map((file) {
-                          final isLoaded = settings.inferenceMode.value == 'local' &&
-                              inf.loadedModelName.value == file;
-                          final cleanName = file.replaceAll('.gguf', '').replaceAll('.GGUF', '');
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 4),
-                            decoration: BoxDecoration(
-                              color: isLoaded
-                                  ? (isDark ? const Color(0xFF1E2436) : const Color(0xFFE2E7F4))
-                                  : (isDark ? const Color(0xFF13151E) : Colors.white),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: ListTile(
-                              dense: true,
-                              visualDensity: VisualDensity.compact,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                              leading: Icon(
-                                Icons.memory_rounded,
-                                size: 16,
-                                color: isLoaded
-                                    ? (isDark ? const Color(0xFF38BDF8) : const Color(0xFF1E2230))
-                                    : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284)),
-                              ),
-                              title: Text(
-                                cleanName,
-                                style: GoogleFonts.manrope(
-                                  fontSize: 12.5,
-                                  fontWeight: isLoaded ? FontWeight.w700 : FontWeight.w600,
-                                  color: isDark ? Colors.white : const Color(0xFF0E1017),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: isLoaded
-                                  ? Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF34C759).withValues(alpha: 0.18),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        'ACTIVE',
-                                        style: GoogleFonts.firaCode(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w700,
-                                          color: const Color(0xFF34C759),
-                                        ),
-                                      ),
-                                    )
-                                  : null,
-                              onTap: () async {
-                                Navigator.pop(ctx);
-                                settings.setInferenceMode('local');
-                                await modelCtrl.loadModel(file);
-                              },
-                            ),
-                          );
-                        }),
-                        const SizedBox(height: 8),
                       ],
-                      if (availableCloud.isNotEmpty) ...[
-                        Text(
-                          'CONFIGURED CLOUD',
-                          style: GoogleFonts.firaCode(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        ...availableCloud.map((item) {
-                          final provider = item['provider'] as String;
-                          final isCurrent = settings.inferenceMode.value == 'cloud' &&
-                              settings.cloudProvider.value == provider;
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 4),
-                            decoration: BoxDecoration(
-                              color: isCurrent
-                                  ? (isDark ? const Color(0xFF1E2436) : const Color(0xFFE2E7F4))
-                                  : (isDark ? const Color(0xFF13151E) : Colors.white),
-                              borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Minimal Header (Monochrome)
+                        Row(
+                          children: [
+                            PhosphorIcon(
+                              PhosphorIconsBold.squaresFour,
+                              size: 13,
+                              color: isDark ? const Color(0xFFBAC0CC) : const Color(0xFF5A6070),
                             ),
-                            child: ListTile(
-                              dense: true,
-                              visualDensity: VisualDensity.compact,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                              leading: Icon(
-                                item['icon'] as IconData,
-                                size: 16,
-                                color: isCurrent
-                                    ? (isDark ? const Color(0xFF38BDF8) : const Color(0xFF1E2230))
-                                    : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Models',
+                              style: GoogleFonts.manrope(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : Colors.black,
                               ),
-                              title: Text(
-                                '${item['name']} · ${item['model']}',
-                                style: GoogleFonts.manrope(
-                                  fontSize: 12.5,
-                                  fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
-                                  color: isDark ? Colors.white : const Color(0xFF0E1017),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: isCurrent
-                                  ? Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF34C759).withValues(alpha: 0.18),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        'ACTIVE',
-                                        style: GoogleFonts.firaCode(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w700,
-                                          color: const Color(0xFF34C759),
-                                        ),
-                                      ),
-                                    )
-                                  : null,
+                            ),
+                            const Spacer(),
+                            PressableScale(
                               onTap: () {
-                                Navigator.pop(ctx);
-                                settings.setInferenceMode('cloud');
-                                settings.setCloudProvider(provider);
+                                Navigator.of(ctx).pop();
+                                Navigator.of(buttonContext).push(_topFillTransitionRoute(const ModelView()));
                               },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Manage',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? const Color(0xFFBAC0CC) : const Color(0xFF5A6070),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    PhosphorIcon(
+                                      PhosphorIconsBold.caretRight,
+                                      size: 9,
+                                      color: isDark ? const Color(0xFFBAC0CC) : const Color(0xFF5A6070),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          );
-                        }),
-                      ],
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 6),
-              // Link to Full Model Center
-              InkWell(
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.of(context).push(_topFillTransitionRoute(const ModelView()));
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Open Full Models Catalog',
-                        style: GoogleFonts.manrope(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? const Color(0xFF88A4EE) : const Color(0xFF2A50C0),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 13,
-                        color: isDark ? const Color(0xFF88A4EE) : const Color(0xFF2A50C0),
-                      ),
-                    ],
-                  ),
-                ),
+                        const SizedBox(height: 6),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: isDark ? const Color(0xFF222634) : const Color(0xFFECEFF4),
+                        ),
+                        const SizedBox(height: 6),
+
+                        if (!hasAny)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                PhosphorIcon(
+                                  PhosphorIconsBold.tray,
+                                  size: 24,
+                                  color: isDark ? const Color(0xFF7E8494) : const Color(0xFF8E95A4),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'No active models',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.5,
+                                    color: isDark ? const Color(0xFFBAC0CC) : const Color(0xFF6B7284),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Flexible(
+                            child: SingleChildScrollView(
+                              padding: EdgeInsets.zero,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (downloaded.isNotEmpty) ...[
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 4, bottom: 4, top: 2),
+                                      child: Text(
+                                        'LOCAL',
+                                        style: GoogleFonts.firaCode(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                          color: isDark ? const Color(0xFF7E8494) : const Color(0xFF8E95A4),
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                    ...downloaded.map((file) {
+                                      final isLoaded = settings.inferenceMode.value == 'local' &&
+                                          inf.loadedModelName.value == file;
+                                      final cleanName = file.replaceAll('.gguf', '').replaceAll('.GGUF', '');
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 2),
+                                        child: InkWell(
+                                          onTap: () async {
+                                            Navigator.of(ctx).pop();
+                                            settings.setInferenceMode('local');
+                                            await modelCtrl.loadModel(file);
+                                          },
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: isLoaded
+                                                  ? (isDark ? const Color(0xFF222634) : const Color(0xFFE8ECF4))
+                                                  : Colors.transparent,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                PhosphorIcon(
+                                                  PhosphorIconsBold.cube,
+                                                  size: 14,
+                                                  color: isLoaded
+                                                      ? (isDark ? Colors.white : Colors.black)
+                                                      : (isDark ? const Color(0xFF7E8494) : const Color(0xFF8E95A4)),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    cleanName,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: GoogleFonts.manrope(
+                                                      fontSize: 12,
+                                                      fontWeight: isLoaded ? FontWeight.w700 : FontWeight.w500,
+                                                      color: isLoaded
+                                                          ? (isDark ? Colors.white : Colors.black)
+                                                          : (isDark ? const Color(0xFFD4D8E2) : const Color(0xFF1E2230)),
+                                                    ),
+                                                  ),
+                                                ),
+                                                if (isLoaded)
+                                                  Container(
+                                                    width: 6,
+                                                    height: 6,
+                                                    decoration: BoxDecoration(
+                                                      color: isDark ? Colors.white : Colors.black,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                  if (availableCloud.isNotEmpty) ...[
+                                    Padding(
+                                      padding: EdgeInsets.only(
+                                        left: 4,
+                                        bottom: 4,
+                                        top: downloaded.isNotEmpty ? 6 : 2,
+                                      ),
+                                      child: Text(
+                                        'CLOUD',
+                                        style: GoogleFonts.firaCode(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                          color: isDark ? const Color(0xFF7E8494) : const Color(0xFF8E95A4),
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                    ...availableCloud.map((item) {
+                                      final provider = item['provider'] as String;
+                                      final isCurrent = settings.inferenceMode.value == 'cloud' &&
+                                          settings.cloudProvider.value == provider;
+                                      final iconData = item['icon'] as PhosphorIconData;
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 2),
+                                        child: InkWell(
+                                          onTap: () {
+                                            Navigator.of(ctx).pop();
+                                            settings.setInferenceMode('cloud');
+                                            settings.setCloudProvider(provider);
+                                            Get.find<InferenceService>().unloadModel();
+                                          },
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: isCurrent
+                                                  ? (isDark ? const Color(0xFF222634) : const Color(0xFFE8ECF4))
+                                                  : Colors.transparent,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                PhosphorIcon(
+                                                  iconData,
+                                                  size: 14,
+                                                  color: isCurrent
+                                                      ? (isDark ? Colors.white : Colors.black)
+                                                      : (isDark ? const Color(0xFF7E8494) : const Color(0xFF8E95A4)),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    '${item['name']} · ${item['model']}',
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: GoogleFonts.manrope(
+                                                      fontSize: 12,
+                                                      fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                                                      color: isCurrent
+                                                          ? (isDark ? Colors.white : Colors.black)
+                                                          : (isDark ? const Color(0xFFD4D8E2) : const Color(0xFF1E2230)),
+                                                    ),
+                                                  ),
+                                                ),
+                                                if (isCurrent)
+                                                  Container(
+                                                    width: 6,
+                                                    height: 6,
+                                                    decoration: BoxDecoration(
+                                                      color: isDark ? Colors.white : Colors.black,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
               ),
             ],
           ),
         );
-      }),
+      },
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        final curve = CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic);
+        return ScaleTransition(
+          alignment: Alignment.bottomRight,
+          scale: Tween<double>(begin: 0.85, end: 1.0).animate(curve),
+          child: FadeTransition(opacity: curve, child: child),
+        );
+      },
     );
   }
 
   // ── Markdown styles ──
   MarkdownStyleSheet _streamMd(BuildContext c) {
-    final scheme = Theme.of(c).colorScheme;
-    final clr = scheme.onSurface;
-    final base = GoogleFonts.openSans(fontSize: 16, color: clr, height: 1.55);
-    final codeBg = scheme.surfaceContainerHighest;
+    final isDark = Theme.of(c).brightness == Brightness.dark;
+    final color = isDark ? const Color(0xFFE8EDF5) : const Color(0xFF0E1017);
+    final base = GoogleFonts.inter(fontSize: 15.5, color: color, height: 1.6);
+    final codeBg =
+        isDark ? const Color(0xFF12141C) : const Color(0xFFF1F4F9);
     return MarkdownStyleSheet.fromTheme(Theme.of(c)).copyWith(
-        p: base,
-        strong: base.copyWith(fontWeight: FontWeight.w700),
-        em: base.copyWith(fontStyle: FontStyle.italic),
-        listBullet: base,
-        code: GoogleFonts.firaCode(
-            fontSize: 13, color: clr, backgroundColor: codeBg),
-        codeblockDecoration: BoxDecoration(
-            color: codeBg, borderRadius: BorderRadius.circular(12)));
+      p: base,
+      h1: GoogleFonts.manrope(
+          fontSize: 22, fontWeight: FontWeight.w700, color: color, height: 1.3),
+      h2: GoogleFonts.manrope(
+          fontSize: 18, fontWeight: FontWeight.w700, color: color, height: 1.3),
+      h3: GoogleFonts.manrope(
+          fontSize: 15.5, fontWeight: FontWeight.w600, color: color, height: 1.3),
+      strong: base.copyWith(fontWeight: FontWeight.w700),
+      em: base.copyWith(fontStyle: FontStyle.italic),
+      listBullet: base,
+      code: GoogleFonts.firaCode(
+          fontSize: 13, color: color, backgroundColor: codeBg),
+      codeblockDecoration: BoxDecoration(
+          color: codeBg, borderRadius: BorderRadius.circular(10)),
+      codeblockPadding: const EdgeInsets.all(12),
+    );
   }
 
   MarkdownStyleSheet _thoughtMd(BuildContext c) {
-    final scheme = Theme.of(c).colorScheme;
-    final muted = scheme.onSurfaceVariant;
-    final base = GoogleFonts.openSans(
+    final isDark = Theme.of(c).brightness == Brightness.dark;
+    final muted = isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B);
+    final base = GoogleFonts.inter(
         fontSize: 13, color: muted, height: 1.45, fontStyle: FontStyle.italic);
-    final codeBg = scheme.surfaceContainerHighest;
+    final codeBg =
+        isDark ? const Color(0xFF12141C) : const Color(0xFFF1F4F9);
     return MarkdownStyleSheet.fromTheme(Theme.of(c)).copyWith(
         p: base,
         strong: base.copyWith(fontWeight: FontWeight.w700),
@@ -1924,7 +1990,7 @@ class ChatView extends GetView<ChatController> {
         code: GoogleFonts.firaCode(
             fontSize: 11, color: muted, backgroundColor: codeBg),
         codeblockDecoration: BoxDecoration(
-            color: codeBg, borderRadius: BorderRadius.circular(10)));
+            color: codeBg, borderRadius: BorderRadius.circular(8)));
   }
 
   // ── Helpers ──
@@ -2053,7 +2119,7 @@ class _AttachButtonState extends State<_AttachButton> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _compactItem(
-                          icon: Icons.photo_library_outlined,
+                          icon: PhosphorIconsBold.images,
                           title: 'Photo Library',
                           textColor: textColor,
                           iconColor: iconColor,
@@ -2063,7 +2129,7 @@ class _AttachButtonState extends State<_AttachButton> {
                           },
                         ),
                         _compactItem(
-                          icon: Icons.camera_alt_outlined,
+                          icon: PhosphorIconsBold.camera,
                           title: 'Camera',
                           textColor: textColor,
                           iconColor: iconColor,
@@ -2073,7 +2139,7 @@ class _AttachButtonState extends State<_AttachButton> {
                           },
                         ),
                         _compactItem(
-                          icon: Icons.insert_drive_file_outlined,
+                          icon: PhosphorIconsBold.file,
                           title: 'Document',
                           textColor: textColor,
                           iconColor: iconColor,
@@ -2083,7 +2149,7 @@ class _AttachButtonState extends State<_AttachButton> {
                           },
                         ),
                         _compactItem(
-                          icon: Icons.edit_note_rounded,
+                          icon: PhosphorIconsBold.notepad,
                           title: 'Canvas Mode',
                           textColor: textColor,
                           iconColor: iconColor,
@@ -2135,7 +2201,7 @@ class _AttachButtonState extends State<_AttachButton> {
             ),
             child: Center(
               child: Icon(
-                Icons.add_rounded,
+                PhosphorIconsBold.plus,
                 color: isDark ? Colors.white : const Color(0xFF12141D),
                 size: 22,
               ),
@@ -2451,7 +2517,7 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.stop_rounded, size: 12, color: scheme.error),
+                        Icon(PhosphorIconsBold.stop, size: 12, color: scheme.error),
                         const SizedBox(width: 4),
                         Text(
                           'Cancel',

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class AttachmentPreview extends StatelessWidget {
   final String fileName;
@@ -88,7 +89,7 @@ class AttachmentPreview extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  Icons.close_rounded,
+                  PhosphorIconsBold.x,
                   size: 14,
                   color: scheme.error,
                 ),
@@ -113,7 +114,7 @@ class AttachmentPreview extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
         ),
         child: image ??
-            Icon(
+            PhosphorIcon(
               _iconForType(type),
               color: color,
               size: compact ? 18 : 20,
@@ -129,7 +130,7 @@ class AttachmentPreview extends StatelessWidget {
         base64Decode(imageBase64!),
         fit: BoxFit.cover,
         gaplessPlayback: true,
-        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined),
+        errorBuilder: (_, __, ___) => PhosphorIcon(PhosphorIconsBold.imageBroken),
       );
     }
     if (imagePath != null && imagePath!.isNotEmpty) {
@@ -137,7 +138,7 @@ class AttachmentPreview extends StatelessWidget {
         File(imagePath!),
         fit: BoxFit.cover,
         gaplessPlayback: true,
-        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined),
+        errorBuilder: (_, __, ___) => PhosphorIcon(PhosphorIconsBold.imageBroken),
       );
     }
     return null;
@@ -185,13 +186,13 @@ class AttachmentPreview extends StatelessWidget {
     }
   }
 
-  IconData _iconForType(String type) {
+  PhosphorIconData _iconForType(String type) {
     switch (type) {
-      case 'image':  return Icons.image_outlined;
-      case 'pdf':    return Icons.picture_as_pdf_outlined;
-      case 'audio':  return Icons.graphic_eq_rounded;
-      case 'text':   return Icons.description_outlined;
-      default:       return Icons.insert_drive_file_outlined;
+      case 'image':  return PhosphorIconsBold.image;
+      case 'pdf':    return PhosphorIconsBold.filePdf;
+      case 'audio':  return PhosphorIconsBold.waveform;
+      case 'text':   return PhosphorIconsBold.fileText;
+      default:       return PhosphorIconsBold.file;
     }
   }
 

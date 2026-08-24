@@ -1,0 +1,64 @@
+group = "com.songhieu.flutter_litert_lm"
+version = "1.0-SNAPSHOT"
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.11.1"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.20"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
+
+android {
+    namespace "com.songhieu.flutter_litert_lm"
+    compileSdk 36
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs += "src/main/kotlin"
+        }
+        test {
+            java.srcDirs += "src/test/kotlin"
+        }
+    }
+
+    defaultConfig {
+        minSdk 24
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+}
+
+dependencies {
+    implementation "com.google.ai.edge.litertlm:litertlm-android:0.12.0"
+    testImplementation "org.jetbrains.kotlin:kotlin-test"
+    testImplementation "org.mockito:mockito-core:5.0.0"
+}

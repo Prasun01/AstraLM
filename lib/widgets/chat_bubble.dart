@@ -10,6 +10,7 @@ import 'code_block_widget.dart';
 import 'image_viewer.dart';
 import 'pressable_scale.dart';
 import 'thought_disclosure.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class ChatBubble extends StatelessWidget {
   final ChatMessage message;
@@ -102,7 +103,7 @@ class ChatBubble extends StatelessWidget {
                       ),
                       child: const Center(
                           child:
-                              Icon(Icons.broken_image_rounded, size: 28)),
+                              PhosphorIcon(PhosphorIconsBold.imageBroken, size: 28)),
                     ),
                   ),
                 ),
@@ -171,7 +172,7 @@ class ChatBubble extends StatelessWidget {
                       ),
                       child: const Center(
                           child:
-                              Icon(Icons.broken_image_rounded, size: 28)),
+                              PhosphorIcon(PhosphorIconsBold.imageBroken, size: 28)),
                     ),
                   ),
                 ),
@@ -212,12 +213,12 @@ class ChatBubble extends StatelessWidget {
             ),
           ],
 
-          // Quick Action to open standard responses in Canvas
-          if (!message.isCanvas && answerContent.isNotEmpty)
+          // Quick Action to open standard responses in Canvas ONLY for code, documents, HTML, and structured content
+          if (!message.isCanvas && _isCanvasEligible(answerContent))
             Padding(
-              padding: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.only(top: 8),
               child: PressableScale(
-                pressedScale: 0.92,
+                pressedScale: 0.94,
                 onTap: () {
                   Get.find<ChatController>().openCanvas(
                     title: 'Document',
@@ -225,7 +226,7 @@ class ChatBubble extends StatelessWidget {
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF161924) : const Color(0xFFEFF2F8),
                     borderRadius: BorderRadius.circular(8),
@@ -237,17 +238,17 @@ class ChatBubble extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.edit_note_rounded,
-                        size: 15,
+                      PhosphorIcon(
+                        PhosphorIconsBold.notepad,
+                        size: 14,
                         color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 5),
                       Text(
                         'Open in Canvas',
                         style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
                           color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
                         ),
                       ),
@@ -300,8 +301,8 @@ class ChatBubble extends StatelessWidget {
                   color: scheme.primary.withValues(alpha: isDark ? 0.20 : 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(
-                  Icons.edit_note_rounded,
+                child: PhosphorIcon(
+                  PhosphorIconsBold.notepad,
                   color: scheme.primary,
                   size: 20,
                 ),
@@ -389,8 +390,8 @@ class ChatBubble extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.open_in_new_rounded,
+                    PhosphorIcon(
+                      PhosphorIconsBold.arrowSquareOut,
                       size: 14,
                       color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB),
                     ),
@@ -415,20 +416,20 @@ class ChatBubble extends StatelessWidget {
 
   MarkdownStyleSheet _markdownStyle(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = isDark ? Colors.white : Colors.black;
-    final muted = isDark ? const Color(0xFFC0C4D0) : const Color(0xFF404450);
-    final base = GoogleFonts.openSans(fontSize: 16, color: color, height: 1.55);
+    final color = isDark ? const Color(0xFFE8EDF5) : const Color(0xFF0E1017);
+    final muted = isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B);
+    final base = GoogleFonts.inter(fontSize: 15.5, color: color, height: 1.6);
     final codeBlockBg =
-        isDark ? const Color(0xFF12141A) : const Color(0xFFE8EBF2);
+        isDark ? const Color(0xFF12141C) : const Color(0xFFF1F4F9);
 
     return MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
       p: base,
-      h1: GoogleFonts.playfairDisplay(
-          fontSize: 24, fontWeight: FontWeight.w700, color: color),
-      h2: GoogleFonts.playfairDisplay(
-          fontSize: 20, fontWeight: FontWeight.w700, color: color),
+      h1: GoogleFonts.manrope(
+          fontSize: 22, fontWeight: FontWeight.w700, color: color, height: 1.3),
+      h2: GoogleFonts.manrope(
+          fontSize: 18, fontWeight: FontWeight.w700, color: color, height: 1.3),
       h3: GoogleFonts.manrope(
-          fontSize: 16, fontWeight: FontWeight.w700, color: color),
+          fontSize: 15.5, fontWeight: FontWeight.w600, color: color, height: 1.3),
       strong: base.copyWith(fontWeight: FontWeight.w700),
       em: base.copyWith(fontStyle: FontStyle.italic),
       listBullet: base,
@@ -439,26 +440,31 @@ class ChatBubble extends StatelessWidget {
       ),
       codeblockDecoration: BoxDecoration(
         color: codeBlockBg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
-      codeblockPadding: const EdgeInsets.all(14),
+      codeblockPadding: const EdgeInsets.all(12),
       blockquote: base.copyWith(color: muted),
       blockquoteDecoration: BoxDecoration(
-        color: isDark ? const Color(0xFF171920) : const Color(0xFFE2E5EC),
+        color: isDark ? const Color(0xFF161922) : const Color(0xFFEDF1F8),
         borderRadius: BorderRadius.circular(8),
+        border: Border(
+          left: BorderSide(
+            color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF2563EB),
+            width: 3,
+          ),
+        ),
       ),
-      blockquotePadding: const EdgeInsets.only(
-          left: 14, right: 14, top: 8, bottom: 8),
+      blockquotePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     );
   }
 
   MarkdownStyleSheet _thoughtMarkdownStyle(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final muted = isDark ? const Color(0xFFC0C4D0) : const Color(0xFF404450);
-    final base = GoogleFonts.openSans(
+    final muted = isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B);
+    final base = GoogleFonts.inter(
         fontSize: 13, color: muted, height: 1.45, fontStyle: FontStyle.italic);
     final codeBg =
-        isDark ? const Color(0xFF12141A) : const Color(0xFFE8EBF2);
+        isDark ? const Color(0xFF12141C) : const Color(0xFFF1F4F9);
 
     return MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
       p: base,
@@ -472,7 +478,7 @@ class ChatBubble extends StatelessWidget {
       ),
       codeblockDecoration: BoxDecoration(
         color: codeBg,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
       ),
     );
   }
@@ -484,4 +490,42 @@ class ChatBubble extends StatelessWidget {
         .replaceAll('<|end|>', '')
         .trim();
   }
+}
+
+bool _isCanvasEligible(String content) {
+  final trimmed = content.trim();
+  if (trimmed.isEmpty) return false;
+
+  final lower = trimmed.toLowerCase();
+
+  // 1. HTML content or code blocks
+  if (lower.contains('```html') ||
+      lower.contains('```xml') ||
+      lower.startsWith('<!doctype') ||
+      lower.startsWith('<html') ||
+      (lower.contains('<body') && lower.contains('</body>')) ||
+      (lower.contains('<div') && lower.contains('</div>') && lower.contains('<head')) ||
+      (lower.contains('<script') && lower.contains('</script>')) ||
+      (lower.contains('<style') && lower.contains('</style>'))) {
+    return true;
+  }
+
+  // 2. Python code blocks
+  if (lower.contains('```python') || lower.contains('```py')) {
+    return true;
+  }
+
+  // 3. Markdown code blocks
+  if (lower.contains('```markdown') || lower.contains('```md')) {
+    return true;
+  }
+
+  // 4. Structured Markdown document with 2+ headings
+  final headingCount =
+      RegExp(r'^#{1,4}\s+', multiLine: true).allMatches(trimmed).length;
+  if (headingCount >= 2 && trimmed.length > 150) {
+    return true;
+  }
+
+  return false;
 }

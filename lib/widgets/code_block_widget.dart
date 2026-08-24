@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class CodeBlockBuilder extends MarkdownElementBuilder {
   final bool isDark;
@@ -110,8 +111,8 @@ class _CodeBlockWidgetState extends State<CodeBlockWidget> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.code_rounded,
+                      PhosphorIcon(
+                        PhosphorIconsBold.code,
                         size: 15,
                         color: langColor,
                       ),
@@ -135,8 +136,8 @@ class _CodeBlockWidgetState extends State<CodeBlockWidget> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            _copied ? Icons.check_rounded : Icons.copy_rounded,
+                          PhosphorIcon(
+                            _copied ? PhosphorIconsBold.check : PhosphorIconsBold.copy,
                             size: 14,
                             color: _copied
                                 ? const Color(0xFF34C759)
@@ -160,17 +161,15 @@ class _CodeBlockWidgetState extends State<CodeBlockWidget> {
                 ],
               ),
             ),
-            // Code Content with Horizontal Scroll
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
+            // Code Content with Soft Line Wrapping (Whole code visible without scrolling to sides)
+            Padding(
               padding: const EdgeInsets.all(14),
               child: SelectableText(
                 widget.code,
                 style: GoogleFonts.firaCode(
                   fontSize: 13,
                   color: textColor,
-                  height: 1.45,
+                  height: 1.5,
                 ),
               ),
             ),

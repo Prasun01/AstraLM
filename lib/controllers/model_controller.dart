@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -277,11 +278,10 @@ class ModelController extends GetxController {
     if (model.url.trim().isEmpty || model.isImported || fileBytes <= 0) {
       return false;
     }
+    if (fileBytes < 1024 * 1024) return true;
     final expectedBytes = _declaredModelBytes(model);
     if (expectedBytes <= 0) return false;
-    // Relax threshold to 85% to comfortably accommodate HuggingFace decimal-scaled catalog sizes 
-    // and rounded metadata sizes (e.g. 770.3MB listed as 0.8GB) while still blocking failed downloads.
-    return fileBytes < (expectedBytes * 0.85).round();
+    return fileBytes < (expectedBytes * 0.35).round();
   }
 
   bool get isDownloading => _download.isDownloadingAny;
@@ -538,6 +538,17 @@ class ModelController extends GetxController {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12));
       return;
     }
+
+    // Proactively unload any currently active model first to completely free RAM/VRAM
+    if (_inference.isModelLoaded.value && _inference.loadedModelName.value != filename) {
+      await _inference.unloadModel();
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    if (_localImage.isModelLoaded.value && _localImage.loadedModelName.value != filename) {
+      await _localImage.unloadModel();
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+
     final path = await _download.modelPath(filename);
     final model =
         availableModels.firstWhereOrNull((m) => m.filename == filename);
@@ -652,6 +663,12 @@ class ModelController extends GetxController {
         print('[ModelController] TAESD download failed (will use standard VAE): $e');
       }
 
+      // Proactively unload previous image model if loaded
+      if (_localImage.isModelLoaded.value) {
+        await _localImage.unloadModel();
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
       // Show loading dialog with live logs
       _showImageModelLoadingDialog(filename);
       final result = await _localImage.loadModel(path, modelName: filename, taesdPath: taesdPath);
@@ -666,21 +683,48 @@ class ModelController extends GetxController {
         barBlur: 0,
         overlayBlur: 0,
         backgroundColor:
-            Get.isDarkMode ? const Color(0xFF1B1D25) : Colors.white,
+            Get.isDarkMode ? const Color(0xFF141416) : Colors.white,
         colorText: Get.isDarkMode ? Colors.white : Colors.black,
-        borderColor: Get.isDarkMode
-            ? const Color(0xFF2E3240)
-            : const Color(0xFFD6DBE5),
-        borderWidth: 1.2,
-        icon: Icon(
-          isError ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
-          color: isError ? const Color(0xFFFF9500) : const Color(0xFF34C759),
+        titleText: Text(
+          isError ? 'Model Not Loaded' : 'Image Model',
+          style: GoogleFonts.manrope(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w700,
+            color: Get.isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
+        messageText: Text(
+          result,
+          style: GoogleFonts.inter(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w500,
+            color: Get.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF555555),
+          ),
+        ),
+        borderRadius: 20,
+        boxShadows: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: Get.isDarkMode ? 0.40 : 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        icon: PhosphorIcon(
+          isError ? PhosphorIconsBold.warning : PhosphorIconsBold.checkCircle,
+          color: isError ? const Color(0xFFFF9500) : (Get.isDarkMode ? Colors.white : Colors.black),
+          size: 22,
         ),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         duration:
             isError ? const Duration(seconds: 5) : const Duration(seconds: 2),
       );
     } else {
+      // Proactively unload previous local model and flush memory
+      if (_inference.isModelLoaded.value) {
+        await _inference.unloadModel();
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
+
       final result = await _inference.loadModel(
         path,
         modelName: filename,
@@ -709,16 +753,35 @@ class ModelController extends GetxController {
           barBlur: 0,
           overlayBlur: 0,
           backgroundColor:
-              Get.isDarkMode ? const Color(0xFF141620) : const Color(0xFFF3F5F9),
-          colorText: Get.isDarkMode ? Colors.white : const Color(0xFF12141D),
-          borderColor: Get.isDarkMode
-              ? const Color(0xFF262B3B)
-              : const Color(0xFFD4DAE8),
-          borderWidth: 1.2,
-          borderRadius: 16,
-          icon: Icon(
-            Icons.check_circle_outline_rounded,
-            color: Get.isDarkMode ? Colors.white : const Color(0xFF12141D),
+              Get.isDarkMode ? const Color(0xFF141416) : Colors.white,
+          colorText: Get.isDarkMode ? Colors.white : Colors.black,
+          titleText: Text(
+            'Model Loaded',
+            style: GoogleFonts.manrope(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w700,
+              color: Get.isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+          messageText: Text(
+            '$result · $currentCtx Ctx · $currentTokens Tokens${isThinking ? " · Reasoning Mode" : ""}',
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: Get.isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF555555),
+            ),
+          ),
+          borderRadius: 20,
+          boxShadows: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: Get.isDarkMode ? 0.40 : 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          icon: PhosphorIcon(
+            PhosphorIconsBold.checkCircle,
+            color: Get.isDarkMode ? Colors.white : Colors.black,
             size: 22,
           ),
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -749,7 +812,7 @@ class ModelController extends GetxController {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        Icons.error_outline_rounded,
+                        PhosphorIconsBold.xCircle,
                         color: Theme.of(context).colorScheme.error,
                         size: 24,
                       ),
@@ -792,10 +855,10 @@ class ModelController extends GetxController {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _buildTipRow(context, Icons.delete_outline_rounded, 'Delete the model and try redownloading it completely.'),
-                      _buildTipRow(context, Icons.memory_rounded, 'Ensure your device has at least 2-3 GB of free RAM.'),
+                      _buildTipRow(context, PhosphorIconsBold.trash, 'Delete the model and try redownloading it completely.'),
+                      _buildTipRow(context, PhosphorIconsBold.cpu, 'Ensure your device has at least 2-3 GB of free RAM.'),
                       if (result.toLowerCase().contains('litert') || filename.toLowerCase().endsWith('.litertlm'))
-                        _buildTipRow(context, Icons.settings_suggest_rounded, 'Double check if this LiteRT-LM file matches your architecture.'),
+                        _buildTipRow(context, PhosphorIconsBold.gearSix, 'Double check if this LiteRT-LM file matches your architecture.'),
                       const SizedBox(height: 12),
 
                       // Technical Details Toggle Button
@@ -816,7 +879,7 @@ class ModelController extends GetxController {
                                 ),
                               ),
                               Icon(
-                                showDetails ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                                showDetails ? PhosphorIconsBold.caretUp : PhosphorIconsBold.caretDown,
                                 size: 16,
                                 color: Theme.of(context).colorScheme.primary,
                               ),
@@ -1449,7 +1512,7 @@ class ModelController extends GetxController {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    Icons.copy_all_rounded,
+                    PhosphorIconsBold.copy,
                     color: Theme.of(context).colorScheme.primary,
                     size: 24,
                   ),
