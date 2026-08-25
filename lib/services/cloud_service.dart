@@ -48,8 +48,9 @@ class CloudService extends GetxService {
       case 'kimi':
         return _hive.getSetting(AppConstants.keyKimiModel) ?? 'kimi-k2.6';
       case 'stability':
-        return _hive.getSetting(AppConstants.keyStabilityModel) ??
-            'sd3.5-flash';
+        final m = _hive.getSetting(AppConstants.keyStabilityModel) ??
+            'sd3.5-large-turbo';
+        return (m == 'sd3.5-flash' || m.isEmpty) ? 'sd3.5-large-turbo' : m;
       case 'nvidia':
         return _hive.getSetting(AppConstants.keyNvidiaModel) ??
             'meta/llama-3.1-8b-instruct';
@@ -244,6 +245,10 @@ class CloudService extends GetxService {
     double? temperature,
     int? maxTokens,
   ) async {
+    if (_model.toLowerCase().contains('dall-e')) {
+      return await _sendOpenAIImage(messages);
+    }
+
     final apiMessages = <Map<String, dynamic>>[];
 
     for (final msg in messages) {
@@ -1022,44 +1027,138 @@ class CloudService extends GetxService {
     return apiMessages;
   }
 
+  // ─── OpenAI DALL-E (Image Generation) ───────────
+
+  Future<String> _sendOpenAIImage(
+    List<Map<String, String>> messages,
+  ) async {
+    if (_apiKey.trim().isEmpty) {
+      return 'ERROR: OpenAI API key is missing. Please enter your API key in Settings → Cloud API.';
+    }
+
+    final userMessages = messages.where((m) => m['role'] == 'user').toList();
+    if (userMessages.isEmpty) {
+      return 'ERROR: No prompt found for image generation.';
+    }
+
+    final prompt = userMessages.last['content']?.trim() ?? '';
+    if (prompt.isEmpty) {
+      return 'ERROR: Image prompt cannot be empty.';
+    }
+
+    final modelName = _model.toLowerCase().contains('dall-e-2') ? 'dall-e-2' : 'dall-e-3';
+
+    try {
+      final url = Uri.parse('https://api.openai.com/v1/images/generations');
+      final response = await http.post(
+        url,
+        headers: {
+          'Authorization': 'Bearer ${_apiKey.trim()}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'model': modelName,
+          'prompt': prompt,
+          'n': 1,
+          'size': '1024x1024',
+          'response_format': 'b64_json',
+        }),
+      ).timeout(const Duration(seconds: 60));
+
+      if (response.statusCode != 200) {
+        try {
+          final errJson = jsonDecode(response.body);
+          final msg = errJson['error']?['message'] ?? response.body;
+          return 'ERROR: OpenAI ($msg)';
+        } catch (_) {
+          return 'ERROR: OpenAI returned ${response.statusCode} — ${response.body}';
+        }
+      }
+
+      final data = jsonDecode(response.body);
+      final b64 = data['data']?[0]?['b64_json'];
+      if (b64 != null && b64.toString().isNotEmpty) {
+        return '[IMAGE_BASE64]$b64';
+      }
+      return 'ERROR: No image data returned by OpenAI.';
+    } catch (e) {
+      return 'ERROR: OpenAI image request failed — $e';
+    }
+  }
+
   // ─── Stability AI (Image Generation) ────────────
 
   Future<String> _sendStability(
     List<Map<String, String>> messages,
   ) async {
+    if (_apiKey.trim().isEmpty) {
+      return 'ERROR: Stability AI API key is missing. Please enter your API key in Settings → Cloud API.';
+    }
+
     // Extract the latest user prompt for the image generation
     final userMessages = messages.where((m) => m['role'] == 'user').toList();
     if (userMessages.isEmpty) {
       return 'ERROR: No user prompt found for image generation.';
     }
 
-    final prompt = userMessages.last['content'] ?? '';
-
-    // Create a multipart request since stability AI v2beta uses multipart/form-data
-    var request = http.MultipartRequest(
-        'POST', Uri.parse(AppConstants.stabilityEndpoint));
-    request.headers.addAll({
-      'Authorization': 'Bearer $_apiKey',
-      'Accept': 'application/json',
-    });
-
-    request.fields['prompt'] = prompt;
-    request.fields['model'] = _model;
-    request.fields['output_format'] = 'jpeg';
-
-    final response = await request.send();
-    final responseBody = await response.stream.bytesToString();
-
-    if (response.statusCode != 200) {
-      return 'ERROR: Stability AI returned ${response.statusCode} — $responseBody';
+    final prompt = userMessages.last['content']?.trim() ?? '';
+    if (prompt.isEmpty) {
+      return 'ERROR: Image prompt cannot be empty.';
     }
 
-    final data = jsonDecode(responseBody);
-    final base64Image = data['image'];
-    if (base64Image != null) {
-      return '[IMAGE_BASE64]$base64Image';
+    // Determine correct endpoint and model name
+    String modelName = _model.trim();
+    if (modelName.isEmpty || modelName == 'sd3.5-flash') {
+      modelName = 'sd3.5-large-turbo';
     }
 
-    return 'ERROR: No image generated.';
+    String endpointUrl = AppConstants.stabilityEndpoint;
+    if (modelName == 'core') {
+      endpointUrl = 'https://api.stability.ai/v2beta/stable-image/generate/core';
+    } else if (modelName == 'ultra') {
+      endpointUrl = 'https://api.stability.ai/v2beta/stable-image/generate/ultra';
+    } else {
+      endpointUrl = 'https://api.stability.ai/v2beta/stable-image/generate/sd3';
+    }
+
+    try {
+      final request = http.MultipartRequest('POST', Uri.parse(endpointUrl));
+      request.headers.addAll({
+        'Authorization': 'Bearer ${_apiKey.trim()}',
+        'Accept': 'application/json',
+      });
+
+      request.fields['prompt'] = prompt;
+      if (endpointUrl.endsWith('/sd3')) {
+        request.fields['model'] = modelName;
+      }
+      request.fields['output_format'] = 'jpeg';
+      request.fields['aspect_ratio'] = '1:1';
+
+      final streamedResponse =
+          await request.send().timeout(const Duration(seconds: 60));
+      final responseBody = await streamedResponse.stream.bytesToString();
+
+      if (streamedResponse.statusCode != 200) {
+        try {
+          final errJson = jsonDecode(responseBody);
+          final errors =
+              errJson['errors'] ?? errJson['message'] ?? responseBody;
+          return 'ERROR: Stability AI ($errors)';
+        } catch (_) {
+          return 'ERROR: Stability AI returned ${streamedResponse.statusCode} — $responseBody';
+        }
+      }
+
+      final data = jsonDecode(responseBody);
+      final base64Image = data['image'];
+      if (base64Image != null && base64Image.toString().isNotEmpty) {
+        return '[IMAGE_BASE64]$base64Image';
+      }
+
+      return 'ERROR: No image data returned by Stability AI.';
+    } catch (e) {
+      return 'ERROR: Stability AI request failed — $e';
+    }
   }
 }

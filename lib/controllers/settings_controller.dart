@@ -37,7 +37,7 @@ class SettingsController extends GetxController {
   final anthropicModel = 'claude-sonnet-4-6'.obs;
   final googleModel = 'gemini-2.5-flash'.obs;
   final kimiModel = 'kimi-k2.6'.obs;
-  final stabilityModel = 'sd3.5-flash'.obs;
+  final stabilityModel = 'sd3.5-large-turbo'.obs;
   final nvidiaModel = 'meta/llama-3.1-8b-instruct'.obs;
   final openRouterModel = 'openai/gpt-4o-mini'.obs;
   final deepSeekModel = 'deepseek-reasoner'.obs;
@@ -166,9 +166,12 @@ class SettingsController extends GetxController {
     kimiModel.value = _hive.getSetting(AppConstants.keyKimiModel,
             defaultValue: 'kimi-k2.6') ??
         'kimi-k2.6';
-    stabilityModel.value = _hive.getSetting(AppConstants.keyStabilityModel,
-            defaultValue: 'sd3.5-flash') ??
-        'sd3.5-flash';
+    final savedStability = _hive.getSetting(AppConstants.keyStabilityModel,
+            defaultValue: 'sd3.5-large-turbo') ??
+        'sd3.5-large-turbo';
+    stabilityModel.value = (savedStability == 'sd3.5-flash' || savedStability.isEmpty)
+        ? 'sd3.5-large-turbo'
+        : savedStability;
     nvidiaModel.value = _hive.getSetting(AppConstants.keyNvidiaModel,
             defaultValue: 'meta/llama-3.1-8b-instruct') ??
         'meta/llama-3.1-8b-instruct';

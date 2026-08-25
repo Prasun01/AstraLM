@@ -563,39 +563,10 @@ class ChatView extends GetView<ChatController> {
                   ]),
                 );
               }
-              final isDark = Theme.of(context).brightness == Brightness.dark;
               return Column(
-                children: [
-                  ...suggestions
-                      .map((s) => _suggestionChip(context, s)),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF141622) : const Color(0xFFECEFF6),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        PhosphorIcon(
-                          PhosphorIconsBold.warningCircle,
-                          size: 13,
-                          color: isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'make sure to close all background apps',
-                          style: GoogleFonts.inter(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? const Color(0xFF9AA0B2) : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                children: suggestions
+                    .map((s) => _suggestionChip(context, s))
+                    .toList(),
               );
             }),
           ],
