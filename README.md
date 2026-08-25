@@ -1,192 +1,111 @@
-# AstraLM — Private On-Device AI
+# AstraLM — On-Device & Hybrid AI Assistant
 
 ![AstraLM Feature Banner](store_assets/feature_graphic.jpg)
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://android.com)
-[![Privacy](https://img.shields.io/badge/Privacy-100%25_On--Device-blueviolet?style=for-the-badge)](PRIVACY_POLICY.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+[![Latest Release](https://img.shields.io/badge/Release-v1.0.6-blue?style=for-the-badge)](https://github.com/Prasun01/AstraLM/releases/tag/v1.0.6)
 
-A high-performance, private, on-device AI chat client built with Flutter. AstraLM runs Large Language Models (LLMs) and Vision models 100% locally on device hardware (CPU & GPU) with zero data leaving your phone.(until you choose to use cloud model which is completely OPTIONAL)
-
----
-
-## ✨ Features
-
-- **100% Offline & Private** — All conversations, photos, and document analyses stay on your device.
-- **Dual High-Performance Engines** — 
-  - **GGUF Runtime (`llama.cpp`)**: Accelerated quantized inference (Llama 3, Qwen 2.5, Gemma, Mistral, Phi-3, DeepSeek).
-  - **LiteRT-LM (Google LiteRT)**: Hardware-accelerated OpenCL GPU & CPU inference for mobile models.
-- **Multimodal Vision** — Analyze photos, documents, and screenshots directly using compatible local vision models.
-- **Fluid & Minimalist UI** — 120Hz smooth scrolling, dynamic attached attachment popouts, Open Sans / Manrope typography, and refined dark/light themes.
-- **Voice Input** — On-device speech-to-text recognition.
-- **Optional Cloud Mode** — Connect your own API keys for OpenAI, Anthropic, Gemini, Groq, OpenRouter, and Stability AI.
+**AstraLM** is an open-source, high-performance AI assistant for Android. Built with Flutter and native C++ inference engines, AstraLM is designed around an **on-device first, hybrid-capable architecture** — giving you the flexibility to run private quantized LLMs directly on your phone's hardware, or connect your own API keys for cloud-based reasoning and image generation.
 
 ---
 
-## 🛠️ Technical Architecture
+## ⚡ Key Highlights
 
-### Inference Pipeline
+- 📱 **On-Device Local Inference (Offline)**
+  - Runs quantized GGUF models directly on device CPU/GPU via `llama.cpp`.
+  - Supports Google LiteRT-LM for accelerated mobile models.
+  - When using local models, all inference is computed 100% locally with zero internet connection required.
+- ☁️ **Optional Cloud Mode (Bring-Your-Own-Key)**
+  - Seamlessly switch to frontier models (OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Groq, OpenRouter).
+  - Native Image Generation via Stability AI (SD3.5 Turbo, Ultra) & OpenAI DALL-E 3.
+  - API keys are stored locally on your device in encrypted sandbox storage with zero third-party telemetry or middleware servers.
+- 📄 **Interactive Fullscreen Canvas**
+  - Live side-by-side or fullscreen workspace for code, markdown documents, and HTML previews.
+  - 0ms touch latency with hardware-accelerated gesture recognizers.
+- 🔄 **In-App Auto Updates & Remote Config**
+  - Integrated background updater that checks GitHub Releases for one-tap seamless upgrades.
+  - Dynamic configuration for memory alerts and thinking status messages.
+- 🎨 **Minimalist & Ergonomic UI**
+  - Instant zero-lag launch directly into chat.
+  - Smooth 120Hz scrolling, dynamic reasoning status cross-fades, and borderless space-gray dark/light themes.
+
+---
+
+## 🏗️ Architecture & Privacy Model
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        UI Layer                              │
-│   ChatView / TaskView / ModelView / SettingsView            │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────────┐
-│                    Controllers (GetX)                        │
-│   ChatController · TaskController · ModelController         │
-│   SettingsController · HomeController                       │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────────┐
-│                      Services                                │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
-│  │ InferenceService│  │  CloudService   │  │DownloadSvc  │ │
-│  │(GGUF + LiteRT)  │  │(OpenAI/Claude/  │  │ (model dl)  │ │
-│  │                 │  │ Gemini/Groq)    │  │             │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
-│  ┌─────────────────┐  ┌─────────────────┐  └─────────────┐ │
-│  │  HiveService    │  │ DeviceInfoSvc   │  │ExecutionSvc │ │
-│  │  (persistence)  │  │ (RAM/GPU tier)  │  │ (bg tasks)  │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
-└─────────────────────────────────────────────────────────────┘
+│                     AstraLM Flutter UI                      │
+│      Chat Workspace · Fullscreen Canvas · Model Manager     │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+               ┌───────────────┴───────────────┐
+               ▼                               ▼
+    ┌──────────────────────┐        ┌──────────────────────┐
+    │  Local AI Runtimes   │        │   Cloud AI Engine    │
+    │  (100% On-Device)    │        │  (Direct Client-API) │
+    ├──────────────────────┤        ├──────────────────────┤
+    │ • GGUF (llama.cpp)   │        │ • Anthropic Claude   │
+    │ • LiteRT-LM (OpenCL) │        │ • OpenAI & DALL-E 3  │
+    │ • Offline Voice STT  │        │ • Google Gemini      │
+    │ • Local Vision (VLM) │        │ • Stability AI SD3.5 │
+    └──────────────────────┘        └──────────────────────┘
+               │                               │
+               ▼                               ▼
+     On-Device Hardware             Direct Encrypted HTTPS
+     (No Data Outbound)             (Your Keys, Direct API)
 ```
+
+### Privacy & Transparency
+- **Local Mode:** When running local GGUF/LiteRT models, inference is performed strictly offline on your phone’s processor. No conversation history, prompts, or images are transmitted.
+- **Cloud Mode:** When you explicitly enable Cloud Mode, queries are transmitted directly over encrypted TLS (HTTPS) to the respective model provider (e.g. OpenAI or Anthropic) using your personal API key. AstraLM does not run any proxy servers, data collection, or telemetry analytics.
 
 ---
 
-## 🚀 Building & Running
+## 📥 Download & Installation
 
-### Android Build
+Get the latest signed APK directly from the [GitHub Releases](https://github.com/Prasun01/AstraLM/releases) page:
+
+1. Download **[`AstraLM-v1.0.6.apk`](https://github.com/Prasun01/AstraLM/releases/download/v1.0.6/AstraLM-v1.0.6.apk)**.
+2. Install the APK on your Android device (Android 10+ / API 29+ recommended, ARM64).
+3. Open AstraLM, download a recommended local model (e.g. Llama 3.2 1B or Qwen 2.5 1.5B), or paste your API keys in Settings.
+
+---
+
+## 🛠️ Developer Setup & Building
+
+### Prerequisites
+- Flutter SDK `>=3.3.0`
+- Android SDK (API 28+) & NDK
+- Java JDK 17 or 21
+
+### Build Steps
 ```bash
-# Debug Build & Run
-flutter run
+# Clone the repository
+git clone https://github.com/Prasun01/AstraLM.git
+cd AstraLM
 
-# Production Signed APK
+# Fetch dependencies
+flutter pub get
+
+# Build debug APK
+flutter build apk --debug
+
+# Build release APK
 flutter build apk --release
-
-# Production Signed App Bundle (Google Play / Stores)
-flutter build appbundle --release
 ```
 
 ---
 
 ## 🙏 Credits & Acknowledgments
 
-- **Special Thanks & Credit:** AstraLM is built upon and inspired by the original **[PrivateLM](https://github.com/orailnoor/cross-platform-llm-client)** project by [@orailnoor](https://github.com/orailnoor).
-- **Core Engine Credits:**
-  - [llama.cpp](https://github.com/ggerganov/llama.cpp) by Georgi Gerganov & contributors.
-  - [Google LiteRT (TensorFlow Lite)](https://ai.google.dev/edge/litert).
+- Built upon and inspired by the original **[PrivateLM](https://github.com/orailnoor/cross-platform-llm-client)** by [@orailnoor](https://github.com/orailnoor).
+- Powered by [llama.cpp](https://github.com/ggerganov/llama.cpp) by Georgi Gerganov and [Google LiteRT](https://ai.google.dev/edge/litert).
 
 ---
 
-## 📄 License & Privacy
+## 📄 License
 
-- **License:** MIT License — see [LICENSE](./LICENSE) for details.
-- **Privacy Policy:** See [PRIVACY_POLICY.md](./PRIVACY_POLICY.md).
-
-### Local Inference (Android)
-
-The app uses `llama_flutter_android`, a custom Flutter plugin wrapping `llama.cpp` for ARM64 devices. At runtime it:
-
-1. **Detects GPU capabilities** via Vulkan to determine offload layers.
-2. **Selects thread count** based on device tier (ultra / high / mid / low).
-3. **Loads the GGUF model** with progress streaming.
-4. **Generates tokens** via `generateChat()` with native chat-template support (ChatML, Llama-3, Gemma, Phi).
-5. **Falls back** to manual prompt construction if native templates fail.
-
-Idle detection (5s) and hard timeouts (180s) keep the UX responsive even on underpowered hardware.
-
-### Cloud Inference
-
-`CloudService` normalizes four different API shapes into a single interface:
-
-- **OpenAI** — standard `/v1/chat/completions`
-- **Anthropic** — Messages API with separate system param
-- **Google Gemini** — `generateContent` with inline image base64
-- **Kimi** — OpenAI-compatible endpoint from Moonshot AI
-
-API keys are stored in Hive and never transmitted anywhere except to the provider's endpoint.
-
-### Cross-Platform Abstraction
-
-Local inference is conditionally compiled:
-
-- **Android** → `inference_android.dart` (full llama.cpp engine)
-- **Web** → `inference_stub.dart` (cloud-only, local coming soon)
-- **iOS** → `inference_android.dart` (full llama.cpp engine via Metal GPU)
-
-The `InferenceService` exposes `supportsLocalInference` so the UI can hide local-model UI on unsupported platforms.
-
----
-
-## Supported Platforms
-
-| Platform | Local Inference | Cloud APIs | Notes                           |
-| -------- | --------------- | ---------- | ------------------------------- |
-| Android  | ✅ Yes          | ✅ Yes     | CPU offload via NEON; minSdk 28 |
-| iOS      | ✅ Yes          | ✅ Yes     | Metal GPU acceleration          |
-| Web      | ❌ No           | ✅ Yes     | Cloud-only (local coming soon)  |
-
-### iOS / iPad
-
-The iPad release is distributed as a standalone ZIP package for sideloading. Download the latest `AstraLM-iOS.zip` from the [Releases](https://github.com/Prasun01/AstraLM/releases) page, extract it, and install the `.ipa` via AltStore, Sideloadly, or Xcode. iPhone support is experimental — iPad is the recommended iOS target due to RAM requirements for local models.
-
----
-
-## Build Configuration
-
-### Prerequisites
-
-- Flutter SDK >=3.3.0
-- Android SDK (API 26+)
-- JDK 17
-- NDK (bundled with Android SDK)
-
-### Android
-
-```bash
-flutter pub get
-flutter build apk --debug
-```
-
-Release APKs require a stable signing key. Copy
-`android/key.properties.example` to `android/key.properties`, fill in the
-keystore values, and keep both the key and its backup. Android accepts an APK
-upgrade only when it is signed with the same key as the installed APK.
-
-```bash
-cp android/key.properties.example android/key.properties
-flutter build apk --release --split-per-abi
-```
-
-Never rotate the signing key between GitHub releases. The per-ABI APKs must
-also keep increasing the build number in `pubspec.yaml`.
-
-### iOS
-
-```bash
-flutter pub get
-cd ios
-pod install
-flutter build ios
-```
-
-### Web
-
-```bash
-flutter pub get
-flutter build web --release
-```
-
----
-### 📥 Installation & Updates
-
-    - **New Users:** Download `app-release.apk` from [Releases](https://github.com/Prasun01/AstraLM/releases) and install.          
-    - **Upgrading from v1.x:** Please **uninstall your previous app first**, then install the v2.0.0 APK.
-for v2.x.x
-
-## License
-
-MIT — see [LICENSE](./LICENSE) for details.
+Distributed under the **MIT License**. See [`LICENSE`](./LICENSE) for more information.
