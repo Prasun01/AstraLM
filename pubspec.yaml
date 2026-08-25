@@ -68,6 +68,7 @@ dependencies:
   firebase_crashlytics: ^4.3.10
   package_info_plus: ^9.0.1
   phosphor_flutter: ^2.1.0
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:

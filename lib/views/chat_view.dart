@@ -22,6 +22,7 @@ import '../widgets/canvas_workspace.dart';
 import 'model_view.dart';
 import 'settings_view.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ChatView extends GetView<ChatController> {
   const ChatView({super.key});
@@ -1397,6 +1398,85 @@ class ChatView extends GetView<ChatController> {
                 ),
               ),
               const SizedBox(height: 12),
+              // Footer: Support Development (Buy Me a Coffee)
+              PressableScale(
+                onTap: () async {
+                  final uri = Uri.parse('https://buymeacoffee.com/kalyanmshrH');
+                  try {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } catch (_) {}
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF141620) : const Color(0xFFE9EDF5),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFDD00).withValues(alpha: isDark ? 0.15 : 0.22),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: PhosphorIcon(
+                          PhosphorIconsBold.coffee,
+                          size: 16,
+                          color: isDark ? const Color(0xFFFFE066) : const Color(0xFFB45309),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Support AstraLM',
+                              style: GoogleFonts.manrope(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                            Text(
+                              'Buy me a coffee',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFDD00).withValues(alpha: isDark ? 0.15 : 0.22),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '₹99',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? const Color(0xFFFFE066) : const Color(0xFFB45309),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      PhosphorIcon(
+                        PhosphorIconsBold.arrowSquareOut,
+                        size: 14,
+                        color: isDark ? const Color(0xFF888888) : const Color(0xFF666666),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               // Footer: Settings Button
               PressableScale(
                 onTap: () {
