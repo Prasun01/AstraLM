@@ -1,14 +1,8 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../controllers/home_controller.dart';
 import 'chat_view.dart';
-import 'model_view.dart';
-import 'server_view.dart';
-import 'settings_view.dart';
-
 import '../core/constants.dart';
 import '../services/hive_service.dart';
 import 'welcome_guide_view.dart';

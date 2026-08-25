@@ -2148,7 +2148,9 @@ class ChatView extends GetView<ChatController> {
           r != 0x200C &&
           r != 0x200D &&
           r != 0xFEFF &&
-          r != 0xFFFD) return true;
+          r != 0xFFFD) {
+        return true;
+      }
     }
     return false;
   }
@@ -2161,12 +2163,6 @@ class ChatView extends GetView<ChatController> {
     if (diff.inDays < 7) return '${diff.inDays}d ago';
     return '${d.day}/${d.month}/${d.year}';
   }
-
-  String _fmtK(int v) => v >= 1000000
-      ? '${(v / 1000000).toStringAsFixed(1)}M'
-      : v >= 1000
-          ? '${(v / 1000).toStringAsFixed(1)}K'
-          : v.toString();
 }
 
 // ── Attach Button with Composited Dynamic Anchor ──
@@ -2440,8 +2436,7 @@ class _StepButton extends StatelessWidget {
 // ── Image Generation Indicator ──
 class _ImageGenIndicator extends StatefulWidget {
   final ChatController controller;
-  final bool isDark;
-  const _ImageGenIndicator({required this.controller, this.isDark = false});
+  const _ImageGenIndicator({required this.controller});
 
   @override
   State<_ImageGenIndicator> createState() => _ImageGenIndicatorState();
@@ -2634,7 +2629,7 @@ class _ImageGenIndicatorState extends State<_ImageGenIndicator>
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                     decoration: ShapeDecoration(
                       color: scheme.error.withValues(alpha: 0.1),
-                      shape: StadiumBorder(),
+                      shape: const StadiumBorder(),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

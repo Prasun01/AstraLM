@@ -3,7 +3,6 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/chat_controller.dart';
-import '../controllers/settings_controller.dart';
 import '../models/chat_message.dart';
 import '../utils/thought_parser.dart';
 import 'attachment_preview.dart';
