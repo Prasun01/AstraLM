@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:ui';
-
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -254,7 +252,7 @@ class AstraLMApp extends StatelessWidget {
         themeMode: themeMode,
         defaultTransition: Transition.rightToLeftWithFade,
         transitionDuration: const Duration(milliseconds: 260),
-        initialRoute: AppRoutes.home,
+        initialRoute: AppRoutes.splash,
         getPages: AppPages.pages,
         builder: (ctx, child) => MediaQuery(
           data: MediaQuery.of(ctx).copyWith(
