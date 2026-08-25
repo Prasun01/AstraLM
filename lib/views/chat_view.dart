@@ -733,46 +733,45 @@ class ChatView extends GetView<ChatController> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF181B26) : const Color(0xFFEFF3FA),
+          color: isDark ? const Color(0xFF141622) : const Color(0xFFE9EDF5),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.35 : 0.45),
-          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-              blurRadius: 6,
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Row(
           children: [
-            const PhosphorIcon(
-              PhosphorIconsBold.lightning,
-              size: 16,
-              color: Color(0xFFF59E0B),
+            PhosphorIcon(
+              PhosphorIconsBold.warningCircle,
+              size: 15,
+              color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 remoteConfig.backgroundAppsWarningText.value,
                 style: GoogleFonts.inter(
-                  fontSize: 11.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                  letterSpacing: -0.1,
+                  color: isDark ? const Color(0xFFD8DCE8) : const Color(0xFF2A2E3D),
                 ),
               ),
             ),
             const SizedBox(width: 6),
             GestureDetector(
               onTap: () => controller.isBgWarningDismissed.value = true,
+              behavior: HitTestBehavior.opaque,
               child: Padding(
-                padding: const EdgeInsets.all(2),
+                padding: const EdgeInsets.all(3),
                 child: PhosphorIcon(
                   PhosphorIconsBold.x,
                   size: 13,
-                  color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                  color: isDark ? const Color(0xFF7E869B) : const Color(0xFF8A92A6),
                 ),
               ),
             ),

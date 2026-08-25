@@ -13,8 +13,8 @@ class RemoteConfigService extends GetxService {
   final isLoaded = false.obs;
   final backgroundAppsWarningEnabled = true.obs;
   final backgroundAppsWarningText =
-      'Multiple background apps detected. Close background apps to free RAM for faster inference ⚡'.obs;
-  final lowRamThresholdGB = 2.0.obs;
+      'High memory usage detected. Close background apps for faster inference.'.obs;
+  final lowRamThresholdGB = 2.5.obs;
   final remoteThinkingMessages = <String>[].obs;
   final announcement = ''.obs;
 
@@ -38,7 +38,7 @@ class RemoteConfigService extends GetxService {
           _box!.get('bg_warning_enabled', defaultValue: true) as bool;
       backgroundAppsWarningText.value = _box!.get('bg_warning_text',
           defaultValue:
-              'Multiple background apps detected. Close background apps to free RAM for faster inference ⚡') as String;
+              'High memory usage detected. Close background apps for faster inference.') as String;
       lowRamThresholdGB.value =
           (_box!.get('low_ram_threshold', defaultValue: 2.0) as num).toDouble();
       announcement.value = _box!.get('announcement', defaultValue: '') as String;

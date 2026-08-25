@@ -1,7 +1,7 @@
 {
   "version": "1.0.6",
   "background_apps_warning_enabled": true,
-  "background_apps_warning_text": "High RAM usage detected. Close background apps for faster response and smoother inference ⚡",
+  "background_apps_warning_text": "High memory usage detected. Close background apps for faster inference.",
   "low_ram_threshold_gb": 2.5,
   "thinking_messages": [
     "Thinking…",
@@ -10,8 +10,8 @@
     "Summoning deep wisdom…",
     "Thinking harder…",
     "Crunching neural weights…",
-    "bro, your cpu is slow 💀",
-    "Silicon is getting toasty 🔥",
+    "bro, your cpu is slow",
+    "Silicon is getting toasty",
     "Sweating through these tokens…"
   ],
   "announcement": ""
