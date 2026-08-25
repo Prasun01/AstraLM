@@ -252,7 +252,7 @@ class AstraLMApp extends StatelessWidget {
         themeMode: themeMode,
         defaultTransition: Transition.rightToLeftWithFade,
         transitionDuration: const Duration(milliseconds: 260),
-        initialRoute: AppRoutes.splash,
+        initialRoute: AppRoutes.home,
         getPages: AppPages.pages,
         builder: (ctx, child) => MediaQuery(
           data: MediaQuery.of(ctx).copyWith(

@@ -493,16 +493,16 @@ class ChatView extends GetView<ChatController> {
                   : 'AstraLM';
               return Column(
                 children: [
-                  const _RotatingAppLogo(size: 84),
+                  const _RotatingAppLogo(size: 92),
                   const SizedBox(height: 20),
                   Text(
                     modelTitle,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.manrope(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 27,
+                      fontWeight: FontWeight.w800,
                       color: scheme.onSurface,
-                      letterSpacing: -0.3,
+                      letterSpacing: -0.4,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -517,7 +517,7 @@ class ChatView extends GetView<ChatController> {
                 ],
               );
             }),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
             Obx(() {
               final settings = Get.find<SettingsController>();
               final models = Get.find<ModelController>();
@@ -563,10 +563,39 @@ class ChatView extends GetView<ChatController> {
                   ]),
                 );
               }
+              final isDark = Theme.of(context).brightness == Brightness.dark;
               return Column(
-                children: suggestions
-                    .map((s) => _suggestionChip(context, s))
-                    .toList(),
+                children: [
+                  ...suggestions
+                      .map((s) => _suggestionChip(context, s)),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF141622) : const Color(0xFFECEFF6),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        PhosphorIcon(
+                          PhosphorIconsBold.warningCircle,
+                          size: 13,
+                          color: isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'make sure to close all background apps',
+                          style: GoogleFonts.inter(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? const Color(0xFF9AA0B2) : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               );
             }),
           ],
