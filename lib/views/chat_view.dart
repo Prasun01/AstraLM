@@ -1451,25 +1451,9 @@ class ChatView extends GetView<ChatController> {
                           ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFDD00).withValues(alpha: isDark ? 0.15 : 0.22),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '₹99',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? const Color(0xFFFFE066) : const Color(0xFFB45309),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
                       PhosphorIcon(
                         PhosphorIconsBold.arrowSquareOut,
-                        size: 14,
+                        size: 15,
                         color: isDark ? const Color(0xFF888888) : const Color(0xFF666666),
                       ),
                     ],
