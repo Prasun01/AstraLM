@@ -72,6 +72,14 @@ android {
             shrinkResources false
         }
     }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            if (variant.buildType.name == "release") {
+                outputFileName = "AstraLM-v${variant.versionName}.apk"
+            }
+        }
+    }
 }
 
 dependencies {
