@@ -694,20 +694,20 @@ class ChatController extends GetxController {
 
   // ─── Send Message ───────────────────────────────
 
-  Future<void> sendMessage() async {
+  Future<void> sendMessage({String? customPrompt, bool isSystemObservation = false}) async {
     if (isLoading.value || isStreaming.value) return;
 
-    final text = textController.text.trim();
+    final text = customPrompt ?? textController.text.trim();
     final hasAttachment =
-        selectedImagePath.value != null || selectedFileName.value != null;
+        !isSystemObservation && (selectedImagePath.value != null || selectedFileName.value != null);
     if (text.isEmpty && !hasAttachment) return;
-    final fileName = selectedFileName.value;
-    final fileContent = selectedFileContent.value;
-    final filePath = selectedFilePath.value;
-    final fileType = selectedFileType.value;
-    final fileSize = selectedFileSize.value;
-    final imagePath = selectedImagePath.value;
-    final imageBase64 = selectedImageBase64.value;
+    final fileName = isSystemObservation ? null : selectedFileName.value;
+    final fileContent = isSystemObservation ? null : selectedFileContent.value;
+    final filePath = isSystemObservation ? null : selectedFilePath.value;
+    final fileType = isSystemObservation ? null : selectedFileType.value;
+    final fileSize = isSystemObservation ? 0 : selectedFileSize.value;
+    final imagePath = isSystemObservation ? null : selectedImagePath.value;
+    final imageBase64 = isSystemObservation ? null : selectedImageBase64.value;
     final visibleText =
         text.isEmpty ? _defaultAttachmentPrompt(fileType) : text;
     final effectiveText = (fileContent != null && fileContent.trim().isNotEmpty)
@@ -1103,6 +1103,7 @@ class ChatController extends GetxController {
       thoughtDurationSeconds: thoughtDurationSeconds,
     );
     messages.add(aiMsg);
+
     if (!isIncognito.value) {
       _hive.saveMessage(aiMsg.id, aiMsg.toMap());
 

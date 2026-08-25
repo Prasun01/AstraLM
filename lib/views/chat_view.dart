@@ -25,6 +25,7 @@ import 'model_view.dart';
 import 'settings_view.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../widgets/provider_logo.dart';
 
 class ChatView extends GetView<ChatController> {
   const ChatView({super.key});
@@ -1217,45 +1218,89 @@ class ChatView extends GetView<ChatController> {
               ),
               const SizedBox(height: 16),
 
-              // "+ New Chat" Button
-              PressableScale(
-                onTap: () {
-                  Navigator.pop(context);
-                  controller.createNewChat();
-                },
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white : const Color(0xFF141620),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        PhosphorIconsBold.plus,
-                        size: 18,
-                        color: isDark ? const Color(0xFF090A0E) : Colors.white,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'New Chat',
-                        style: GoogleFonts.manrope(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? const Color(0xFF090A0E) : Colors.white,
+              Row(
+                children: [
+                  // "+ New Chat" Button
+                  Expanded(
+                    flex: 3,
+                    child: PressableScale(
+                      onTap: () {
+                        Navigator.pop(context);
+                        controller.createNewChat();
+                      },
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white : const Color(0xFF141620),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              PhosphorIconsBold.plus,
+                              size: 18,
+                              color: isDark ? const Color(0xFF090A0E) : Colors.white,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'New Chat',
+                              style: GoogleFonts.manrope(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? const Color(0xFF090A0E) : Colors.white,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  // "Models" Button
+                  Expanded(
+                    flex: 2,
+                    child: PressableScale(
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.of(context).push(_topFillTransitionRoute(const ModelView()));
+                      },
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            PhosphorIcon(
+                              PhosphorIconsBold.stack,
+                              size: 16,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Models',
+                              style: GoogleFonts.manrope(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
 
@@ -2025,7 +2070,6 @@ class ChatView extends GetView<ChatController> {
                                       final provider = item['provider'] as String;
                                       final isCurrent = settings.inferenceMode.value == 'cloud' &&
                                           settings.cloudProvider.value == provider;
-                                      final iconData = item['icon'] as PhosphorIconData;
                                       return Padding(
                                         padding: const EdgeInsets.only(bottom: 2),
                                         child: InkWell(
@@ -2046,8 +2090,8 @@ class ChatView extends GetView<ChatController> {
                                             ),
                                             child: Row(
                                               children: [
-                                                PhosphorIcon(
-                                                  iconData,
+                                                ProviderLogo(
+                                                  providerId: provider,
                                                   size: 14,
                                                   color: isCurrent
                                                       ? (isDark ? Colors.white : Colors.black)

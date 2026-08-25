@@ -36,8 +36,10 @@ class ModelController extends GetxController {
   final isImporting = false.obs;
   final customModels = <AiModel>[].obs;
   final fileSizes = <String, int>{}.obs;
-  final modelScope = 'local'.obs;
+    final modelScope = 'local'.obs;
   final localFilter = ''.obs;
+  final localEngineFilter = 'all'.obs; // 'all', 'litert', 'gguf', 'sd'
+  final localSearchQuery = ''.obs;
   final localSizeFilter = 'all'.obs; // 'all', 'tiny', 'small', 'medium'
   final sortMode = 'popular'.obs; // 'popular', 'size_asc', 'size_desc', 'name'
   final importFileName = ''.obs;
@@ -72,10 +74,13 @@ class ModelController extends GetxController {
     'all',
     'recommended',
     'downloaded',
+    'litert',
+    'gguf',
+    'reasoning',
+    'vision',
     'general',
     'image',
     'uncensored',
-    'vision'
   ];
 
   bool isRecommendedModel(AiModel model) {
@@ -99,13 +104,28 @@ class ModelController extends GetxController {
     return filteredDisplayedModels;
   }
 
-  List<AiModel> get filteredDisplayedModels {
+    List<AiModel> get filteredDisplayedModels {
     final filter =
         localFilter.value.isEmpty ? defaultLocalFilter : localFilter.value;
     final sizeFilter = localSizeFilter.value;
+    final engineFilter = localEngineFilter.value;
+    final query = localSearchQuery.value.trim().toLowerCase();
 
     var list = availableModels.where((model) {
-      // 1. Category Filter
+      // 1. Search Query Filter
+      if (query.isNotEmpty) {
+        final text = '${model.name} ${model.filename} ${model.description} ${model.template} ${model.runtime}'.toLowerCase();
+        if (!text.contains(query)) return false;
+      }
+
+      // 2. Engine Type Filter
+      if (engineFilter != 'all') {
+        if (engineFilter == 'litert' && !isLiteRtModel(model)) return false;
+        if (engineFilter == 'gguf' && !isLlamaModel(model)) return false;
+        if (engineFilter == 'sd' && !isImageModel(model)) return false;
+      }
+
+      // 3. Category Filter
       final bool matchesCategory;
       switch (filter) {
         case 'all':
@@ -116,6 +136,15 @@ class ModelController extends GetxController {
           break;
         case 'downloaded':
           matchesCategory = isDownloaded(model.filename);
+          break;
+        case 'litert':
+          matchesCategory = isLiteRtModel(model);
+          break;
+        case 'gguf':
+          matchesCategory = isLlamaModel(model);
+          break;
+        case 'reasoning':
+          matchesCategory = isReasoningModel(model);
           break;
         case 'uncensored':
           matchesCategory = isUncensoredModel(model);
@@ -133,7 +162,7 @@ class ModelController extends GetxController {
       }
       if (!matchesCategory) return false;
 
-      // 2. Size Filter
+      // 4. Size Filter
       if (sizeFilter != 'all') {
         final bytes = _knownModelBytes(model);
         if (sizeFilter == 'tiny') {
@@ -150,7 +179,7 @@ class ModelController extends GetxController {
       return true;
     }).toList();
 
-    // 3. Sorting
+    // 5. Sorting
     final active = _inference.loadedModelName.value;
     list.sort((a, b) {
       if (a.filename == active) return -1;
@@ -177,6 +206,41 @@ class ModelController extends GetxController {
     });
 
     return list;
+  }
+
+  int getCountForCategory(String category) {
+    return availableModels.where((m) {
+      switch (category) {
+        case 'all': return true;
+        case 'recommended': return isRecommendedModel(m);
+        case 'downloaded': return isDownloaded(m.filename);
+        case 'litert': return isLiteRtModel(m);
+        case 'gguf': return isLlamaModel(m);
+        case 'reasoning': return isReasoningModel(m);
+        case 'uncensored': return isUncensoredModel(m);
+        case 'vision': return isVisionModel(m);
+        case 'image': return isImageModel(m);
+        case 'general': default: return isGeneralModel(m);
+      }
+    }).length;
+  }
+
+  int getCountForEngine(String engine) {
+    if (engine == 'all') return availableModels.length;
+    if (engine == 'litert') return availableModels.where((m) => isLiteRtModel(m)).length;
+    if (engine == 'gguf') return availableModels.where((m) => isLlamaModel(m)).length;
+    if (engine == 'sd') return availableModels.where((m) => isImageModel(m)).length;
+    return availableModels.length;
+  }
+
+  bool isReasoningModel(AiModel model) {
+    final lower = '${model.name} ${model.filename} ${model.description}'.toLowerCase();
+    return lower.contains('r1') ||
+        lower.contains('reason') ||
+        lower.contains('distill') ||
+        lower.contains('deepseek') ||
+        lower.contains('phi-3.5') ||
+        lower.contains('think');
   }
 
   String get defaultLocalFilter =>

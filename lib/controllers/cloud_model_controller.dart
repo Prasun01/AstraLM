@@ -436,21 +436,115 @@ class CloudModelController extends GetxController {
 
   List<String> _parseModelIds(String provider, String body) {
     final data = jsonDecode(body);
+
     if (provider == 'google') {
       final raw = data['models'] as List? ?? [];
-      return raw
-          .map((model) => model is Map ? model['name']?.toString() : null)
-          .whereType<String>()
-          .toSet()
-          .toList();
+      final list = <String>[];
+      for (final item in raw) {
+        if (item is! Map) continue;
+        final name = item['name']?.toString() ?? '';
+        final methods = item['supportedGenerationMethods'] as List? ?? [];
+
+        // Only include models that support generateContent
+        final supportsChat = methods.any((m) => m.toString() == 'generateContent');
+        if (!supportsChat) continue;
+
+        // Clean model ID (strip 'models/' prefix)
+        final cleanId = name.startsWith('models/') ? name.substring(7) : name;
+        if (cleanId.isEmpty) continue;
+
+        // Filter out non-chat / internal clutter
+        final lower = cleanId.toLowerCase();
+        if (lower.contains('embedding') ||
+            lower.contains('aqa') ||
+            lower.contains('bison') ||
+            lower.contains('gecko') ||
+            lower.contains('imagen') ||
+            lower.startsWith('text-')) {
+          continue;
+        }
+
+        list.add(cleanId);
+      }
+      return list.toSet().toList();
     }
 
     final raw = data['data'] as List? ?? [];
-    return raw
-        .map((model) => model is Map ? model['id']?.toString() : null)
-        .whereType<String>()
-        .toSet()
-        .toList();
+    final list = <String>[];
+
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final id = item['id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+
+      final lower = id.toLowerCase();
+
+      // Filter out unusable clutter models (embeddings, TTS, Whisper, Moderations, Rerankers)
+      if (lower.contains('embedding') ||
+          lower.contains('whisper') ||
+          lower.contains('tts-') ||
+          lower.contains('dall-e') ||
+          lower.contains('moderation') ||
+          lower.contains('rerank') ||
+          lower.contains('retriever') ||
+          lower.contains('guard') ||
+          lower.contains('bge-') ||
+          lower.contains('canary') ||
+          lower.contains('davinci') ||
+          lower.contains('babbage') ||
+          lower.contains('curie') ||
+          lower.contains('ada') ||
+          lower.startsWith('ft:') ||
+          lower.startsWith('ft-') ||
+          lower.contains('similarity')) {
+        continue;
+      }
+
+      // OpenAI specific filtering
+      if (provider == 'openai') {
+        final isChatGpt = lower.startsWith('gpt-') ||
+            lower.startsWith('o1') ||
+            lower.startsWith('o3') ||
+            lower.startsWith('chatgpt');
+        if (!isChatGpt || lower.contains('-instruct')) continue;
+      }
+
+      // NVIDIA specific filtering
+      if (provider == 'nvidia') {
+        if (lower.contains('nv-embed') ||
+            lower.contains('clip') ||
+            lower.contains('reward') ||
+            lower.contains('safety')) {
+          continue;
+        }
+      }
+
+      list.add(id);
+    }
+
+    // Sort models cleanly: active/popular versions first
+    list.sort((a, b) {
+      final aLower = a.toLowerCase();
+      final bLower = b.toLowerCase();
+      // Put flash / sonnet / mini / pro / 4o / r1 models near top
+      final aScore = _modelPriorityScore(aLower);
+      final bScore = _modelPriorityScore(bLower);
+      if (aScore != bScore) return bScore.compareTo(aScore);
+      return a.compareTo(b);
+    });
+
+    return list.toSet().toList();
+  }
+
+  int _modelPriorityScore(String modelId) {
+    if (modelId.contains('deepseek-r1') || modelId.contains('deepseek-reasoner')) return 100;
+    if (modelId.contains('gpt-4o') || modelId.contains('claude-3.5-sonnet') || modelId.contains('gemini-2.5-pro')) return 95;
+    if (modelId.contains('gemini-2.5-flash') || modelId.contains('gpt-4o-mini') || modelId.contains('deepseek-chat')) return 90;
+    if (modelId.contains('o1') || modelId.contains('o3')) return 85;
+    if (modelId.contains('llama-3.3') || modelId.contains('llama-3.1')) return 80;
+    if (modelId.contains('qwen') || modelId.contains('mistral')) return 75;
+    if (modelId.contains('free')) return 70;
+    return 10;
   }
 
   Map<String, List<String>> _parseModelTags(String provider, String body) {

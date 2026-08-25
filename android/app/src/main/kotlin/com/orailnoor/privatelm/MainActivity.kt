@@ -3,15 +3,26 @@ package com.orailnoor.privatelm
 import android.app.AlertDialog
 import android.app.AlarmManager
 import android.app.DownloadManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.Environment
 import android.provider.OpenableColumns
+import android.provider.AlarmClock
+import android.app.SearchManager
+import android.provider.Settings
+import android.os.BatteryManager
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.content.pm.ApplicationInfo
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -132,7 +143,6 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
-
     }
 
     private fun restartApp() {
@@ -242,9 +252,9 @@ class MainActivity : FlutterActivity() {
         if (destFile.exists()) destFile.delete()
 
         val request = DownloadManager.Request(Uri.parse(url)).apply {
-            setTitle(safeName)
-            setDescription("Downloading local AI model")
-            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+            setTitle("AstraLM: $safeName")
+            setDescription("Downloading local AI model...")
+            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
             setAllowedOverMetered(true)
             setAllowedOverRoaming(true)
@@ -341,6 +351,7 @@ class MainActivity : FlutterActivity() {
                 if (targetFile.exists() && targetFile.length() > 0L) {
                     removeInAppDownload(downloadId)
                     emitProgress(safeName, total, total, 0.0, "Download complete")
+                    showDownloadCompletedNotification(safeName)
                     return
                 }
                 throw IllegalStateException("Downloaded temporary file is missing.")
@@ -358,9 +369,65 @@ class MainActivity : FlutterActivity() {
             }
             removeInAppDownload(downloadId)
             emitProgress(safeName, total, total, 0.0, "Download complete")
+            showDownloadCompletedNotification(safeName)
         } catch (e: Exception) {
             Log.e("MainActivity", "Failed to import downloaded model: ${e.message}", e)
             emitProgress(safeName, downloaded, total, 0.0, "Download failed: ${e.message}")
+        }
+    }
+
+    private fun showDownloadCompletedNotification(safeName: String) {
+        try {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channelId = "astralm_model_downloads"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Model Downloads",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Notifications for completed AstraLM model downloads"
+                    enableVibration(true)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                (System.currentTimeMillis() % 10000).toInt(),
+                launchIntent,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
+            val cleanModelName = safeName.replace(".gguf", "", ignoreCase = true)
+                .replace(".litertlm", "", ignoreCase = true)
+                .replace(".safetensors", "", ignoreCase = true)
+
+            val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(this, channelId)
+                    .setContentTitle("Model Download Complete")
+                    .setContentText("$cleanModelName is ready for offline chat")
+                    .setSmallIcon(applicationInfo.icon)
+                    .setContentIntent(pendingIntent)
+                    .setAutoCancel(true)
+                    .build()
+            } else {
+                @Suppress("DEPRECATION")
+                Notification.Builder(this)
+                    .setContentTitle("Model Download Complete")
+                    .setContentText("$cleanModelName is ready for offline chat")
+                    .setSmallIcon(applicationInfo.icon)
+                    .setContentIntent(pendingIntent)
+                    .setAutoCancel(true)
+                    .build()
+            }
+
+            notificationManager.notify(safeName.hashCode(), notification)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to show completion notification: ${e.message}")
         }
     }
 

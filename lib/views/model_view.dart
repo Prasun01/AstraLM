@@ -14,6 +14,7 @@ import '../services/download_service.dart';
 import '../services/inference_service.dart';
 import '../services/local_image_service.dart';
 import '../widgets/pressable_scale.dart';
+import '../widgets/provider_logo.dart';
 
 class ModelView extends GetView<ModelController> {
   const ModelView({super.key});
@@ -104,23 +105,172 @@ class ModelView extends GetView<ModelController> {
   }
 
   Widget _buildScopeToggle(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cloud = Get.find<CloudModelController>();
+
     return Obx(() {
-      return SegmentedButton<String>(
-        segments: const [
-          ButtonSegment(
-            value: 'local',
-            icon: Icon(PhosphorIconsBold.circle),
-            label: Text('Local'),
+      final isLocal = controller.modelScope.value == 'local';
+      final isOnline = controller.modelScope.value == 'online';
+      final downloadedCount = controller.downloadedCount;
+      final configuredCloudCount = cloud.providers.where((p) => cloud.isConfigured(p.id)).length;
+
+      return Row(
+        children: [
+          // ── Local Models Button ──
+          Expanded(
+            child: PressableScale(
+              onTap: () => controller.modelScope.value = 'local',
+              pressedScale: 0.96,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isLocal
+                      ? (isDark ? Colors.white : Colors.black)
+                      : (isDark ? const Color(0xFF14161E) : const Color(0xFFF0F2F6)),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: isLocal
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIconsBold.hardDrives,
+                      size: 20,
+                      color: isLocal
+                          ? (isDark ? Colors.black : Colors.white)
+                          : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Local Models',
+                            style: GoogleFonts.manrope(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: isLocal
+                                  ? (isDark ? Colors.black : Colors.white)
+                                  : (isDark ? Colors.white : Colors.black),
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            downloadedCount > 0 ? '$downloadedCount installed' : 'On-Device AI',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: isLocal
+                                  ? (isDark ? const Color(0xFF333333) : const Color(0xFFCCCCCC))
+                                  : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (isLocal)
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.black : Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          ButtonSegment(
-            value: 'online',
-            icon: Icon(PhosphorIconsBold.cloud),
-            label: Text('Online'),
+          const SizedBox(width: 10),
+
+          // ── Online Models Button ──
+          Expanded(
+            child: PressableScale(
+              onTap: () => controller.modelScope.value = 'online',
+              pressedScale: 0.96,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isOnline
+                      ? (isDark ? Colors.white : Colors.black)
+                      : (isDark ? const Color(0xFF14161E) : const Color(0xFFF0F2F6)),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: isOnline
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : [],
+                ),
+                child: Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIconsBold.cloud,
+                      size: 20,
+                      color: isOnline
+                          ? (isDark ? Colors.black : Colors.white)
+                          : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Online Models',
+                            style: GoogleFonts.manrope(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: isOnline
+                                  ? (isDark ? Colors.black : Colors.white)
+                                  : (isDark ? Colors.white : Colors.black),
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            configuredCloudCount > 0 ? '$configuredCloudCount ready' : 'Cloud APIs',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: isOnline
+                                  ? (isDark ? const Color(0xFF333333) : const Color(0xFFCCCCCC))
+                                  : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (isOnline)
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.black : Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
-        selected: {controller.modelScope.value},
-        onSelectionChanged: (selection) =>
-            controller.modelScope.value = selection.first,
       );
     });
   }
@@ -372,147 +522,104 @@ class ModelView extends GetView<ModelController> {
   }
 
   Widget _buildLocalFilterChips(BuildContext context) {
-    const categoryLabels = {
-      'all': 'All',
-      'recommended': 'Recommended',
-      'downloaded': 'Downloaded',
-      'general': 'Chat',
-      'vision': 'Vision',
-      'image': 'Image Gen',
-      'uncensored': 'Uncensored',
-    };
-
-    const sizeLabels = {
-      'all': 'All Sizes',
-      'tiny': '< 1.5 GB',
-      'small': '1.5 – 3 GB',
-      'medium': '3+ GB',
-    };
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final filterItems = [
+      (id: 'all', label: 'All Models'),
+      (id: 'downloaded', label: 'Downloaded'),
+      (id: 'recommended', label: 'Recommended'),
+      (id: 'litert', label: 'LiteRT'),
+      (id: 'gguf', label: 'GGUF'),
+      (id: 'reasoning', label: 'Reasoning'),
+      (id: 'vision', label: 'Vision'),
+      (id: 'general', label: 'Chat'),
+      (id: 'image', label: 'Image Gen'),
+      (id: 'uncensored', label: 'Uncensored'),
+    ];
+
     return Obx(() {
-      final selectedCategory = controller.localFilter.value.isEmpty
+      final selectedFilter = controller.localFilter.value.isEmpty
           ? controller.defaultLocalFilter
           : controller.localFilter.value;
-      final selectedSize = controller.localSizeFilter.value;
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Category Chips Row
-          _buildHorizontalFadingEdge(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              child: Row(
-                children: [
-                  for (final entry in categoryLabels.entries) ...[
-                    Builder(builder: (ctx) {
-                      final isSel = selectedCategory == entry.key;
-                      final bgColor = isSel
-                          ? (isDark ? Colors.white : Colors.black)
-                          : (isDark
-                              ? const Color(0xFF14161E)
-                              : const Color(0xFFF0F2F6));
-                      final fgColor = isSel
-                          ? (isDark ? Colors.black : Colors.white)
-                          : (isDark
-                              ? const Color(0xFFBAC0D0)
-                              : const Color(0xFF505462));
-                      return PressableScale(
-                        onTap: () => controller.setLocalFilter(entry.key),
-                        pressedScale: 0.93,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 13, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: bgColor,
-                            borderRadius: BorderRadius.circular(18),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            entry.value,
-                            style: GoogleFonts.manrope(
-                              fontSize: 12,
-                              fontWeight:
-                                  isSel ? FontWeight.w700 : FontWeight.w600,
-                              color: fgColor,
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: _buildHorizontalFadingEdge(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Row(
+              children: [
+                for (int i = 0; i < filterItems.length; i++) ...[
+                  Builder(builder: (ctx) {
+                    final item = filterItems[i];
+                    final isSel = selectedFilter == item.id;
+                    final count = controller.getCountForCategory(item.id);
+                    return PressableScale(
+                      onTap: () {
+                        controller.localEngineFilter.value = 'all';
+                        controller.setLocalFilter(item.id);
+                      },
+                      pressedScale: 0.94,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSel
+                              ? (isDark ? Colors.white : Colors.black)
+                              : (isDark ? const Color(0xFF14161E) : const Color(0xFFF0F2F6)),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: isSel
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.10),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : [],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              item.label,
+                              style: GoogleFonts.manrope(
+                                fontSize: 12.5,
+                                fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
+                                color: isSel
+                                    ? (isDark ? Colors.black : Colors.white)
+                                    : (isDark ? const Color(0xFFBAC0D0) : const Color(0xFF505462)),
                             ),
                           ),
-                        ),
-                      );
-                    }),
-                    const SizedBox(width: 6),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Size Filter Pills Row
-          _buildHorizontalFadingEdge(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              child: Row(
-                children: [
-                  for (final entry in sizeLabels.entries) ...[
-                    Builder(builder: (ctx) {
-                      final isSel = selectedSize == entry.key;
-                      final bgColor = isSel
-                          ? (isDark ? const Color(0xFF282D3D) : const Color(0xFFD6DBE8))
-                          : (isDark ? const Color(0xFF12141C) : const Color(0xFFEAEDF4));
-                      final fgColor = isSel
-                          ? (isDark ? Colors.white : const Color(0xFF12141D))
-                          : (isDark
-                              ? const Color(0xFF8E95A8)
-                              : const Color(0xFF6B7284));
-                      return PressableScale(
-                        onTap: () => controller.setSizeFilter(entry.key),
-                        pressedScale: 0.94,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: bgColor,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
+                          if (count > 0) ...[
+                            const SizedBox(width: 5),
+                            Text(
+                              '$count',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: isSel
+                                    ? (isDark ? const Color(0xFF333333) : const Color(0xFFD0D0D0))
+                                    : (isDark ? const Color(0xFF7E8494) : const Color(0xFF8E95A4)),
                               ),
-                            ],
-                          ),
-                          child: Text(
-                            entry.value,
-                            style: GoogleFonts.manrope(
-                              fontSize: 11,
-                              fontWeight: isSel ? FontWeight.w700 : FontWeight.w500,
-                              color: fgColor,
                             ),
-                          ),
-                        ),
-                      );
-                    }),
-                    const SizedBox(width: 6),
-                  ],
-                ],
-              ),
-            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+                if (i < filterItems.length - 1) const SizedBox(width: 8),
+              ],
+            ],
           ),
-        ],
-      );
-    });
-  }
+        ),
+      ),
+    );
+  });
+}
 
   Widget _buildEmptyLocalState(BuildContext context) {
     final filter = controller.localFilter.value.isEmpty
@@ -1134,9 +1241,116 @@ class ModelView extends GetView<ModelController> {
           const SizedBox(height: 12),
           for (final provider in cloud.providers)
             _buildOnlineProviderRow(context, cloud, provider),
+          const SizedBox(height: 24),
+          _buildOnlineApiFaq(context),
         ],
       );
     });
+  }
+
+  Widget _buildOnlineApiFaq(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final faqs = [
+      (
+        q: 'What is an API Key & why is it needed?',
+        a: 'An API key is a secure credential from an AI cloud provider (such as DeepSeek, Google, OpenAI, Anthropic, or OpenRouter). It allows AstraLM to communicate directly with their cloud models from your device without any middleman.',
+      ),
+      (
+        q: 'How do I get an API Key for beginners?',
+        a: '1. Google Gemini: Visit aistudio.google.com, sign in with your Google account, and click "Get API Key" (Generous free tier available).\n\n2. DeepSeek: Visit platform.deepseek.com, register, and create an API Key under API Keys menu.\n\n3. OpenRouter: Visit openrouter.ai, create a free account, and generate a key to access 200+ models (including free models like Gemini Flash, Llama, and Mistral).\n\n4. Groq: Visit console.groq.com for ultra-fast, free cloud inference.\n\n5. OpenAI / Anthropic: Visit platform.openai.com or console.anthropic.com to generate keys.',
+      ),
+      (
+        q: 'How do I connect my API Key in AstraLM?',
+        a: '1. Tap any provider card above (e.g. DeepSeek or Google Gemini).\n2. Paste your API key into the text field and tap Save.\n3. Tap "Fetch Models" to load all available models, select your favorite model, and start chatting immediately!',
+      ),
+      (
+        q: 'Are my API Keys secure and private?',
+        a: 'Yes, 100%. Your API keys are encrypted and stored solely on your device in secure local storage. AstraLM communicates peer-to-peer directly with the official provider API endpoints. We do not operate proxy servers or store your keys.',
+      ),
+      (
+        q: 'Can I connect my own custom or local server?',
+        a: 'Yes! Select the "Custom OpenAI-Compatible" provider at the bottom to connect your own local Ollama, LM Studio, vLLM, LocalAI, or custom OpenAI-compatible server endpoint.',
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            PhosphorIcon(
+              PhosphorIconsBold.question,
+              size: 16,
+              color: isDark ? Colors.white : Colors.black,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'API & CLOUD GUIDE',
+              style: GoogleFonts.manrope(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.0,
+                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Everything you need to know about setting up and using cloud AI models in AstraLM.',
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            color: isDark ? const Color(0xFF7E8494) : const Color(0xFF8E95A4),
+          ),
+        ),
+        const SizedBox(height: 12),
+        for (final faq in faqs)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF12141D) : const Color(0xFFF3F5F9),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                leading: PhosphorIcon(
+                  PhosphorIconsBold.info,
+                  size: 18,
+                  color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074),
+                ),
+                title: Text(
+                  faq.q,
+                  style: GoogleFonts.manrope(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF141620),
+                  ),
+                ),
+                iconColor: isDark ? Colors.white : Colors.black,
+                collapsedIconColor: isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074),
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      faq.a,
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        height: 1.55,
+                        color: isDark ? const Color(0xFFCBD2E1) : const Color(0xFF3B4050),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        const SizedBox(height: 24),
+      ],
+    );
   }
 
   Widget _buildOnlineProviderRow(
@@ -1192,12 +1406,11 @@ class ModelView extends GetView<ModelController> {
                           width: 1,
                         ),
                       ),
-                      child: Icon(
-                        provider.icon,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFFE2E6F2)
-                            : const Color(0xFF161822),
-                        size: 21,
+                      child: Center(
+                        child: ProviderLogo(
+                          providerId: provider.id,
+                          size: 22,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1346,7 +1559,12 @@ class ModelView extends GetView<ModelController> {
                               Theme.of(context).colorScheme.surfaceContainerHigh,
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Icon(provider.icon, color: accent, size: 26),
+                        child: Center(
+                          child: ProviderLogo(
+                            providerId: provider.id,
+                            size: 28,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -1497,12 +1715,11 @@ class ModelView extends GetView<ModelController> {
                           : const Color(0xFFD4DAE6),
                     ),
                   ),
-                  child: Icon(
-                    provider.icon,
-                    size: 18,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFFE2E6F2)
-                        : const Color(0xFF161822),
+                  child: Center(
+                    child: ProviderLogo(
+                      providerId: provider.id,
+                      size: 20,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1600,7 +1817,12 @@ class ModelView extends GetView<ModelController> {
               color: Theme.of(context).colorScheme.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(provider.icon, color: accent, size: 29),
+            child: Center(
+              child: ProviderLogo(
+                providerId: provider.id,
+                size: 32,
+              ),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(

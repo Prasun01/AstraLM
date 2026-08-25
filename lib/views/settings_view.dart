@@ -62,7 +62,6 @@ class SettingsView extends GetView<SettingsController> {
             _monoGroupedCard(context, children: [
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.palette),
                 title: 'Appearance & Theme',
                 subtitle: null,
                 trailing: _chevronTrailing(isDark),
@@ -77,7 +76,6 @@ class SettingsView extends GetView<SettingsController> {
             _monoGroupedCard(context, children: [
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.cpu),
                 title: 'Inference & Model Parameters',
                 subtitle: null,
                 trailing: _chevronTrailing(isDark),
@@ -86,7 +84,6 @@ class SettingsView extends GetView<SettingsController> {
               ),
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.cloud),
                 title: 'Cloud Providers & API Keys',
                 subtitle: null,
                 trailing: _chevronTrailing(isDark),
@@ -95,7 +92,6 @@ class SettingsView extends GetView<SettingsController> {
               ),
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.database),
                 title: 'Local API Server',
                 subtitle: null,
                 trailing: _chevronTrailing(isDark),
@@ -110,7 +106,6 @@ class SettingsView extends GetView<SettingsController> {
             _monoGroupedCard(context, children: [
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.deviceMobile),
                 title: 'Device Hardware & Calibration',
                 subtitle: '${deviceInfo.tierDescription} · ${deviceInfo.availableRamGB.value.toStringAsFixed(1)}GB RAM Available',
                 trailing: _chevronTrailing(isDark),
@@ -119,7 +114,6 @@ class SettingsView extends GetView<SettingsController> {
               ),
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.terminal),
                 title: 'Diagnostics & Live Logs',
                 subtitle: null,
                 trailing: _chevronTrailing(isDark),
@@ -134,7 +128,6 @@ class SettingsView extends GetView<SettingsController> {
             _monoGroupedCard(context, children: [
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.sparkle),
                 title: 'About AstraLM',
                 subtitle: null,
                 trailing: _chevronTrailing(isDark),
@@ -190,7 +183,6 @@ class AppearanceSubView extends GetView<SettingsController> {
             _monoGroupedCard(context, children: [
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.sun),
                 title: 'Light',
                 trailing: controller.themeMode.value == ThemeMode.light
                     ? PhosphorIcon(PhosphorIconsBold.check,
@@ -202,7 +194,6 @@ class AppearanceSubView extends GetView<SettingsController> {
               ),
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.moon),
                 title: 'Dark',
                 trailing: controller.themeMode.value == ThemeMode.dark
                     ? PhosphorIcon(PhosphorIconsBold.check,
@@ -214,7 +205,6 @@ class AppearanceSubView extends GetView<SettingsController> {
               ),
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.sunDim),
                 title: 'System',
                 trailing: controller.themeMode.value == ThemeMode.system
                     ? PhosphorIcon(PhosphorIconsBold.check,
@@ -274,7 +264,6 @@ class InferenceSettingsSubView extends GetView<SettingsController> {
             _monoGroupedCard(context, children: [
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.cpu),
                 title: 'Local On-Device Engine',
                 trailing: controller.inferenceMode.value == 'local'
                     ? PhosphorIcon(PhosphorIconsBold.check,
@@ -286,7 +275,6 @@ class InferenceSettingsSubView extends GetView<SettingsController> {
               ),
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.gitBranch),
                 title: 'Cloud API Provider',
                 trailing: controller.inferenceMode.value == 'cloud'
                     ? PhosphorIcon(PhosphorIconsBold.check,
@@ -299,54 +287,96 @@ class InferenceSettingsSubView extends GetView<SettingsController> {
             ]),
             const SizedBox(height: 22),
 
-            // ── GLOBAL SYSTEM PROMPT ──
-            _sectionLabel(context, 'GLOBAL SYSTEM PROMPT'),
+            // ── DEVELOPER & SYSTEM INSTRUCTIONS ──
+            _sectionLabel(context, 'DEVELOPER & SYSTEM INSTRUCTIONS'),
             _monoGroupedCard(context, children: [
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Quick Preset Chips
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _developerPresetChip(
+                            '⚡ Default',
+                            () => controller.setGlobalSystemPrompt(AppConstants.systemPrompt),
+                            isDark,
+                          ),
+                          const SizedBox(width: 8),
+                          _developerPresetChip(
+                            '💻 Senior Dev',
+                            () => controller.setGlobalSystemPrompt(SettingsController.developerPromptSeniorDev),
+                            isDark,
+                          ),
+                          const SizedBox(width: 8),
+                          _developerPresetChip(
+                            '✂️ Concise',
+                            () => controller.setGlobalSystemPrompt(SettingsController.developerPromptConcise),
+                            isDark,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: controller.globalSystemPromptController,
-                      minLines: 3,
-                      maxLines: 6,
-                      style: GoogleFonts.inter(
-                        fontSize: 13.5,
+                      minLines: 4,
+                      maxLines: 8,
+                      style: GoogleFonts.firaCode(
+                        fontSize: 12.5,
+                        height: 1.45,
                         color: isDark ? Colors.white : Colors.black,
                       ),
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: isDark ? const Color(0xFF181818) : const Color(0xFFEFEFEF),
-                        hintText: AppConstants.systemPrompt,
+                        hintText: 'Enter custom developer directives or system prompt…',
                         hintStyle: GoogleFonts.inter(
-                          fontSize: 13,
+                          fontSize: 12,
                           color: isDark ? const Color(0xFF666666) : const Color(0xFF999999),
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        suffixIcon: IconButton(
-                          icon: PhosphorIcon(
-                            PhosphorIconsBold.checkCircle,
-                            size: 20,
-                            color: isDark ? Colors.white : Colors.black,
-                          ),
-                          onPressed: () => controller.setGlobalSystemPrompt(
-                            controller.globalSystemPromptController.text,
-                          ),
-                        ),
                       ),
-                      onSubmitted: (v) => controller.setGlobalSystemPrompt(v),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => controller.setGlobalSystemPrompt(AppConstants.systemPrompt),
+                          child: Text(
+                            'Reset Default',
+                            style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF8E95A8)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: () {
+                            controller.setGlobalSystemPrompt(controller.globalSystemPromptController.text);
+                            Get.snackbar(
+                              'Instructions Saved',
+                              'Developer system directives updated.',
+                              snackPosition: SnackPosition.BOTTOM,
+                              duration: const Duration(seconds: 2),
+                              margin: const EdgeInsets.all(12),
+                            );
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: isDark ? Colors.white : Colors.black,
+                            foregroundColor: isDark ? Colors.black : Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: Text('Save Directives',
+                              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -369,6 +399,27 @@ class InferenceSettingsSubView extends GetView<SettingsController> {
             _buildImageGenerationCard(context, controller),
             const SizedBox(height: 48),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _developerPresetChip(String label, VoidCallback onTap, bool isDark) {
+    return PressableScale(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF222222) : const Color(0xFFE5E5E5),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : Colors.black,
+          ),
         ),
       ),
     );
@@ -428,7 +479,6 @@ class CloudProvidersSubView extends GetView<SettingsController> {
               for (var i = 0; i < providers.length; i++)
                 _monoListTile(
                   context,
-                  leading: _iconBox(context, providers[i].icon),
                   title: providers[i].name,
                   trailing: controller.cloudProvider.value == providers[i].id
                       ? PhosphorIcon(PhosphorIconsBold.check,
@@ -704,8 +754,8 @@ class DeviceCalibrationSubView extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    _iconBox(context, PhosphorIconsBold.deviceMobile),
-                    const SizedBox(width: 14),
+                    
+                    
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -735,14 +785,12 @@ class DeviceCalibrationSubView extends StatelessWidget {
               const Divider(height: 1),
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.cpu),
                 title: 'Recommended Context Size',
                 subtitle: '${device.recommendedContextSize} tokens',
                 showDivider: true,
               ),
               _monoListTile(
                 context,
-                leading: _iconBox(context, PhosphorIconsBold.tag),
                 title: 'Recommended Max Tokens',
                 subtitle: '${device.recommendedMaxTokens} tokens',
                 showDivider: false,
@@ -755,7 +803,6 @@ class DeviceCalibrationSubView extends StatelessWidget {
               _monoGroupedCard(context, children: [
                 _monoListTile(
                   context,
-                  leading: _iconBox(context, PhosphorIconsBold.lightning),
                   title: soc.displayName,
                   subtitle: 'Recommended: ${soc.recommendedQuant}',
                   showDivider: false,
@@ -841,62 +888,34 @@ class AboutSubView extends GetView<SettingsController> {
           _monoGroupedCard(context, children: [
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF181818) : const Color(0xFFEEEEEE),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(13),
-                      child: Image.asset(
-                        'assets/icons/appicon.png',
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => PhosphorIcon(
-                          PhosphorIconsBold.sparkle,
-                          size: 26,
-                          color: isDark ? Colors.white : Colors.black,
-                        ),
-                      ),
+                  Text(
+                    'AstraLM',
+                    style: GoogleFonts.manrope(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
-                  const SizedBox(width: 14),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'AstraLM',
-                        style: GoogleFonts.manrope(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : Colors.black,
-                        ),
+                  const SizedBox(height: 3),
+                  Obx(
+                    () => Text(
+                      controller.appVersion.value.isEmpty
+                          ? 'Version 1.0.6 · Local AI Platform'
+                          : 'v${controller.appVersion.value} · Local AI Platform',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        color: isDark ? const Color(0xFF888888) : const Color(0xFF666666),
                       ),
-                      const SizedBox(height: 2),
-                      Obx(
-                        () => Text(
-                          controller.appVersion.value.isEmpty
-                              ? 'Version 1.0.6 · Local AI Platform'
-                              : 'v${controller.appVersion.value} · Local AI Platform',
-                          style: GoogleFonts.inter(
-                            fontSize: 12.5,
-                            color: isDark ? const Color(0xFF888888) : const Color(0xFF666666),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
             _monoListTile(
               context,
-              leading: _iconBox(context, PhosphorIconsBold.arrowsClockwise),
               title: 'Check for Updates',
               subtitle: 'GitHub Releases · Prasun01/AstraLM',
               trailing: Obx(() {
@@ -923,7 +942,6 @@ class AboutSubView extends GetView<SettingsController> {
           _monoGroupedCard(context, children: [
             _monoListTile(
               context,
-              leading: _iconBox(context, PhosphorIconsBold.sparkle),
               title: 'Welcome Walkthrough',
               subtitle: null,
               trailing: _chevronTrailing(isDark),
@@ -941,7 +959,6 @@ class AboutSubView extends GetView<SettingsController> {
             ),
             _monoListTile(
               context,
-              leading: _iconBox(context, PhosphorIconsBold.scales),
               title: 'Licenses & Legal Policy',
               subtitle: null,
               trailing: _chevronTrailing(isDark),
@@ -1049,31 +1066,14 @@ Widget _monoListTile(
       if (showDivider)
         Divider(
           height: 1,
-          indent: 60,
+          indent: 16,
           color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFEDEDED),
         ),
     ],
   );
 }
 
-Widget _iconBox(BuildContext context, PhosphorIconData icon) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  return Container(
-    width: 34,
-    height: 34,
-    decoration: BoxDecoration(
-      color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFEEEEEE),
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Center(
-      child: PhosphorIcon(
-        icon,
-        size: 17,
-        color: isDark ? Colors.white : Colors.black,
-      ),
-    ),
-  );
-}
+
 
 Widget _sectionLabel(BuildContext context, String title) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1114,7 +1114,6 @@ Widget _buildLiteRtCard(BuildContext context, SettingsController controller) {
     for (var i = 0; i < modes.length; i++)
       _monoListTile(
         context,
-        leading: _iconBox(context, modes[i].icon),
         title: modes[i].title,
         trailing: controller.liteRtPerformanceMode.value == modes[i].value
             ? PhosphorIcon(PhosphorIconsBold.check,
@@ -1247,7 +1246,7 @@ Widget _buildImageGenerationCard(BuildContext context, SettingsController contro
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          _iconBox(context, PhosphorIconsBold.image),
+          
           const SizedBox(width: 12),
           Text(
             'Image Steps',
@@ -1290,7 +1289,7 @@ Widget _buildImageGenerationCard(BuildContext context, SettingsController contro
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          _iconBox(context, PhosphorIconsBold.frameCorners),
+          
           const SizedBox(width: 12),
           Text(
             'Image Size',
@@ -1358,12 +1357,7 @@ Widget _buildImageGenerationCard(BuildContext context, SettingsController contro
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          _iconBox(
-            context,
-            selectedBackend == Backend.cpu
-                ? PhosphorIconsBold.cpu
-                : PhosphorIconsBold.lightning,
-          ),
+          
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -1434,7 +1428,7 @@ Widget _modelParameterSlider(
     padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        _iconBox(context, icon),
+        
         const SizedBox(width: 12),
         Text(
           label,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../controllers/model_controller.dart';
 import '../core/constants.dart';
 import '../services/hive_service.dart';
 import '../widgets/pressable_scale.dart';
@@ -24,47 +25,46 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
   late final AnimationController _pulseController;
   int _currentPage = 0;
 
-  final List<_MonochromeGuideItem> _items = [
-    const _MonochromeGuideItem(
-      tag: '01 / ARCHITECTURE',
-      badge: 'WELCOME TO ASTRALM',
-      title: 'Next-Gen Intelligence.\nUncompromising Privacy.',
-      description:
-          'Experience state-of-the-art AI right in your hands. Fast, completely offline-capable, and universally extensible across local hardware and global cloud APIs.',
-      icon: PhosphorIconsBold.sparkle,
-    ),
-    const _MonochromeGuideItem(
-      tag: '02 / LOCAL INFERENCE',
+  final List<_WalkthroughSlideData> _slides = [
+    const _WalkthroughSlideData(
+      stepNumber: '01 / 03',
       badge: '100% PRIVATE & OFFLINE',
-      title: 'On-Device Engine.\nZero Telemetry.',
+      title: 'On-Device AI.\nZero Data Leaves Your Phone.',
       description:
-          'Run cutting-edge GGUF & LiteRT open-weight language models locally on your phone. Your conversations, prompts, and personal data never leave your physical device.',
-      icon: PhosphorIconsBold.cpu,
+          'Run cutting-edge LiteRT & GGUF open-weight models directly on your hardware. Fast, confidential, and completely functional without internet.',
+      icon: PhosphorIconsBold.shieldCheck,
+      featurePills: [
+        'Zero Telemetry',
+        'Hardware Accelerated',
+        'Offline Capable',
+      ],
     ),
-    const _MonochromeGuideItem(
-      tag: '03 / CLOUD ECOSYSTEM',
-      badge: 'UNIVERSAL CONNECTIVITY',
-      title: 'Connect Any Provider.\nYour Own Keys.',
+    const _WalkthroughSlideData(
+      stepNumber: '02 / 03',
+      badge: 'UNIVERSAL ECOSYSTEM',
+      title: 'Connect Flagship Models.\nDirect & Peer-to-Peer.',
       description:
-          'Switch seamlessly to Claude, OpenAI, OpenRouter, DeepSeek, Kimi, Nvidia NIM, or any custom OpenAI-compatible endpoint with your private API credentials.',
-      icon: PhosphorIconsBold.gitBranch,
+          'Plug in your own API keys for Google Gemini, DeepSeek, OpenAI, Claude, Groq, or OpenRouter. Your credentials are encrypted locally on device.',
+      icon: PhosphorIconsBold.key,
+      featurePills: [
+        'Client-Side Keys',
+        '200+ Cloud Models',
+        'Zero Middleman',
+      ],
     ),
-    const _MonochromeGuideItem(
-      tag: '04 / MULTIMODAL & CREATIVE',
-      badge: 'VISION & ART ENGINE',
-      title: 'Vision & Generation.\nAll in One Place.',
+    const _WalkthroughSlideData(
+      stepNumber: '03 / 03',
+      badge: 'GET STARTED',
+      title: 'Choose How You Want\nto Experience AstraLM.',
       description:
-          'Inspect documents and analyze photos with multimodal vision models, or generate high-fidelity art on-device with built-in Stable Diffusion isolate engines.',
-      icon: PhosphorIconsBold.palette,
-    ),
-    const _MonochromeGuideItem(
-      tag: '05 / READY',
-      badge: 'OPTIMIZED FOR HARDWARE',
-      title: 'Tailored Performance\nfor Your Device.',
-      description:
-          'AstraLM has automatically benchmarked and optimized context size, RAM allocation, and GPU acceleration for your hardware.',
-      icon: PhosphorIconsBold.rocket,
+          'Download an ultra-fast local starter model for instant offline intelligence, or connect your favorite cloud API key in seconds.',
+      icon: PhosphorIconsBold.sparkle,
       isFinal: true,
+      featurePills: [
+        'Local Offline Chat',
+        'Cloud Flagship Power',
+        'Artifacts & Canvas',
+      ],
     ),
   ];
 
@@ -73,16 +73,14 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
     super.initState();
     _pageController = PageController();
 
-    // Slow ambient rotation controller (18 seconds per full cycle)
     _ambientController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 18),
+      duration: const Duration(seconds: 16),
     )..repeat();
 
-    // Slow breathing pulse animation (4.5 seconds ping-pong)
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4500),
+      duration: const Duration(milliseconds: 4000),
     )..repeat(reverse: true);
   }
 
@@ -102,86 +100,89 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
     nextAction?.call();
   }
 
+  void _openModelsWithScope(String scope) {
+    _completeGuide(
+      nextAction: () {
+        try {
+          final modelCtrl = Get.find<ModelController>();
+          modelCtrl.modelScope.value = scope;
+        } catch (_) {}
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ModelView()),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF090A0E),
+      backgroundColor: const Color(0xFF08090C),
       body: Stack(
         children: [
-          // ── Layer 1: Animated Space Gray & Graphite Ambient Canvas ──
+          // ── Layer 1: Ambient Obsidian Canvas ──
           Positioned.fill(
             child: AnimatedBuilder(
               animation: _ambientController,
               builder: (context, child) {
-                final t = _ambientController.value * 2 * math.pi;
+                final phase = _ambientController.value * 2 * math.pi;
                 return CustomPaint(
-                  painter: _MonochromeAmbientPainter(phase: t),
+                  painter: _ObsidianAmbientPainter(phase: phase),
                 );
               },
             ),
           ),
 
-          // ── Layer 2: Subtle Frosted Glass Depth Blur ──
+          // ── Layer 2: Frosted Glass Blur ──
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 45, sigmaY: 45),
+              filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
               child: Container(
-                color: const Color(0xFF090A0E).withValues(alpha: 0.6),
+                color: const Color(0xFF08090C).withValues(alpha: 0.55),
               ),
             ),
           ),
 
-          // ── Layer 3: Main Guide Carousel & Controls ──
+          // ── Layer 3: Main Carousel & Controls ──
           SafeArea(
             child: Column(
               children: [
-                // Top Header (Step Tag & Skip button)
+                // Top Header (Step Counter & Skip Button)
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                         decoration: BoxDecoration(
                           color: const Color(0xFF141620),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: const Color(0xFF262B3B),
-                            width: 1,
-                          ),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          _items[_currentPage].tag,
+                          _slides[_currentPage].stepNumber,
                           style: GoogleFonts.manrope(
-                            fontSize: 11,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: 1.1,
+                            letterSpacing: 1.0,
                             color: const Color(0xFFBAC0D0),
                           ),
                         ),
                       ),
-                      if (_currentPage < _items.length - 1)
+                      if (_currentPage < _slides.length - 1)
                         PressableScale(
                           onTap: () => _completeGuide(),
                           pressedScale: 0.94,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF13151D),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: const Color(0xFF222634),
-                                width: 1,
-                              ),
+                              color: const Color(0xFF141620),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                             child: Text(
                               'Skip',
                               style: GoogleFonts.manrope(
-                                fontSize: 13,
+                                fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFF8E95A8),
                               ),
@@ -196,78 +197,248 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
                 Expanded(
                   child: PageView.builder(
                     controller: _pageController,
-                    itemCount: _items.length,
+                    itemCount: _slides.length,
+                    physics: const BouncingScrollPhysics(),
                     onPageChanged: (index) {
                       setState(() {
                         _currentPage = index;
                       });
                     },
                     itemBuilder: (context, index) {
-                      return _buildSlide(context, _items[index]);
+                      return _buildSlide(context, _slides[index]);
                     },
                   ),
                 ),
 
                 // Bottom Indicators & Action Buttons
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  padding: const EdgeInsets.fromLTRB(24, 4, 24, 16),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Smooth Expanding Pill Page Indicators
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(_items.length, (idx) {
+                        children: List.generate(_slides.length, (idx) {
                           final isSelected = idx == _currentPage;
                           return AnimatedContainer(
-                            duration: const Duration(milliseconds: 360),
+                            duration: const Duration(milliseconds: 320),
                             curve: Curves.easeOutCubic,
                             margin: const EdgeInsets.symmetric(horizontal: 4),
-                            height: 5,
-                            width: isSelected ? 30 : 6,
+                            height: 4,
+                            width: isSelected ? 26 : 6,
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? Colors.white
-                                  : const Color(0xFF262B3B),
+                                  : const Color(0xFF1D202C),
                               borderRadius: BorderRadius.circular(3),
                             ),
                           );
                         }),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 14),
 
-                      // Action Button(s)
-                      if (_items[_currentPage].isFinal)
+                      // Final Step Action Choices or Continue Button
+                      if (_slides[_currentPage].isFinal)
                         Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            _buildSolidWhiteButton(
-                              label: 'Explore Local Models',
-                              icon: PhosphorIconsBold.arrowDown,
-                              onTap: () => _completeGuide(
-                                nextAction: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                      builder: (_) => const ModelView()),
+                            // 1. Download Starter Model Card (Solid White, No border)
+                            PressableScale(
+                              onTap: () => _openModelsWithScope('local'),
+                              pressedScale: 0.96,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.white.withValues(alpha: 0.16),
+                                      blurRadius: 18,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF090A0E),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Center(
+                                        child: PhosphorIcon(
+                                          PhosphorIconsBold.arrowDown,
+                                          size: 17,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Download Starter Model',
+                                            style: GoogleFonts.manrope(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              color: const Color(0xFF090A0E),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 1),
+                                          Text(
+                                            'Qwen 2.5 0.6B · 586 MB · Instant Offline AI',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: const Color(0xFF555B6C),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const PhosphorIcon(
+                                      PhosphorIconsBold.caretRight,
+                                      size: 15,
+                                      color: Color(0xFF090A0E),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            _buildGhostButton(
-                              label: 'Start Chatting',
+                            const SizedBox(height: 8),
+
+                            // 2. Connect Cloud API Card (Solid Dark, No border)
+                            PressableScale(
+                              onTap: () => _openModelsWithScope('cloud'),
+                              pressedScale: 0.96,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF141722),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1E2232),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Center(
+                                        child: PhosphorIcon(
+                                          PhosphorIconsBold.key,
+                                          size: 17,
+                                          color: Color(0xFFCBD2E1),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Connect Cloud API Key',
+                                            style: GoogleFonts.manrope(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 1),
+                                          Text(
+                                            'Gemini, DeepSeek, OpenAI, OpenRouter',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: const Color(0xFF8E95A8),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const PhosphorIcon(
+                                      PhosphorIconsBold.caretRight,
+                                      size: 15,
+                                      color: Color(0xFF8E95A8),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+
+                            // 3. Ghost Button: Start Chatting Directly
+                            PressableScale(
                               onTap: () => _completeGuide(),
+                              pressedScale: 0.96,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                child: Text(
+                                  'Explore On My Own ➔',
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF8E95A8),
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         )
                       else
-                        _buildSolidWhiteButton(
-                          label: 'Continue',
-                          icon: PhosphorIconsBold.arrowRight,
+                        PressableScale(
                           onTap: () {
                             _pageController.nextPage(
-                              duration: const Duration(milliseconds: 420),
+                              duration: const Duration(milliseconds: 380),
                               curve: Curves.easeInOutCubic,
                             );
                           },
+                          pressedScale: 0.95,
+                          child: Container(
+                            width: double.infinity,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.white.withValues(alpha: 0.16),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Continue',
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF08090C),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const PhosphorIcon(
+                                  PhosphorIconsBold.arrowRight,
+                                  size: 18,
+                                  color: Color(0xFF08090C),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                     ],
                   ),
@@ -280,13 +451,15 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
     );
   }
 
-  Widget _buildSlide(BuildContext context, _MonochromeGuideItem item) {
-    return Padding(
+  Widget _buildSlide(BuildContext context, _WalkthroughSlideData item) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Slow Floating Animated Monochrome Icon Badge with Orbit Rings
+          const SizedBox(height: 12),
+          // Animated Obsidian Glass Icon Emblem
           AnimatedBuilder(
             animation: Listenable.merge([_ambientController, _pulseController]),
             builder: (context, child) {
@@ -297,61 +470,57 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
               return Transform.scale(
                 scale: breath,
                 child: SizedBox(
-                  width: 140,
-                  height: 140,
+                  width: 124,
+                  height: 124,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // Animated Orbit Ring 1 (Forward rotation)
+                      // Precision Orbit Ring 1 (Clockwise)
                       Transform.rotate(
                         angle: rot,
                         child: CustomPaint(
-                          size: const Size(130, 130),
-                          painter: _OrbitRingPainter(
-                            color: const Color(0xFF32384C),
+                          size: const Size(116, 116),
+                          painter: _WalkthroughOrbitPainter(
+                            color: const Color(0xFF202534),
                             dotColor: Colors.white,
                           ),
                         ),
                       ),
-                      // Animated Orbit Ring 2 (Counter rotation)
+                      // Precision Orbit Ring 2 (Counter-Clockwise)
                       Transform.rotate(
-                        angle: -rot * 0.7,
+                        angle: -rot * 0.75,
                         child: CustomPaint(
-                          size: const Size(106, 106),
-                          painter: _OrbitRingPainter(
-                            color: const Color(0xFF222634),
+                          size: const Size(94, 94),
+                          painter: _WalkthroughOrbitPainter(
+                            color: const Color(0xFF161924),
                             dotColor: const Color(0xFF8E95A8),
                           ),
                         ),
                       ),
-                      // Core Monochrome Frosted Glass Card
+                      // Core Frosted Obsidian Emblem (Borderless)
                       Container(
-                        width: 78,
-                        height: 78,
+                        width: 68,
+                        height: 68,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF141620),
-                          border: Border.all(
-                            color: const Color(0xFF383E54),
-                            width: 1.5,
-                          ),
+                          color: const Color(0xFF141722),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.6),
-                              blurRadius: 20,
+                              blurRadius: 24,
                               offset: const Offset(0, 8),
                             ),
                             BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.05),
-                              blurRadius: 10,
+                              color: Colors.white.withValues(alpha: 0.06),
+                              blurRadius: 12,
                               spreadRadius: 1,
                             ),
                           ],
                         ),
                         child: Center(
-                          child: Icon(
+                          child: PhosphorIcon(
                             item.icon,
-                            size: 36,
+                            size: 30,
                             color: Colors.white,
                           ),
                         ),
@@ -362,205 +531,153 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
               );
             },
           ),
-          const SizedBox(height: 38),
+          const SizedBox(height: 24),
 
-          // Minimalist Monochrome Pill Badge
+          // Minimalist Badge Pill (Borderless)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
             decoration: BoxDecoration(
-              color: const Color(0xFF161822),
+              color: const Color(0xFF141722),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0xFF2C3144),
-                width: 1,
-              ),
             ),
             child: Text(
               item.badge,
               style: GoogleFonts.manrope(
-                fontSize: 11,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.2,
                 color: const Color(0xFFE2E6F2),
               ),
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
 
           // Title
           Text(
             item.title,
             textAlign: TextAlign.center,
             style: GoogleFonts.manrope(
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
+              fontSize: 23,
+              fontWeight: FontWeight.w800,
               color: Colors.white,
-              letterSpacing: -0.4,
-              height: 1.28,
+              letterSpacing: -0.5,
+              height: 1.25,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
 
           // Description
           Text(
             item.description,
             textAlign: TextAlign.center,
-            style: GoogleFonts.openSans(
-              fontSize: 14,
+            style: GoogleFonts.inter(
+              fontSize: 13,
               fontWeight: FontWeight.w400,
-              color: const Color(0xFF9096A8),
-              height: 1.52,
+              color: const Color(0xFF8E95A8),
+              height: 1.5,
             ),
           ),
+          const SizedBox(height: 16),
+
+          // Feature Highlights Pills (Borderless)
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
+            children: [
+              for (final pill in item.featurePills)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF12141E),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    pill,
+                    style: GoogleFonts.inter(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFBAC0CC),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
         ],
       ),
     );
   }
-
-  Widget _buildSolidWhiteButton({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return PressableScale(
-      onTap: onTap,
-      pressedScale: 0.95,
-      child: Container(
-        width: double.infinity,
-        height: 52,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.white.withValues(alpha: 0.18),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              style: GoogleFonts.manrope(
-                fontSize: 15.5,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF090A0E),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Icon(icon, color: const Color(0xFF090A0E), size: 19),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGhostButton({
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return PressableScale(
-      onTap: onTap,
-      pressedScale: 0.96,
-      child: Container(
-        width: double.infinity,
-        height: 48,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          color: const Color(0xFF141620),
-          border: Border.all(
-            color: const Color(0xFF262B3B),
-            width: 1,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: GoogleFonts.manrope(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFFE2E6F2),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
-class _MonochromeGuideItem {
-  final String tag;
+class _WalkthroughSlideData {
+  final String stepNumber;
   final String badge;
   final String title;
   final String description;
-  final IconData icon;
+  final PhosphorIconData icon;
+  final List<String> featurePills;
   final bool isFinal;
 
-  const _MonochromeGuideItem({
-    required this.tag,
+  const _WalkthroughSlideData({
+    required this.stepNumber,
     required this.badge,
     required this.title,
     required this.description,
     required this.icon,
+    this.featurePills = const [],
     this.isFinal = false,
   });
 }
 
-/// Subtle, deep Space Gray / Monochrome Ambient Flow Painter
-class _MonochromeAmbientPainter extends CustomPainter {
+class _ObsidianAmbientPainter extends CustomPainter {
   final double phase;
-  _MonochromeAmbientPainter({required this.phase});
+  _ObsidianAmbientPainter({required this.phase});
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final bgPaint = Paint()..color = const Color(0xFF090A0E);
+    final bgPaint = Paint()..color = const Color(0xFF08090C);
     canvas.drawRect(rect, bgPaint);
 
-    // Subtle Graphite Glow Node 1
     final node1 = Offset(
-      size.width * (0.65 + 0.12 * math.cos(phase)),
+      size.width * (0.7 + 0.1 * math.cos(phase)),
       size.height * (0.28 + 0.08 * math.sin(phase)),
     );
     final paint1 = Paint()
       ..shader = RadialGradient(
         colors: [
-          const Color(0xFF1F2332).withValues(alpha: 0.7),
+          const Color(0xFF1E2232).withValues(alpha: 0.65),
           Colors.transparent,
         ],
-      ).createShader(Rect.fromCircle(center: node1, radius: size.width * 0.7));
-    canvas.drawCircle(node1, size.width * 0.7, paint1);
+      ).createShader(Rect.fromCircle(center: node1, radius: size.width * 0.75));
+    canvas.drawCircle(node1, size.width * 0.75, paint1);
 
-    // Subtle Slate Glow Node 2
     final node2 = Offset(
       size.width * (0.25 + 0.1 * math.sin(phase * 1.2)),
-      size.height * (0.68 + 0.1 * math.cos(phase * 1.1)),
+      size.height * (0.72 + 0.08 * math.cos(phase * 1.1)),
     );
     final paint2 = Paint()
       ..shader = RadialGradient(
         colors: [
-          const Color(0xFF161822).withValues(alpha: 0.8),
+          const Color(0xFF141722).withValues(alpha: 0.75),
           Colors.transparent,
         ],
-      ).createShader(Rect.fromCircle(center: node2, radius: size.width * 0.75));
-    canvas.drawCircle(node2, size.width * 0.75, paint2);
+      ).createShader(Rect.fromCircle(center: node2, radius: size.width * 0.8));
+    canvas.drawCircle(node2, size.width * 0.8, paint2);
   }
 
   @override
-  bool shouldRepaint(covariant _MonochromeAmbientPainter oldDelegate) {
+  bool shouldRepaint(covariant _ObsidianAmbientPainter oldDelegate) {
     return oldDelegate.phase != phase;
   }
 }
 
-/// Precision Orbit Ring Painter with subtle indicator node
-class _OrbitRingPainter extends CustomPainter {
+class _WalkthroughOrbitPainter extends CustomPainter {
   final Color color;
   final Color dotColor;
 
-  _OrbitRingPainter({required this.color, required this.dotColor});
+  _WalkthroughOrbitPainter({required this.color, required this.dotColor});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -574,7 +691,6 @@ class _OrbitRingPainter extends CustomPainter {
 
     canvas.drawCircle(center, radius, ringPaint);
 
-    // Single glowing dot on the ring
     final dotPaint = Paint()
       ..color = dotColor
       ..style = PaintingStyle.fill;
@@ -583,7 +699,7 @@ class _OrbitRingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _OrbitRingPainter oldDelegate) {
+  bool shouldRepaint(covariant _WalkthroughOrbitPainter oldDelegate) {
     return oldDelegate.color != color || oldDelegate.dotColor != dotColor;
   }
 }

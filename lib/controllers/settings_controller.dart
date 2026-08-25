@@ -629,6 +629,12 @@ class SettingsController extends GetxController {
         AppConstants.keyCustomCloudProfileIndex, customCloudProfileIndex.value);
   }
 
+  static const developerPromptSeniorDev =
+      'You are a Principal Software Engineer. Be precise, highly technical, and concise. Provide fully typed, production-ready code without unnecessary preamble. Follow architectural best practices.';
+
+  static const developerPromptConcise =
+      'Be extremely concise, direct, and direct-to-the-point. Eliminate fluff, disclaimers, and unnecessary filler.';
+
   Future<void> setGlobalSystemPrompt(String prompt) async {
     final normalized =
         prompt.trim().isEmpty ? AppConstants.systemPrompt : prompt.trim();

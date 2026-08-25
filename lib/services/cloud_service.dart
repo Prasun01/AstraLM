@@ -652,7 +652,7 @@ class CloudService extends GetxService {
       final response = await request.close();
       if (response.statusCode != 200) {
         final errBody = await response.transform(utf8.decoder).join();
-        return 'ERROR: Google returned ${response.statusCode} — $errBody';
+        return _formatApiError(errBody, 'Google Gemini', response.statusCode);
       }
 
       final fullText = StringBuffer();
@@ -935,7 +935,7 @@ class CloudService extends GetxService {
       final response = await request.close();
       if (response.statusCode != 200) {
         final body = await response.transform(utf8.decoder).join();
-        return 'ERROR: $providerLabel returned ${response.statusCode} — $body';
+        return _formatApiError(body, providerLabel, response.statusCode);
       }
 
       final buffer = StringBuffer();
@@ -1160,5 +1160,32 @@ class CloudService extends GetxService {
     } catch (e) {
       return 'ERROR: Stability AI request failed — $e';
     }
+  }
+
+  String _formatApiError(String rawBody, String provider, int statusCode) {
+    try {
+      final parsed = jsonDecode(rawBody);
+      if (parsed is Map) {
+        if (parsed['error'] is Map) {
+          final msg = parsed['error']['message']?.toString();
+          if (msg != null && msg.isNotEmpty) {
+            return '$provider Error ($statusCode): $msg';
+          }
+        } else if (parsed['error'] is String) {
+          return '$provider Error ($statusCode): ${parsed['error']}';
+        } else if (parsed['message'] != null) {
+          return '$provider Error ($statusCode): ${parsed['message']}';
+        }
+      }
+    } catch (_) {}
+
+    if (statusCode == 401 || statusCode == 403) {
+      return 'Authentication Failed ($statusCode): Invalid or missing API key for $provider. Please verify your key in Settings.';
+    } else if (statusCode == 429) {
+      return 'Rate Limit / Quota Exceeded ($statusCode): Free tier limit reached for $provider. Please wait a moment.';
+    } else if (statusCode == 404) {
+      return 'Model Not Found ($statusCode): The selected model is unavailable for $provider.';
+    }
+    return '$provider Error ($statusCode): $rawBody';
   }
 }

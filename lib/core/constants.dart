@@ -226,6 +226,61 @@ class AppConstants {
       'template': 'llama3',
     },
     {
+      'name': 'Llama-3.2-1B Instruct (LiteRT-LM)',
+      'filename': 'Llama-3.2-1B-Instruct.litertlm',
+      'url':
+          'https://huggingface.co/litert-community/Llama-3.2-1B-Instruct/resolve/main/Llama-3.2-1B-Instruct.litertlm',
+      'size': '780 MB',
+      'description': 'Ultra-fast Google LiteRT NPU/GPU accelerated model',
+      'template': 'litert',
+      'runtime': 'litert',
+    },
+    {
+      'name': 'SmolLM2-360M Instruct (Q4_K_M)',
+      'filename': 'smollm2-360m-instruct-q4_k_m.gguf',
+      'url':
+          'https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf',
+      'size': '240 MB',
+      'description': 'Featherweight 360M model; runs 60+ tps on any Android phone',
+      'template': 'chatml',
+    },
+    {
+      'name': 'Qwen2.5-0.5B Instruct (Q4_K_M)',
+      'filename': 'qwen2.5-0.5b-instruct-q4_k_m.gguf',
+      'url':
+          'https://huggingface.co/bartowski/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf',
+      'size': '398 MB',
+      'description': 'Instant response ultra-compact 0.5B model for older devices',
+      'template': 'chatml',
+    },
+    {
+      'name': 'DeepSeek-R1-Distill-Qwen-1.5B (Q4_K_M)',
+      'filename': 'deepseek-r1-distill-qwen-1.5b-q4_k_m.gguf',
+      'url':
+          'https://huggingface.co/bartowski/DeepSeek-R1-Distill-Qwen-1.5B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf',
+      'size': '1.1 GB',
+      'description': 'DeepSeek R1 reasoning distilled for mobile llama.cpp engine',
+      'template': 'chatml',
+    },
+    {
+      'name': 'SmolLM2-1.7B Instruct (Q4_K_M)',
+      'filename': 'smollm2-1.7b-instruct-q4_k_m.gguf',
+      'url':
+          'https://huggingface.co/bartowski/SmolLM2-1.7B-Instruct-GGUF/resolve/main/SmolLM2-1.7B-Instruct-Q4_K_M.gguf',
+      'size': '1.05 GB',
+      'description': 'High efficiency 1.7B general assistant from HuggingFace',
+      'template': 'chatml',
+    },
+    {
+      'name': 'Ministral-3B Instruct (Q4_K_M)',
+      'filename': 'ministral-3b-instruct-q4_k_m.gguf',
+      'url':
+          'https://huggingface.co/bartowski/ministral-3b-instruct-GGUF/resolve/main/ministral-3b-instruct-Q4_K_M.gguf',
+      'size': '2.1 GB',
+      'description': 'Mistral AI flagship 3B edge model for powerful phones',
+      'template': 'mistral',
+    },
+    {
       'name': 'Llama-3.2-1B Instruct (Q4_K_M)',
       'filename': 'llama-3.2-1b-instruct-q4_k_m.gguf',
       'url':
