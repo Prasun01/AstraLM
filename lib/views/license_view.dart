@@ -3,6 +3,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../widgets/pressable_scale.dart';
 
 class LicenseView extends StatelessWidget {
@@ -335,23 +336,32 @@ SOFTWARE.''';
             // Full Package Manifest (Flutter built-in licenses)
             _sectionHeader(context, 'ALL THIRD-PARTY PACKAGES'),
             PressableScale(
-              onTap: () => showLicensePage(
-                context: context,
-                applicationName: 'AstraLM',
-                applicationVersion: 'v1.0.0',
-                applicationIcon: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.asset(
-                      'assets/icons/appicon.png',
-                      width: 54,
-                      height: 54,
-                      fit: BoxFit.cover,
+              onTap: () async {
+                String ver = 'v1.0.6';
+                try {
+                  final pkg = await PackageInfo.fromPlatform();
+                  ver = 'v\${pkg.version}';
+                } catch (_) {}
+                if (context.mounted) {
+                  showLicensePage(
+                    context: context,
+                    applicationName: 'AstraLM',
+                    applicationVersion: ver,
+                    applicationIcon: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.asset(
+                          'assets/icons/appicon.png',
+                          width: 54,
+                          height: 54,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
+                  );
+                }
+              },
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
