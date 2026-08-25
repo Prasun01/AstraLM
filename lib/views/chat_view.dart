@@ -12,6 +12,8 @@ import '../models/chat_session.dart';
 import '../services/hive_service.dart';
 import '../services/inference_service.dart';
 import '../services/local_image_service.dart';
+import '../services/remote_config_service.dart';
+import '../services/device_info_service.dart';
 import '../ffi/sd_ffi_bindings.dart';
 import '../utils/thought_parser.dart';
 import '../widgets/attachment_preview.dart';
@@ -706,6 +708,80 @@ class ChatView extends GetView<ChatController> {
     return _AnimatedThinkingIndicator(attachmentType: attachmentType);
   }
 
+  Widget _buildMemorySuggestionBanner(BuildContext context) {
+    if (!Get.isRegistered<RemoteConfigService>() ||
+        !Get.isRegistered<DeviceInfoService>()) {
+      return const SizedBox.shrink();
+    }
+    final remoteConfig = Get.find<RemoteConfigService>();
+    final deviceInfo = Get.find<DeviceInfoService>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Obx(() {
+      if (!remoteConfig.backgroundAppsWarningEnabled.value) {
+        return const SizedBox.shrink();
+      }
+      final isDismissed = controller.isBgWarningDismissed.value;
+      if (isDismissed) return const SizedBox.shrink();
+
+      final avail = deviceInfo.availableRamGB.value;
+      final thresh = remoteConfig.lowRamThresholdGB.value;
+      // Show warning if RAM is lower than threshold or always when enabled
+      if (avail > thresh && thresh > 0) return const SizedBox.shrink();
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF181B26) : const Color(0xFFEFF3FA),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.35 : 0.45),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const PhosphorIcon(
+              PhosphorIconsBold.lightning,
+              size: 16,
+              color: Color(0xFFF59E0B),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                remoteConfig.backgroundAppsWarningText.value,
+                style: GoogleFonts.inter(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: () => controller.isBgWarningDismissed.value = true,
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: PhosphorIcon(
+                  PhosphorIconsBold.x,
+                  size: 13,
+                  color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF6B7284),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
   // ── Input Bar (Floating Space Gray Island) ──
   Widget _inputBar(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -716,6 +792,9 @@ class ChatView extends GetView<ChatController> {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Dynamic remote config background apps memory suggestion banner
+          _buildMemorySuggestionBanner(context),
+
           // Attachment preview
           Obx(() {
             final name = controller.selectedFileName.value;
@@ -2799,7 +2878,10 @@ class _AnimatedThinkingIndicatorState extends State<_AnimatedThinkingIndicator>
 
     // Progressive humor & depth based on elapsed duration
     List<String> pool;
-    if (_ticks < 3) {
+    if (Get.isRegistered<RemoteConfigService>() &&
+        Get.find<RemoteConfigService>().remoteThinkingMessages.isNotEmpty) {
+      pool = Get.find<RemoteConfigService>().remoteThinkingMessages;
+    } else if (_ticks < 3) {
       pool = _earlyTexts;
     } else if (_ticks < 7) {
       pool = _mediumTexts;

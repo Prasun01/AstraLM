@@ -25,6 +25,7 @@ import 'services/document_export_service.dart';
 import 'services/crash_reporting_service.dart';
 import 'services/image_generation_notification_service.dart';
 import 'services/app_update_service.dart';
+import 'services/remote_config_service.dart';
 import 'core/constants.dart';
 
 void main() {
@@ -69,6 +70,7 @@ void main() {
     // Register global services
     await Get.putAsync(() => HiveService().init());
     await Get.putAsync(() => DeviceInfoService().init());
+    await Get.putAsync(() => RemoteConfigService().init());
 
     // Settings controller must be initialized before runApp for theme support
     final settingsController = Get.put(SettingsController());

@@ -58,6 +58,7 @@ class ChatController extends GetxController {
   final messages = <ChatMessage>[].obs;
   final currentSessionId = ''.obs;
   final isLoading = false.obs;
+  final isBgWarningDismissed = false.obs;
   final inputText = ''.obs;
   final selectedImagePath = Rxn<String>();
   final selectedImageBase64 = Rxn<String>();
