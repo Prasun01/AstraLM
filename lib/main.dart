@@ -24,6 +24,7 @@ import 'services/app_log_service.dart';
 import 'services/document_export_service.dart';
 import 'services/crash_reporting_service.dart';
 import 'services/image_generation_notification_service.dart';
+import 'services/app_update_service.dart';
 import 'core/constants.dart';
 
 void main() {
@@ -101,6 +102,7 @@ void main() {
     await imageNotifications.configureBackgroundService();
     Get.put(ServerController(), permanent: true);
     Get.put(ModelController());
+    Get.put(AppUpdateService());
 
     // Auto-configure inference settings based on device RAM
     _autoConfigureForDevice();
@@ -116,6 +118,10 @@ void main() {
       if (Get.context != null) {
         _preWarmAllAppAnimationsAndResources(Get.context!);
       }
+      // Silently check for GitHub releases in the background
+      Future.delayed(const Duration(seconds: 2), () {
+        Get.find<AppUpdateService>().checkForUpdates();
+      });
     });
   }, (error, stack) async {
     if (Get.isRegistered<AppLogService>()) {

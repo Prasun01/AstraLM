@@ -15,6 +15,7 @@ import 'log_view.dart';
 import 'server_view.dart';
 import 'welcome_guide_view.dart';
 import 'license_view.dart';
+import '../services/app_update_service.dart';
 
 // ─────────────────────────────────────────────────────────────
 // MAIN SETTINGS HUB (BORDERLESS STRICT MONOCHROME)
@@ -880,7 +881,7 @@ class AboutSubView extends GetView<SettingsController> {
                       Obx(
                         () => Text(
                           controller.appVersion.value.isEmpty
-                              ? 'Version 2.0.0 · Local AI Platform'
+                              ? 'Version 1.0.6 · Local AI Platform'
                               : 'v${controller.appVersion.value} · Local AI Platform',
                           style: GoogleFonts.inter(
                             fontSize: 12.5,
@@ -891,6 +892,28 @@ class AboutSubView extends GetView<SettingsController> {
                     ],
                   ),
                 ],
+              ),
+            ),
+            _monoListTile(
+              context,
+              leading: _iconBox(context, PhosphorIconsBold.arrowsClockwise),
+              title: 'Check for Updates',
+              subtitle: 'GitHub Releases · Prasun01/AstraLM',
+              trailing: Obx(() {
+                final updateService = Get.find<AppUpdateService>();
+                if (updateService.isChecking.value) {
+                  return const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  );
+                }
+                return _chevronTrailing(isDark);
+              }),
+              showDivider: false,
+              onTap: () => Get.find<AppUpdateService>().checkForUpdates(
+                isManual: true,
+                context: context,
               ),
             ),
           ]),
