@@ -101,7 +101,6 @@ flutter build apk --release
 
 ## 🙏 Credits & Acknowledgments
 
-- Built upon and inspired by the original **[PrivateLM](https://github.com/orailnoor/cross-platform-llm-client)** by [@orailnoor](https://github.com/orailnoor).
 - Powered by [llama.cpp](https://github.com/ggerganov/llama.cpp) by Georgi Gerganov and [Google LiteRT](https://ai.google.dev/edge/litert).
 
 ---

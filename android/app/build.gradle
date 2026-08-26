@@ -11,7 +11,7 @@ if (hasReleaseKeystore) {
     keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
 }
 
-def allowDebugReleaseSigning = System.getenv("PRIVATELM_ALLOW_DEBUG_RELEASE_SIGNING") == "true"
+def allowDebugReleaseSigning = System.getenv("ASTRALM_ALLOW_DEBUG_RELEASE_SIGNING") == "true"
 def isReleaseBuild = gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }
 
 if (isReleaseBuild && !hasReleaseKeystore && !allowDebugReleaseSigning) {
@@ -24,7 +24,7 @@ if (file("google-services.json").exists()) {
 }
 
 android {
-    namespace "com.orailnoor.privatelm"
+    namespace "com.prasun01.astralm"
     compileSdk 36
     ndkVersion "27.0.12077973"
 
@@ -39,7 +39,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.orailnoor.privatelm"
+        applicationId "com.prasun01.astralm"
         minSdk 28
         targetSdk flutter.targetSdkVersion
         versionCode flutter.versionCode

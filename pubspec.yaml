@@ -1,5 +1,5 @@
-name: privatelm
-description: AstraLM — Private On-Device AI Assistant (built upon PrivateLM)
+name: astralm
+description: AstraLM — Sovereign On-Device Private AI Assistant
 publish_to: "none"
 version: 1.0.8+8
 

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:privatelm/models/ai_model.dart';
+import 'package:astralm/models/ai_model.dart';
 
 void main() {
   group('AiModel.hasVisionMarker', () {

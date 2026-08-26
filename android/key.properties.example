@@ -1,6 +1,6 @@
 # Copy this file to android/key.properties and keep the real values private.
 # Every published update must use the same keystore and alias.
-storeFile=/absolute/path/to/privatelm-release.jks
-storePassword=change-me
-keyAlias=privatelm
+storeFile=/absolute/path/to/astralm-release.jks
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyAlias=astralm
 keyPassword=change-me
