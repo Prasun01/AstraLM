@@ -1248,47 +1248,31 @@ class ChatView extends GetView<ChatController> {
 
     return Drawer(
       width: math.min(MediaQuery.of(context).size.width * 0.85, 340),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
+      backgroundColor: isDark ? const Color(0xFF0F1118) : const Color(0xFFFAFBFD),
+      elevation: 16,
       surfaceTintColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.horizontal(right: Radius.circular(24)),
       ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.horizontal(right: Radius.circular(24)),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [
-                        const Color(0xFF141724).withValues(alpha: 0.75),
-                        const Color(0xFF090B10).withValues(alpha: 0.85),
-                      ]
-                    : [
-                        Colors.white.withValues(alpha: 0.85),
-                        const Color(0xFFF0F4F8).withValues(alpha: 0.78),
-                      ],
-              ),
-              border: Border(
-                right: BorderSide(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.12)
-                      : Colors.white.withValues(alpha: 0.70),
-                  width: 0.6,
-                ),
-              ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F1118) : const Color(0xFFFAFBFD),
+          borderRadius: const BorderRadius.horizontal(right: Radius.circular(24)),
+          border: Border(
+            right: BorderSide(
+              color: isDark
+                  ? const Color(0xFF1F2433)
+                  : const Color(0xFFE2E8F0),
+              width: 1.0,
             ),
-            child: RepaintBoundary(
-              child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               // Top Header: App Branding & Close Button
               Row(
                 children: [
@@ -1723,12 +1707,9 @@ class ChatView extends GetView<ChatController> {
           ),
         ),
       ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+    ),
+  );
+}
 
   void _confirmDeleteChat(BuildContext context, ChatSession session) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
