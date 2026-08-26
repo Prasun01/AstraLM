@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io' show HttpClient;
+import 'dart:math' as math;
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import '../core/constants.dart';
@@ -26,6 +27,8 @@ class CloudService extends GetxService {
         return _hive.getSetting(AppConstants.keyStabilityKey) ?? '';
       case 'nvidia':
         return _hive.getSetting(AppConstants.keyNvidiaKey) ?? '';
+      case 'groq':
+        return _hive.getSetting(AppConstants.keyGroqKey) ?? '';
       case 'openrouter':
         return _hive.getSetting(AppConstants.keyOpenRouterKey) ?? '';
       case 'deepseek':
@@ -41,7 +44,7 @@ class CloudService extends GetxService {
     switch (_provider) {
       case 'anthropic':
         return _hive.getSetting(AppConstants.keyAnthropicModel) ??
-            'claude-sonnet-4-6';
+            'claude-3-7-sonnet-latest';
       case 'google':
         return _hive.getSetting(AppConstants.keyGoogleModel) ??
             'gemini-2.5-flash';
@@ -53,24 +56,27 @@ class CloudService extends GetxService {
         return (m == 'sd3.5-flash' || m.isEmpty) ? 'sd3.5-large-turbo' : m;
       case 'nvidia':
         return _hive.getSetting(AppConstants.keyNvidiaModel) ??
-            'meta/llama-3.1-8b-instruct';
+            'meta/llama-3.3-70b-instruct';
+      case 'groq':
+        return _hive.getSetting(AppConstants.keyGroqModel) ??
+            'llama-3.3-70b-versatile';
       case 'openrouter':
         return _hive.getSetting(AppConstants.keyOpenRouterModel) ??
             'openai/gpt-4o-mini';
       case 'deepseek':
         return _hive.getSetting(AppConstants.keyDeepSeekModel) ??
-            'deepseek-v4-flash';
+            'deepseek-chat';
       case 'custom':
         return _hive.getSetting(AppConstants.keyCustomCloudModel) ?? '';
       default:
-        return _hive.getSetting(AppConstants.keyOpenaiModel) ?? 'gpt-5.2';
+        return _hive.getSetting(AppConstants.keyOpenaiModel) ?? 'gpt-4o';
     }
   }
 
   int get _defaultMaxTokensForCloud {
     switch (_provider) {
       case 'anthropic':
-        return 8192;
+        return 16384;
       case 'google':
         return 8192;
       case 'deepseek':
@@ -78,6 +84,8 @@ class CloudService extends GetxService {
       case 'openrouter':
         return 8192;
       case 'nvidia':
+        return 8192;
+      case 'groq':
         return 8192;
       case 'kimi':
         return 8192;
@@ -114,6 +122,9 @@ class CloudService extends GetxService {
     try {
       if (onToken != null) {
         if (_provider == 'google') {
+          if (_model.toLowerCase().contains('imagen')) {
+            return await _sendGoogleImagen(messages);
+          }
           return await _streamGoogle(
             messages: messages,
             imageBase64: imageBase64,
@@ -150,6 +161,9 @@ class CloudService extends GetxService {
           return await _sendAnthropic(
               messages, imageBase64, temperature, maxTokens);
         case 'google':
+          if (_model.toLowerCase().contains('imagen')) {
+            return await _sendGoogleImagen(messages);
+          }
           return await _sendGoogle(
               messages, imageBase64, temperature, maxTokens);
         case 'kimi':
@@ -158,6 +172,9 @@ class CloudService extends GetxService {
           return await _sendStability(messages);
         case 'nvidia':
           return await _sendNvidia(
+              messages, imageBase64, temperature, maxTokens);
+        case 'groq':
+          return await _sendGroq(
               messages, imageBase64, temperature, maxTokens);
         case 'openrouter':
           return await _sendOpenRouter(
@@ -181,6 +198,7 @@ class CloudService extends GetxService {
   bool get _supportsStreaming =>
       _provider == 'openai' ||
       _provider == 'nvidia' ||
+      _provider == 'groq' ||
       _provider == 'openrouter' ||
       _provider == 'deepseek' ||
       _provider == 'custom' ||
@@ -192,6 +210,8 @@ class CloudService extends GetxService {
     switch (_provider) {
       case 'nvidia':
         return '${AppConstants.nvidiaEndpoint}/chat/completions';
+      case 'groq':
+        return '${AppConstants.groqEndpoint}/chat/completions';
       case 'openrouter':
         return '${AppConstants.openRouterEndpoint}/chat/completions';
       case 'deepseek':
@@ -213,6 +233,8 @@ class CloudService extends GetxService {
     switch (_provider) {
       case 'nvidia':
         return 'NVIDIA NIM';
+      case 'groq':
+        return 'Groq';
       case 'openrouter':
         return 'OpenRouter';
       case 'deepseek':
@@ -237,59 +259,20 @@ class CloudService extends GetxService {
     return const {};
   }
 
-  // ─── OpenAI ─────────────────────────────────────
+  bool _isClaude37(String model) {
+    final m = model.toLowerCase();
+    return m.contains('claude-3-7') ||
+        m.contains('claude-3.7') ||
+        m.contains('sonnet-4');
+  }
 
-  Future<String> _sendOpenAI(
-    List<Map<String, String>> messages,
-    String? imageBase64,
-    double? temperature,
-    int? maxTokens,
-  ) async {
-    if (_model.toLowerCase().contains('dall-e')) {
-      return await _sendOpenAIImage(messages);
-    }
-
-    final apiMessages = <Map<String, dynamic>>[];
-
-    for (final msg in messages) {
-      if (msg['role'] == 'user' &&
-          imageBase64 != null &&
-          msg == messages.last) {
-        apiMessages.add({
-          'role': 'user',
-          'content': [
-            {'type': 'text', 'text': msg['content']},
-            {
-              'type': 'image_url',
-              'image_url': {'url': 'data:image/jpeg;base64,$imageBase64'}
-            },
-          ],
-        });
-      } else {
-        apiMessages.add({'role': msg['role'], 'content': msg['content']});
-      }
-    }
-
-    final response = await http.post(
-      Uri.parse(AppConstants.openaiEndpoint),
-      headers: {
-        'Authorization': 'Bearer $_apiKey',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'model': _model,
-        'messages': apiMessages,
-        'temperature': temperature ?? AppConstants.defaultTemperature,
-        'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      return 'ERROR: OpenAI returned ${response.statusCode} — ${response.body}';
-    }
-
-    final data = jsonDecode(response.body);
-    return data['choices'][0]['message']['content'] ?? '';
+  bool _isOpenAiReasoningModel(String model) {
+    final m = model.toLowerCase();
+    return m == 'o1' ||
+        m.startsWith('o1-') ||
+        m == 'o3' ||
+        m == 'o3-mini' ||
+        m.startsWith('o3-');
   }
 
   // ─── Anthropic ──────────────────────────────────
@@ -300,7 +283,6 @@ class CloudService extends GetxService {
     double? temperature,
     int? maxTokens,
   ) async {
-    // Extract system message
     String? systemMsg;
     final apiMessages = <Map<String, dynamic>>[];
 
@@ -335,13 +317,28 @@ class CloudService extends GetxService {
       }
     }
 
+    final is37 = _isClaude37(_model);
+    final effort = _hive.getSetting('reasoning_effort', defaultValue: 'standard');
+    final enableThinking = is37 && effort != 'none';
+    final budgetTokens = effort == 'deep' ? 8192 : 4096;
+
     final body = <String, dynamic>{
       'model': _model,
       'messages': apiMessages,
-      'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
-      'temperature': temperature ?? AppConstants.defaultTemperature,
     };
     if (systemMsg != null) body['system'] = systemMsg;
+
+    if (enableThinking) {
+      body['thinking'] = {
+        'type': 'enabled',
+        'budget_tokens': budgetTokens,
+      };
+      body['max_tokens'] = math.max(maxTokens ?? 16384, budgetTokens + 2048);
+      // Temperature must not be set or set to 1.0 when thinking is enabled
+    } else {
+      body['max_tokens'] = maxTokens ?? _defaultMaxTokensForCloud;
+      body['temperature'] = temperature ?? AppConstants.defaultTemperature;
+    }
 
     final response = await http.post(
       Uri.parse(AppConstants.anthropicEndpoint),
@@ -354,12 +351,24 @@ class CloudService extends GetxService {
     );
 
     if (response.statusCode != 200) {
-      return 'ERROR: Anthropic returned ${response.statusCode} — ${response.body}';
+      return _formatApiError(response.body, 'Anthropic', response.statusCode);
     }
 
     final data = jsonDecode(response.body);
-    final content = data['content'] as List;
-    return content.isNotEmpty ? content[0]['text'] ?? '' : '';
+    final content = data['content'] as List? ?? [];
+    final buffer = StringBuffer();
+    for (final block in content) {
+      if (block is! Map) continue;
+      if (block['type'] == 'thinking') {
+        final think = block['thinking']?.toString() ?? '';
+        if (think.isNotEmpty) {
+          buffer.write('<think>\n$think\n</think>\n\n');
+        }
+      } else if (block['type'] == 'text') {
+        buffer.write(block['text']?.toString() ?? '');
+      }
+    }
+    return buffer.toString();
   }
 
   Future<String> _streamAnthropic({
@@ -403,14 +412,28 @@ class CloudService extends GetxService {
       }
     }
 
+    final is37 = _isClaude37(_model);
+    final effort = _hive.getSetting('reasoning_effort', defaultValue: 'standard');
+    final enableThinking = is37 && effort != 'none';
+    final budgetTokens = effort == 'deep' ? 8192 : 4096;
+
     final body = <String, dynamic>{
       'model': _model,
       'messages': apiMessages,
-      'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
-      'temperature': temperature ?? AppConstants.defaultTemperature,
       'stream': true,
     };
     if (systemMsg != null) body['system'] = systemMsg;
+
+    if (enableThinking) {
+      body['thinking'] = {
+        'type': 'enabled',
+        'budget_tokens': budgetTokens,
+      };
+      body['max_tokens'] = math.max(maxTokens ?? 16384, budgetTokens + 2048);
+    } else {
+      body['max_tokens'] = maxTokens ?? _defaultMaxTokensForCloud;
+      body['temperature'] = temperature ?? AppConstants.defaultTemperature;
+    }
 
     final client = HttpClient();
     client.connectionTimeout = const Duration(seconds: 25);
@@ -426,7 +449,7 @@ class CloudService extends GetxService {
       final response = await request.close();
       if (response.statusCode != 200) {
         final errBody = await response.transform(utf8.decoder).join();
-        return 'ERROR: Anthropic returned ${response.statusCode} — $errBody';
+        return _formatApiError(errBody, 'Anthropic', response.statusCode);
       }
 
       final fullText = StringBuffer();
@@ -520,8 +543,8 @@ class CloudService extends GetxService {
 
       if (imageBase64 != null && msg == messages.last && geminiRole == 'user') {
         parts.add({
-          'inline_data': {
-            'mime_type': 'image/jpeg',
+          'inlineData': {
+            'mimeType': 'image/jpeg',
             'data': imageBase64,
           }
         });
@@ -564,12 +587,19 @@ class CloudService extends GetxService {
     };
 
     if (systemInstruction != null && systemInstruction.isNotEmpty) {
-      payload['system_instruction'] = {
+      payload['systemInstruction'] = {
         'parts': [
           {'text': systemInstruction}
         ]
       };
     }
+
+    payload['safetySettings'] = [
+      {'category': 'HARM_CATEGORY_HARASSMENT', 'threshold': 'BLOCK_NONE'},
+      {'category': 'HARM_CATEGORY_HATE_SPEECH', 'threshold': 'BLOCK_NONE'},
+      {'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold': 'BLOCK_NONE'},
+      {'category': 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold': 'BLOCK_NONE'},
+    ];
 
     return payload;
   }
@@ -605,9 +635,17 @@ class CloudService extends GetxService {
     final data = jsonDecode(response.body);
     final candidates = data['candidates'] as List?;
     if (candidates != null && candidates.isNotEmpty) {
-      final contentParts = candidates[0]['content']['parts'] as List;
+      final contentParts = candidates[0]['content']?['parts'] as List? ?? [];
       final buffer = StringBuffer();
       for (final p in contentParts) {
+        if (p is! Map) continue;
+        if (p['inlineData'] != null || p['inline_data'] != null) {
+          final inline = (p['inlineData'] ?? p['inline_data']) as Map;
+          final b64 = inline['data'] as String?;
+          if (b64 != null && b64.isNotEmpty) {
+            return '[IMAGE_BASE64]$b64';
+          }
+        }
         final isThought = p['thought'] == true;
         final t = p['text'] as String? ?? '';
         if (isThought) {
@@ -753,53 +791,56 @@ class CloudService extends GetxService {
     return data['choices'][0]['message']['content'] ?? '';
   }
 
+  Future<String> _sendOpenAI(
+    List<Map<String, String>> messages,
+    String? imageBase64,
+    double? temperature,
+    int? maxTokens,
+  ) async {
+    if (_model.toLowerCase().contains('dall-e')) {
+      return await _sendOpenAIImage(messages);
+    }
+
+    return _sendOpenAICompatible(
+      endpoint: AppConstants.openaiEndpoint,
+      providerLabel: 'OpenAI',
+      messages: messages,
+      imageBase64: imageBase64,
+      temperature: temperature,
+      maxTokens: maxTokens,
+    );
+  }
+
   Future<String> _sendNvidia(
     List<Map<String, String>> messages,
     String? imageBase64,
     double? temperature,
     int? maxTokens,
   ) async {
-    final apiMessages = <Map<String, dynamic>>[];
-
-    for (final msg in messages) {
-      if (msg['role'] == 'user' &&
-          imageBase64 != null &&
-          msg == messages.last) {
-        apiMessages.add({
-          'role': 'user',
-          'content': [
-            {'type': 'text', 'text': msg['content']},
-            {
-              'type': 'image_url',
-              'image_url': {'url': 'data:image/jpeg;base64,$imageBase64'}
-            },
-          ],
-        });
-      } else {
-        apiMessages.add({'role': msg['role'], 'content': msg['content']});
-      }
-    }
-
-    final response = await http.post(
-      Uri.parse('${AppConstants.nvidiaEndpoint}/chat/completions'),
-      headers: {
-        'Authorization': 'Bearer $_apiKey',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'model': _model,
-        'messages': apiMessages,
-        'temperature': temperature ?? AppConstants.defaultTemperature,
-        'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
-      }),
+    return _sendOpenAICompatible(
+      endpoint: '${AppConstants.nvidiaEndpoint}/chat/completions',
+      providerLabel: 'NVIDIA NIM',
+      messages: messages,
+      imageBase64: imageBase64,
+      temperature: temperature,
+      maxTokens: maxTokens,
     );
+  }
 
-    if (response.statusCode != 200) {
-      return 'ERROR: NVIDIA NIM returned ${response.statusCode} — ${response.body}';
-    }
-
-    final data = jsonDecode(response.body);
-    return data['choices'][0]['message']['content'] ?? '';
+  Future<String> _sendGroq(
+    List<Map<String, String>> messages,
+    String? imageBase64,
+    double? temperature,
+    int? maxTokens,
+  ) async {
+    return _sendOpenAICompatible(
+      endpoint: '${AppConstants.groqEndpoint}/chat/completions',
+      providerLabel: 'Groq',
+      messages: messages,
+      imageBase64: imageBase64,
+      temperature: temperature,
+      maxTokens: maxTokens,
+    );
   }
 
   Future<String> _sendOpenRouter(
@@ -858,6 +899,48 @@ class CloudService extends GetxService {
     );
   }
 
+  Map<String, dynamic> _buildOpenAICompatiblePayload({
+    required List<Map<String, String>> messages,
+    String? imageBase64,
+    double? temperature,
+    int? maxTokens,
+    bool stream = false,
+  }) {
+    final isOpenAiReasoning = _isOpenAiReasoningModel(_model);
+    final effort =
+        _hive.getSetting('reasoning_effort', defaultValue: 'standard');
+
+    final apiMessages = _buildOpenAICompatibleMessages(
+      messages,
+      imageBase64,
+      mapSystemToDeveloper: isOpenAiReasoning && _provider == 'openai',
+    );
+
+    final payload = <String, dynamic>{
+      'model': _model,
+      'messages': apiMessages,
+    };
+
+    if (stream) {
+      payload['stream'] = true;
+    }
+
+    if (isOpenAiReasoning) {
+      payload['max_completion_tokens'] = maxTokens ?? _defaultMaxTokensForCloud;
+      final mappedEffort = switch (effort) {
+        'deep' => 'high',
+        'none' => 'low',
+        _ => 'medium',
+      };
+      payload['reasoning_effort'] = mappedEffort;
+    } else {
+      payload['temperature'] = temperature ?? AppConstants.defaultTemperature;
+      payload['max_tokens'] = maxTokens ?? _defaultMaxTokensForCloud;
+    }
+
+    return payload;
+  }
+
   Future<String> _sendOpenAICompatible({
     required String endpoint,
     required String providerLabel,
@@ -867,9 +950,13 @@ class CloudService extends GetxService {
     required int? maxTokens,
     Map<String, String> extraHeaders = const {},
   }) async {
-    final apiMessages = <Map<String, dynamic>>[];
-
-    apiMessages.addAll(_buildOpenAICompatibleMessages(messages, imageBase64));
+    final payload = _buildOpenAICompatiblePayload(
+      messages: messages,
+      imageBase64: imageBase64,
+      temperature: temperature,
+      maxTokens: maxTokens,
+      stream: false,
+    );
 
     final response = await http.post(
       Uri.parse(endpoint),
@@ -878,16 +965,11 @@ class CloudService extends GetxService {
         'Content-Type': 'application/json',
         ...extraHeaders,
       },
-      body: jsonEncode({
-        'model': _model,
-        'messages': apiMessages,
-        'temperature': temperature ?? AppConstants.defaultTemperature,
-        'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
-      }),
+      body: jsonEncode(payload),
     );
 
     if (response.statusCode != 200) {
-      return 'ERROR: $providerLabel returned ${response.statusCode} — ${response.body}';
+      return _formatApiError(response.body, providerLabel, response.statusCode);
     }
 
     final data = jsonDecode(response.body);
@@ -896,10 +978,13 @@ class CloudService extends GetxService {
         : null;
     final message = choice?['message'] as Map?;
     final reasoning = message?['reasoning_content']?.toString() ??
+        message?['reasoning']?.toString() ??
         message?['thought']?.toString();
     final content = message?['content']?.toString() ?? '';
     if (reasoning != null && reasoning.isNotEmpty) {
-      return '<think>\n$reasoning\n</think>\n\n$content';
+      if (!content.trimLeft().startsWith('<think>')) {
+        return '<think>\n$reasoning\n</think>\n\n$content';
+      }
     }
     return content;
   }
@@ -924,13 +1009,15 @@ class CloudService extends GetxService {
       request.headers.set('Cache-Control', 'no-cache');
       extraHeaders.forEach((k, v) => request.headers.set(k, v));
 
-      request.write(jsonEncode({
-        'model': _model,
-        'messages': _buildOpenAICompatibleMessages(messages, imageBase64),
-        'temperature': temperature ?? AppConstants.defaultTemperature,
-        'max_tokens': maxTokens ?? _defaultMaxTokensForCloud,
-        'stream': true,
-      }));
+      final payload = _buildOpenAICompatiblePayload(
+        messages: messages,
+        imageBase64: imageBase64,
+        temperature: temperature,
+        maxTokens: maxTokens,
+        stream: true,
+      );
+
+      request.write(jsonEncode(payload));
 
       final response = await request.close();
       if (response.statusCode != 200) {
@@ -951,16 +1038,17 @@ class CloudService extends GetxService {
           final trimmed = line.trim();
           if (trimmed.isEmpty || !trimmed.startsWith('data:')) continue;
 
-          final payload = trimmed.substring(5).trim();
-          if (payload == '[DONE]') break;
+          final dataStr = trimmed.substring(5).trim();
+          if (dataStr == '[DONE]') break;
 
           try {
-            final data = jsonDecode(payload);
+            final data = jsonDecode(dataStr);
             final choice = (data['choices'] as List?)?.isNotEmpty == true
                 ? data['choices'][0] as Map
                 : null;
             final delta = choice?['delta'] as Map?;
             final reasoning = delta?['reasoning_content']?.toString() ??
+                delta?['reasoning']?.toString() ??
                 delta?['thought']?.toString();
             if (reasoning != null && reasoning.isNotEmpty) {
               if (!inReasoning) {
@@ -1001,18 +1089,24 @@ class CloudService extends GetxService {
 
   List<Map<String, dynamic>> _buildOpenAICompatibleMessages(
     List<Map<String, String>> messages,
-    String? imageBase64,
-  ) {
+    String? imageBase64, {
+    bool mapSystemToDeveloper = false,
+  }) {
     final apiMessages = <Map<String, dynamic>>[];
 
     for (final msg in messages) {
-      if (msg['role'] == 'user' &&
+      var role = msg['role'] ?? 'user';
+      if (role == 'system' && mapSystemToDeveloper) {
+        role = 'developer';
+      }
+
+      if (role == 'user' &&
           imageBase64 != null &&
           msg == messages.last) {
         apiMessages.add({
           'role': 'user',
           'content': [
-            {'type': 'text', 'text': msg['content']},
+            {'type': 'text', 'text': msg['content'] ?? ''},
             {
               'type': 'image_url',
               'image_url': {'url': 'data:image/jpeg;base64,$imageBase64'}
@@ -1020,11 +1114,73 @@ class CloudService extends GetxService {
           ],
         });
       } else {
-        apiMessages.add({'role': msg['role'], 'content': msg['content']});
+        apiMessages.add({'role': role, 'content': msg['content'] ?? ''});
       }
     }
 
     return apiMessages;
+  }
+
+  // ─── Google Imagen (Image Generation) ───────────
+
+  Future<String> _sendGoogleImagen(
+    List<Map<String, String>> messages,
+  ) async {
+    if (_apiKey.trim().isEmpty) {
+      return 'ERROR: Google Gemini API key is missing. Please enter your API key in Settings → Cloud API.';
+    }
+
+    final userMessages = messages.where((m) => m['role'] == 'user').toList();
+    if (userMessages.isEmpty) {
+      return 'ERROR: No prompt found for image generation.';
+    }
+
+    final prompt = userMessages.last['content']?.trim() ?? '';
+    if (prompt.isEmpty) {
+      return 'ERROR: Image prompt cannot be empty.';
+    }
+
+    final cleanModel =
+        _model.startsWith('models/') ? _model.substring(7) : _model;
+    final url =
+        '${AppConstants.googleEndpoint}/$cleanModel:predict?key=$_apiKey';
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'instances': [
+            {'prompt': prompt}
+          ],
+          'parameters': {
+            'sampleCount': 1,
+            'aspectRatio': '1:1',
+            'outputOptions': {
+              'mimeType': 'image/jpeg',
+            },
+          },
+        }),
+      ).timeout(const Duration(seconds: 60));
+
+      if (response.statusCode != 200) {
+        final errBody = response.body;
+        return _formatApiError(errBody, 'Google Imagen', response.statusCode);
+      }
+
+      final data = jsonDecode(response.body);
+      final predictions = data['predictions'] as List?;
+      if (predictions != null && predictions.isNotEmpty) {
+        final first = predictions[0] as Map<String, dynamic>;
+        final b64 = first['bytesBase64Encoded'] ?? first['image'];
+        if (b64 != null && b64.toString().isNotEmpty) {
+          return '[IMAGE_BASE64]$b64';
+        }
+      }
+      return 'ERROR: Google Imagen returned no image predictions.';
+    } catch (e) {
+      return 'ERROR: Google Imagen request failed — $e';
+    }
   }
 
   // ─── OpenAI DALL-E (Image Generation) ───────────
@@ -1169,6 +1325,9 @@ class CloudService extends GetxService {
         if (parsed['error'] is Map) {
           final msg = parsed['error']['message']?.toString();
           if (msg != null && msg.isNotEmpty) {
+            if (msg.contains('limit: 0') || (msg.contains('Quota exceeded') && msg.contains('free_tier'))) {
+              return '$provider Error ($statusCode): This specific preview model has a limit of 0 on Google\'s free tier. Please switch to "gemini-2.5-flash", "gemini-2.5-pro", or enable billing in Google AI Studio.';
+            }
             return '$provider Error ($statusCode): $msg';
           }
         } else if (parsed['error'] is String) {

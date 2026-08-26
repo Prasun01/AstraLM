@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -31,35 +32,26 @@ class ChatBubble extends StatelessWidget {
         : splitThoughtTags(_cleanAssistantText(visibleContent));
     final answerContent = isUser ? visibleContent : thoughtParts.answer.trim();
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.fastLinearToSlowEaseIn,
-      builder: (context, anim, child) => Opacity(
-        opacity: anim,
-        child: Transform.translate(
-          offset: Offset(0, (1 - anim) * 6),
-          child: child,
-        ),
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: isUser ? 4 : 8,
       ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: isUser ? 4 : 8,
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Align(
-              alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-              child: isUser
-                  ? _buildUserBubble(context, isDark, textColor, visibleContent)
-                  : _buildAssistantBubble(context, isDark, scheme, thoughtParts, answerContent),
-            ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Align(
+            alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+            child: isUser
+                ? _buildUserBubble(context, isDark, textColor, visibleContent)
+                : _buildAssistantBubble(context, isDark, scheme, thoughtParts, answerContent),
           ),
         ),
       ),
-    );
+    )
+        .animate()
+        .fadeIn(duration: 200.ms)
+        .slideY(begin: 0.05, end: 0, curve: Curves.easeOutQuad);
   }
 
   Widget _buildUserBubble(

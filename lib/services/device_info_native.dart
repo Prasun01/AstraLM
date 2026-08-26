@@ -182,5 +182,6 @@ Future<Map<String, dynamic>> getDeviceInfo() async {
     'isTensorSoC': socFamily == SocFamily.googleTensor ? 1.0 : 0.0,
     'socFamily': socFamily.index,
     'socHardware': hardware,
+    'processorCount': Platform.numberOfProcessors,
   };
 }

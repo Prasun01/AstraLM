@@ -4,7 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter_litert_lm/flutter_litert_lm.dart';
 import 'package:get/get.dart';
 import 'package:llama_flutter_android/llama_flutter_android.dart';
-import 'hive_service.dart';
+import 'device_info_service.dart';
 
 /// Whether the current platform supports local inference.
 bool get supportsLocalInference => Platform.isAndroid || Platform.isIOS;
@@ -111,8 +111,14 @@ class InferenceEngine {
       print('[Inference] GPU detection failed: $e — CPU fallback');
     }
 
-    // ── Thread Tuning (Rock-solid 4 threads for mobile ARM big cores) ──
-    final threads = deviceTier == 'low' ? 3 : 4;
+    // ── Thread Tuning (Dynamically defaults to optimal performance core count, e.g. 4-6 cores on modern ARM big.LITTLE CPUs) ──
+    int threads;
+    try {
+      final devInfo = Get.find<DeviceInfoService>();
+      threads = devInfo.optimalInferenceThreads;
+    } catch (_) {
+      threads = deviceTier == 'low' ? 3 : 4;
+    }
 
     // ── Load Progress ──
     await _loadProgressSub?.cancel();

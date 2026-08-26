@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,14 +24,13 @@ class ThoughtDisclosure extends StatefulWidget {
 }
 
 class _ThoughtDisclosureState extends State<ThoughtDisclosure>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late bool _expanded;
   late DateTime _startedAt;
   Timer? _timer;
   double _liveSeconds = 0.0;
   late AnimationController _expandAnimController;
   late Animation<double> _expandAnimation;
-  late AnimationController _pulseAnimController;
 
   @override
   void initState() {
@@ -41,18 +40,14 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
 
     _expandAnimController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 320),
+      duration: const Duration(milliseconds: 340),
       value: 0.0,
     );
     _expandAnimation = CurvedAnimation(
       parent: _expandAnimController,
-      curve: Curves.fastOutSlowIn,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
     );
-
-    _pulseAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    )..repeat();
 
     _syncTimer();
   }
@@ -75,7 +70,6 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
   void dispose() {
     _timer?.cancel();
     _expandAnimController.dispose();
-    _pulseAnimController.dispose();
     super.dispose();
   }
 
@@ -113,14 +107,13 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
     final mutedText = isDark ? const Color(0xFF9096A8) : const Color(0xFF646B80);
     final timeStr = _labelTime;
 
-    return Container(
+    Widget disclosureBox = Container(
       margin: const EdgeInsets.only(bottom: 12, top: 4),
       decoration: BoxDecoration(
         color: isThinking
             ? bgThinking
             : (isDark ? const Color(0xFF13151D) : const Color(0xFFF4F6FB)),
         borderRadius: BorderRadius.circular(14),
-        // No grey border outline - clean floating depth
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
@@ -144,27 +137,21 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
                 child: Row(
                   children: [
                     if (isThinking)
-                      AnimatedBuilder(
-                        animation: _pulseAnimController,
-                        builder: (_, __) {
-                          final scale = 0.88 + 0.24 * math.sin(_pulseAnimController.value * 2 * math.pi);
-                          return Transform.scale(
-                            scale: scale,
-                            child: Container(
-                              padding: const EdgeInsets.all(5),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isDark ? const Color(0xFF222638) : const Color(0xFFE2E7F5),
-                              ),
-                              child: Icon(
-                                PhosphorIconsBold.lightbulb,
-                                size: 14,
-                                color: primaryAccent,
-                              ),
-                            ),
-                          );
-                        },
+                      Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark ? const Color(0xFF222638) : const Color(0xFFE2E7F5),
+                        ),
+                        child: Icon(
+                          PhosphorIconsBold.lightbulb,
+                          size: 14,
+                          color: primaryAccent,
+                        ),
                       )
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .scaleXY(begin: 0.88, end: 1.14, duration: 900.ms, curve: Curves.easeInOut)
+                          .fade(begin: 0.7, end: 1.0, duration: 900.ms, curve: Curves.easeInOut)
                     else
                       Container(
                         padding: const EdgeInsets.all(4),
@@ -267,6 +254,19 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
         ),
       ),
     );
+
+    if (isThinking) {
+      return disclosureBox
+          .animate(onPlay: (c) => c.repeat())
+          .shimmer(
+            duration: 1800.ms,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.04),
+          );
+    }
+
+    return disclosureBox;
   }
 
   String get _labelTime {
@@ -278,50 +278,22 @@ class _ThoughtDisclosureState extends State<ThoughtDisclosure>
   }
 }
 
-class _ThinkingShimmerCursor extends StatefulWidget {
+class _ThinkingShimmerCursor extends StatelessWidget {
   final bool isDark;
   const _ThinkingShimmerCursor({required this.isDark});
 
   @override
-  State<_ThinkingShimmerCursor> createState() => _ThinkingShimmerCursorState();
-}
-
-class _ThinkingShimmerCursorState extends State<_ThinkingShimmerCursor>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _c;
-
-  @override
-  void initState() {
-    super.initState();
-    _c = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _c,
-      builder: (_, __) {
-        return Opacity(
-          opacity: 0.2 + 0.8 * _c.value,
-          child: Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: widget.isDark ? const Color(0xFFBAC0D5) : const Color(0xFF4A5064),
-            ),
-          ),
-        );
-      },
-    );
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isDark ? const Color(0xFFBAC0D5) : const Color(0xFF4A5064),
+      ),
+    )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .scaleXY(begin: 0.75, end: 1.25, duration: 550.ms, curve: Curves.easeInOut)
+        .fade(begin: 0.35, end: 1.0, duration: 550.ms, curve: Curves.easeInOut);
   }
 }

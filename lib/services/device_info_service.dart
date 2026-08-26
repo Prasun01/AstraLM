@@ -12,12 +12,42 @@ class DeviceInfoService extends GetxService {
   final isTensorSoC = false.obs;
   final socFamily = platform_info.SocFamily.unknown.obs;
   final socHardware = ''.obs;
+  final processorCount = 4.obs;
 
   // Recommended limits based on device RAM
   int get recommendedContextSize => _tierConfig['contextSize']!;
   int get recommendedMaxTokens => _tierConfig['maxTokens']!;
   int get maxSafeContextSize => _tierConfig['maxContextSize']!;
   int get maxSafeTokens => _tierConfig['maxSafeTokens']!;
+
+  /// Dynamically computes optimal thread count for LLM inference on modern ARM big.LITTLE CPUs.
+  /// Uses 4 to 6 threads for big performance/prime cores while avoiding slow LITTLE efficiency cores.
+  int get optimalInferenceThreads {
+    final cores = processorCount.value > 0 ? processorCount.value : 8;
+    final tier = deviceTier.value;
+    final family = socFamily.value;
+
+    if (cores >= 8) {
+      // Modern 8-core mobile chips (Snapdragon 8 Gen 1/2/3, Dimensity, Tensor, Exynos)
+      // Usually have 1 Prime + 3-4 Big + 3-4 Little cores.
+      // 4-6 threads give peak matrix multiplication speed without thermal throttling.
+      if (tier == 'ultra' || tier == 'high') {
+        if (family == platform_info.SocFamily.snapdragon ||
+            family == platform_info.SocFamily.mediatek ||
+            family == platform_info.SocFamily.apple) {
+          return 6;
+        }
+        return 4;
+      }
+      return 4;
+    } else if (cores >= 6) {
+      return 4;
+    } else if (cores >= 4) {
+      return (tier == 'low') ? 3 : 4;
+    } else {
+      return cores.clamp(1, 2);
+    }
+  }
 
   Map<String, int> get _tierConfig {
     final ram = totalRamGB.value;
@@ -76,6 +106,7 @@ class DeviceInfoService extends GetxService {
 
     print('[DeviceInfo] RAM: ${totalRamGB.value.toStringAsFixed(1)}GB total, '
         '${availableRamGB.value.toStringAsFixed(1)}GB available, '
+        'cores: ${processorCount.value} (optimal threads: $optimalInferenceThreads), '
         'tier: ${deviceTier.value}, tensor: ${isTensorSoC.value}');
     return this;
   }
@@ -85,6 +116,7 @@ class DeviceInfoService extends GetxService {
     totalRamGB.value = (info['totalRamGB'] as num).toDouble();
     availableRamGB.value = (info['availableRamGB'] as num).toDouble();
     isTensorSoC.value = (info['isTensorSoC'] as num? ?? 0.0) > 0.5;
+    processorCount.value = (info['processorCount'] as num? ?? 4).toInt();
     final rawIndex = (info['socFamily'] as num? ?? 8).toInt();
     final clamped = rawIndex < 0 ? 0 : (rawIndex > 8 ? 8 : rawIndex);
     socFamily.value = platform_info.SocFamily.values[clamped];
@@ -104,6 +136,82 @@ class DeviceInfoService extends GetxService {
       default:
         return '${totalRamGB.value.toStringAsFixed(1)}GB RAM detected';
     }
+  }
+
+  /// Evaluates whether the device has sufficient RAM to load and execute the model safely
+  /// without triggering the Android Low Memory Killer (LMK) or native SIGABRT / OOM crash.
+  RamSafetyEvaluation evaluateModelRamSafety({
+    required int modelSizeBytes,
+    int? contextSize,
+    required String runtime,
+  }) {
+    final isLiteRt = runtime.toLowerCase() == 'litert';
+    final isSd = runtime.toLowerCase() == 'sd';
+    final ctx = contextSize ?? recommendedContextSize;
+
+    final double estimatedRequiredBytes;
+    if (isSd) {
+      estimatedRequiredBytes = modelSizeBytes + 1800.0 * 1024 * 1024;
+    } else if (isLiteRt) {
+      final kvBuffer = ctx * 1.2 * 1024 * 1024; // KV cache and activations
+      estimatedRequiredBytes = modelSizeBytes + kvBuffer + 350.0 * 1024 * 1024;
+    } else {
+      final kvBuffer = ctx * 1.5 * 1024 * 1024; // GGUF context graph and KV buffer
+      estimatedRequiredBytes = modelSizeBytes + kvBuffer + 300.0 * 1024 * 1024;
+    }
+
+    final totalBytes = (totalRamGB.value * 1024 * 1024 * 1024).round();
+    final availBytes = (availableRamGB.value * 1024 * 1024 * 1024).round();
+    final reqBytes = estimatedRequiredBytes.round();
+
+    // Critical checks:
+    // 1. Total device RAM is simply insufficient (e.g. 7B model on a 4GB RAM phone)
+    final bool isTotalRamTooSmall =
+        totalBytes > 0 && reqBytes > (totalBytes * 0.85).round();
+
+    // 2. Currently available RAM is critically low right now (< required bytes or < 300MB headroom)
+    final bool isCriticallyLow = availBytes > 0 &&
+        (reqBytes > availBytes || (availBytes - reqBytes) < 300 * 1024 * 1024);
+
+    // 3. Tight RAM (< 600MB headroom)
+    final bool isTight = availBytes > 0 &&
+        !isCriticallyLow &&
+        (availBytes - reqBytes) < 600 * 1024 * 1024;
+
+    final String warning;
+    final String recommendation;
+
+    if (isTotalRamTooSmall) {
+      warning =
+          'This model requires approximately ${(reqBytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB RAM, which exceeds your device\'s total capacity (${totalRamGB.value.toStringAsFixed(1)} GB).';
+      recommendation =
+          'Choose a smaller 1B–3B model (e.g. SmolLM2, Qwen 0.5B/1.5B, or Llama 3.2 1B).';
+    } else if (isCriticallyLow) {
+      warning =
+          'Available RAM (${(availBytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB) is below the recommended ${(reqBytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB.';
+      recommendation =
+          'Restarting the app or closing background apps will free up memory before loading.';
+    } else if (isTight) {
+      warning =
+          'Memory headroom is tight. The app will auto-tune context size to prevent background eviction.';
+      recommendation = 'Proceed with hardware-calibrated context.';
+    } else {
+      warning = '';
+      recommendation = 'Device memory is optimal for this model.';
+    }
+
+    return RamSafetyEvaluation(
+      requiredBytes: reqBytes,
+      availableBytes: availBytes,
+      totalBytes: totalBytes,
+      isSafe: !isTotalRamTooSmall && !isCriticallyLow,
+      isCriticallyLow: isCriticallyLow,
+      isTight: isTight,
+      isTotalRamTooSmall: isTotalRamTooSmall,
+      recommendRestart: isCriticallyLow && !isTotalRamTooSmall,
+      warningMessage: warning,
+      recommendation: recommendation,
+    );
   }
 
   /// Dynamically computes the optimal, crash-resilient context size and max tokens
@@ -140,6 +248,7 @@ class DeviceInfoService extends GetxService {
 
     final bool isLarge = lowerName.contains('7b') ||
         lowerName.contains('8b') ||
+        lowerName.contains('9b') ||
         lowerName.contains('14b') ||
         lowerName.contains('16b') ||
         (modelSizeBytes != null && modelSizeBytes > 3500 * 1024 * 1024);
@@ -176,7 +285,7 @@ class DeviceInfoService extends GetxService {
         maxTokens = isThinking ? 3072 : 2048;
       }
     } else if (isLarge) {
-      modelTier = '7B–8B Heavyweight';
+      modelTier = '7B–9B Heavyweight';
       if (ram <= 4) {
         // Warning: Very tight RAM for 7B on 4GB device
         contextSize = 1024;
@@ -241,6 +350,37 @@ class DeviceInfoService extends GetxService {
       modelTier: modelTier,
     );
   }
+}
+
+class RamSafetyEvaluation {
+  final int requiredBytes;
+  final int availableBytes;
+  final int totalBytes;
+  final bool isSafe;
+  final bool isCriticallyLow;
+  final bool isTight;
+  final bool isTotalRamTooSmall;
+  final bool recommendRestart;
+  final String warningMessage;
+  final String recommendation;
+
+  const RamSafetyEvaluation({
+    required this.requiredBytes,
+    required this.availableBytes,
+    required this.totalBytes,
+    required this.isSafe,
+    required this.isCriticallyLow,
+    required this.isTight,
+    required this.isTotalRamTooSmall,
+    required this.recommendRestart,
+    required this.warningMessage,
+    required this.recommendation,
+  });
+
+  String get requiredMbFormatted =>
+      (requiredBytes / (1024 * 1024)).toStringAsFixed(0);
+  String get availableMbFormatted =>
+      (availableBytes / (1024 * 1024)).toStringAsFixed(0);
 }
 
 class HardwareOptimizationResult {

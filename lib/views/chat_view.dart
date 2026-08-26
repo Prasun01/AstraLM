@@ -1,6 +1,8 @@
+import 'dart:ui' as ui;
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -26,6 +28,7 @@ import 'settings_view.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/provider_logo.dart';
+import '../widgets/liquid_glass_wrapper.dart';
 
 class ChatView extends GetView<ChatController> {
   const ChatView({super.key});
@@ -34,7 +37,12 @@ class ChatView extends GetView<ChatController> {
   Widget build(BuildContext context) {
     return Obx(() {
       final isCanvasOpen = controller.isCanvasOpen.value;
+      final topPadding = MediaQuery.of(context).padding.top;
+      final bottomPadding = MediaQuery.of(context).padding.bottom;
+
       return Scaffold(
+        extendBodyBehindAppBar: true,
+        extendBody: true,
         drawer: _buildSidebarDrawer(context),
         drawerEnableOpenDragGesture: true,
         drawerEdgeDragWidth: MediaQuery.of(context).size.width * 0.45,
@@ -50,17 +58,18 @@ class ChatView extends GetView<ChatController> {
             },
             child: Stack(
               children: [
-                Column(
-                  children: [
-                    _modelLoadingBar(context),
-              Expanded(
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: Obx(() {
+                // Layer 1: Edge-to-edge Messages List / Empty state
+                Positioned.fill(
+                  child: Obx(() {
                     if (controller.currentSessionId.value.isEmpty ||
                         controller.messages.isEmpty) {
-                      return _emptyState(context);
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          top: topPadding + 64,
+                          bottom: bottomPadding + 84,
+                        ),
+                        child: _emptyState(context),
+                      );
                     }
                     final streaming = controller.isStreaming.value;
                     final text = controller.streamingResponse.value;
@@ -78,7 +87,12 @@ class ChatView extends GetView<ChatController> {
                       },
                       child: ListView.builder(
                         controller: controller.scrollController,
-                        padding: const EdgeInsets.only(top: 14, bottom: 20),
+                        padding: EdgeInsets.only(
+                          top: topPadding + 68,
+                          bottom: bottomPadding + 92,
+                          left: 0,
+                          right: 0,
+                        ),
                         itemCount: n + (streaming ? 1 : 0),
                         itemBuilder: (_, i) {
                           if (i == n && streaming) {
@@ -92,12 +106,27 @@ class ChatView extends GetView<ChatController> {
                     );
                   }),
                 ),
-                // Slight top gradient fade
+
+                // Layer 2: Model Loading Progress & Memory Alert
+                Positioned(
+                  top: topPadding + 64,
+                  left: 16,
+                  right: 16,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _modelLoadingBar(context),
+                      _buildMemorySuggestionBanner(context),
+                    ],
+                  ),
+                ),
+
+                // Layer 3: Top Edge Gradient Fade
                 Positioned(
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: 24,
+                  height: topPadding + 72,
                   child: IgnorePointer(
                     child: Container(
                       decoration: BoxDecoration(
@@ -105,52 +134,31 @@ class ChatView extends GetView<ChatController> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Theme.of(context).scaffoldBackgroundColor,
-                            Theme.of(context)
-                                .scaffoldBackgroundColor
-                                .withValues(alpha: 0.0),
+                            Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.85),
+                            Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.0),
                           ],
                         ),
                       ),
                     ),
                   ),
                 ),
-                // Reduced bottom gradient fade just above floating input bar
+
+                // Layer 4: Floating Liquid Glass Input Bar at the Bottom
                 Positioned(
-                  bottom: 0,
                   left: 0,
                   right: 0,
-                  height: 24,
-                  child: IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [
-                            Theme.of(context).scaffoldBackgroundColor,
-                            Theme.of(context)
-                                .scaffoldBackgroundColor
-                                .withValues(alpha: 0.0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  bottom: 0,
+                  child: _inputBar(context),
+                ),
+
+                // Layer 5: Canvas Workspace
+                const Positioned.fill(
+                  child: CanvasWorkspace(),
                 ),
               ],
-              ),
             ),
-            _inputBar(context),
-          ],
+          ),
         ),
-        const Positioned.fill(
-          child: CanvasWorkspace(),
-        ),
-      ],
-    ),
-  ),
-),
       );
     });
   }
@@ -261,10 +269,14 @@ class ChatView extends GetView<ChatController> {
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF141620) : const Color(0xFFE9EDF5),
               borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.50),
+                width: 0.6,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
-                  blurRadius: 12,
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                  blurRadius: 10,
                   offset: const Offset(0, 3),
                 ),
               ],
@@ -321,6 +333,40 @@ class ChatView extends GetView<ChatController> {
         );
       }),
       actions: [
+        // Quick New Chat Action Button
+        Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: Center(
+            child: PressableScale(
+              onTap: controller.createNewChat,
+              child: Tooltip(
+                message: 'New Chat',
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF141620) : const Color(0xFFE9EDF5),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: PhosphorIcon(
+                      PhosphorIconsBold.pencilSimple,
+                      size: 18,
+                      color: isDark ? const Color(0xFFE2E6F2) : const Color(0xFF161822),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
         // Small Incognito Button
         Padding(
           padding: const EdgeInsets.only(right: 14),
@@ -568,9 +614,13 @@ class ChatView extends GetView<ChatController> {
                 );
               }
               return Column(
-                children: suggestions
-                    .map((s) => _suggestionChip(context, s))
-                    .toList(),
+                children: [
+                  for (int i = 0; i < suggestions.length; i++)
+                    _suggestionChip(context, suggestions[i])
+                        .animate(delay: (i * 60).ms)
+                        .fadeIn(duration: 240.ms, curve: Curves.easeOut)
+                        .slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
+                ],
               );
             }),
           ],
@@ -790,10 +840,8 @@ class ChatView extends GetView<ChatController> {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          // Dynamic remote config background apps memory suggestion banner
-          _buildMemorySuggestionBanner(context),
 
           // Attachment preview
           Obx(() {
@@ -980,25 +1028,38 @@ class ChatView extends GetView<ChatController> {
               ),
             );
           }),
-          // Floating pill container
-          Container(
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF12141A) : const Color(0xFFF3F5F9),
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.08),
-                  blurRadius: 20,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 5),
+          // Floating Optical Refraction & Liquid Glass Input Bar
+          Obx(() {
+            final isCloud = Get.find<SettingsController>().inferenceMode.value == 'cloud';
+            final isGenerating = controller.isLoading.value || controller.isStreaming.value;
+
+            return LiquidGlassInputWrapper(
+              isCloud: isCloud,
+              isGenerating: isGenerating,
+              cornerRadius: 30.0,
+              
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isCloud
+                      ? Colors.transparent
+                      : (isDark ? const Color(0xFF12141A) : const Color(0xFFF3F5F9)),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: isCloud
+                      ? []
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.08),
+                            blurRadius: 20,
+                            spreadRadius: 0,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
                 ),
-              ],
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-            child: Row(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+                child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Attach button (image, camera, file)
+                // Attach button (image, camera, file, canvas)
                 _AttachButton(
                   isDark: isDark,
                   isCloud: Get.find<SettingsController>().inferenceMode.value == 'cloud',
@@ -1006,7 +1067,7 @@ class ChatView extends GetView<ChatController> {
                   onCamera: controller.pickCamera,
                   onFile: controller.pickFile,
                 ),
-                const SizedBox(width: 2),
+                const SizedBox(width: 4),
                 // Text field with Open Sans font, matching single-line button height
                 Expanded(
                   child: TextField(
@@ -1039,7 +1100,7 @@ class ChatView extends GetView<ChatController> {
                       ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 8,
-                        vertical: 9,
+                        vertical: 8,
                       ),
                       isDense: true,
                     ),
@@ -1047,36 +1108,40 @@ class ChatView extends GetView<ChatController> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                // Floating Models Icon Button on the Right
+                // Quick Model Selector Button
                 Builder(
                   builder: (btnCtx) => PressableScale(
                     onTap: () => _showQuickAvailableModelSelector(btnCtx),
                     pressedScale: 0.90,
                     child: Container(
-                      width: 38,
-                      height: 38,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2),
+                        color: isCloud
+                            ? (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05))
+                            : (isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2)),
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        boxShadow: isCloud
+                            ? []
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.05),
+                                  blurRadius: 5,
+                                  offset: const Offset(0, 1.5),
+                                ),
+                              ],
                       ),
                       child: Center(
                         child: Icon(
                           PhosphorIconsBold.squaresFour,
-                          size: 17,
-                          color: isDark ? Colors.white : const Color(0xFF12141D),
+                          size: 16,
+                          color: isDark ? const Color(0xFFD4D8E6) : const Color(0xFF2D313F),
                         ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 // High-contrast unified mic / send / stop button
                 Obx(() {
                   final loading = controller.isLoading.value;
@@ -1103,47 +1168,64 @@ class ChatView extends GetView<ChatController> {
                     iconData = PhosphorIconsBold.arrowUp;
                     onTap = controller.sendMessage;
                   } else {
-                    bgColor = isDark
-                        ? const Color(0xFF1E212A)
-                        : const Color(0xFFE4E8F0);
+                    bgColor = isCloud
+                        ? (isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.07))
+                        : (isDark ? const Color(0xFF1E212A) : const Color(0xFFE4E8F0));
                     fgColor = isDark ? Colors.white : Colors.black;
                     iconData = PhosphorIconsBold.microphone;
                     onTap = controller.toggleListening;
                   }
 
-                  final button = PressableScale(
-                    onTap: onTap,
-                    pressedScale: 0.90,
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: bgColor,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.1),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                  Widget buttonChild = AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: bgColor,
+                      shape: BoxShape.circle,
+                      boxShadow: isCloud
+                          ? []
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.1),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      switchInCurve: Curves.easeOutBack,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, anim) => ScaleTransition(
+                        scale: anim,
+                        child: FadeTransition(opacity: anim, child: child),
                       ),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 180),
-                        transitionBuilder: (child, anim) =>
-                            ScaleTransition(scale: anim, child: child),
-                        child: Icon(
-                          iconData,
-                          key: ValueKey(iconData),
-                          color: fgColor,
-                          size: iconData == PhosphorIconsBold.microphone ? 19 : 20,
-                        ),
+                      child: Icon(
+                        iconData,
+                        key: ValueKey(iconData),
+                        color: fgColor,
+                        size: iconData == PhosphorIconsBold.microphone ? 19 : 20,
                       ),
                     ),
                   );
 
+                  if (loading || listening) {
+                    buttonChild = buttonChild
+                        .animate(onPlay: (c) => c.repeat(reverse: true))
+                        .scaleXY(begin: 0.94, end: 1.04, duration: 900.ms, curve: Curves.easeInOut);
+                  }
+
+                  final button = PressableScale(
+                    onTap: onTap,
+                    pressedScale: 0.88,
+                    child: buttonChild,
+                  );
+
                   final enabled = loading || listening || hasContent;
-                  return Opacity(
+                  return AnimatedOpacity(
+                    duration: const Duration(milliseconds: 180),
                     opacity: enabled ? 1.0 : 0.85,
                     child: button,
                   );
@@ -1151,6 +1233,8 @@ class ChatView extends GetView<ChatController> {
               ],
             ),
           ),
+            );
+          }),
         ]),
       ),
     );
@@ -1164,17 +1248,47 @@ class ChatView extends GetView<ChatController> {
 
     return Drawer(
       width: math.min(MediaQuery.of(context).size.width * 0.85, 340),
-      backgroundColor: isDark ? const Color(0xFF0C0E14) : const Color(0xFFF5F7FA),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       surfaceTintColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.horizontal(right: Radius.circular(24)),
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+      child: ClipRRect(
+        borderRadius: const BorderRadius.horizontal(right: Radius.circular(24)),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        const Color(0xFF141724).withValues(alpha: 0.75),
+                        const Color(0xFF090B10).withValues(alpha: 0.85),
+                      ]
+                    : [
+                        Colors.white.withValues(alpha: 0.85),
+                        const Color(0xFFF0F4F8).withValues(alpha: 0.78),
+                      ],
+              ),
+              border: Border(
+                right: BorderSide(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.12)
+                      : Colors.white.withValues(alpha: 0.70),
+                  width: 0.6,
+                ),
+              ),
+            ),
+            child: RepaintBoundary(
+              child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
               // Top Header: App Branding & Close Button
               Row(
                 children: [
@@ -1216,93 +1330,7 @@ class ChatView extends GetView<ChatController> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-
-              Row(
-                children: [
-                  // "+ New Chat" Button
-                  Expanded(
-                    flex: 3,
-                    child: PressableScale(
-                      onTap: () {
-                        Navigator.pop(context);
-                        controller.createNewChat();
-                      },
-                      child: Container(
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white : const Color(0xFF141620),
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              PhosphorIconsBold.plus,
-                              size: 18,
-                              color: isDark ? const Color(0xFF090A0E) : Colors.white,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'New Chat',
-                              style: GoogleFonts.manrope(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: isDark ? const Color(0xFF090A0E) : Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // "Models" Button
-                  Expanded(
-                    flex: 2,
-                    child: PressableScale(
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.of(context).push(_topFillTransitionRoute(const ModelView()));
-                      },
-                      child: Container(
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            PhosphorIcon(
-                              PhosphorIconsBold.stack,
-                              size: 16,
-                              color: isDark ? Colors.white : Colors.black,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Models',
-                              style: GoogleFonts.manrope(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: isDark ? Colors.white : Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
               // Search past conversations
               Container(
@@ -1390,7 +1418,7 @@ class ChatView extends GetView<ChatController> {
                                 Colors.white,
                                 Colors.transparent,
                               ],
-                              stops: [0.0, 0.03, 0.85, 1.0],
+                              stops: [0.0, 0.04, 0.95, 1.0],
                             ).createShader(bounds);
                           },
                           blendMode: BlendMode.dstIn,
@@ -1497,30 +1525,97 @@ class ChatView extends GetView<ChatController> {
                         );
                       }),
                     ),
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: 36,
-                      child: IgnorePointer(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                              colors: [
-                                (isDark ? const Color(0xFF0C0E14) : const Color(0xFFF5F7FA)),
-                                (isDark ? const Color(0xFF0C0E14) : const Color(0xFFF5F7FA)).withValues(alpha: 0.0),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+
                   ],
                 ),
               ),
               const SizedBox(height: 12),
+              // Thumb Reach Zone: "+ New Chat" & "Models"
+              Row(
+                children: [
+                  // "+ New Chat" Button
+                  Expanded(
+                    flex: 3,
+                    child: PressableScale(
+                      onTap: () {
+                        Navigator.pop(context);
+                        controller.createNewChat();
+                      },
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white : const Color(0xFF141620),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              PhosphorIconsBold.plus,
+                              size: 18,
+                              color: isDark ? const Color(0xFF090A0E) : Colors.white,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'New Chat',
+                              style: GoogleFonts.manrope(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? const Color(0xFF090A0E) : Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // "Models" Button
+                  Expanded(
+                    flex: 2,
+                    child: PressableScale(
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.of(context).push(_topFillTransitionRoute(const ModelView()));
+                      },
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            PhosphorIcon(
+                              PhosphorIconsBold.stack,
+                              size: 16,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Models',
+                              style: GoogleFonts.manrope(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               // Footer: Support Development (Buy Me a Coffee)
               PressableScale(
                 onTap: () async {
@@ -1625,6 +1720,10 @@ class ChatView extends GetView<ChatController> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+            ),
           ),
         ),
       ),
@@ -2429,15 +2528,19 @@ class _AttachButtonState extends State<_AttachButton> {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2),
+              color: widget.isCloud
+                  ? (isDark ? Colors.white.withValues(alpha: 0.10) : Colors.black.withValues(alpha: 0.06))
+                  : (isDark ? const Color(0xFF1B1E29) : const Color(0xFFE4E8F2)),
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              boxShadow: widget.isCloud
+                  ? []
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
             ),
             child: Center(
               child: Icon(

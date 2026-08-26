@@ -44,6 +44,14 @@ class InferenceService extends GetxService {
   // Platform-specific engine
   platform.InferenceEngine? _engine;
   String _sessionNativeRuntime = '';
+  int _currentLoadId = 0;
+
+  void cancelLoading() {
+    _currentLoadId++;
+    isLoadingModel.value = false;
+    loadingModelName.value = '';
+    modelLoadProgress.value = 0.0;
+  }
 
   String get sessionNativeRuntime => _sessionNativeRuntime;
 
@@ -64,6 +72,7 @@ class InferenceService extends GetxService {
       return 'ERROR: Local inference is not available on this platform. Use Cloud mode.';
     }
     if (isLoadingModel.value) return 'ERROR: Model is already loading.';
+    final thisLoadId = ++_currentLoadId;
     isLoadingModel.value = true;
     loadingModelName.value = modelName ?? modelPath.split('/').last;
     modelLoadProgress.value = 0.0;
@@ -105,7 +114,11 @@ class InferenceService extends GetxService {
           isLiteRt && !forceLiteRtCpu && liteRtMode != 'cpu_safe';
 
       await unloadModel();
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (thisLoadId != _currentLoadId) {
+        isLoadingModel.value = false;
+        return 'Canceled';
+      }
       isLoadingModel.value = true;
       loadingModelName.value = modelName ?? modelPath.split('/').last;
       modelLoadProgress.value = 0.0;
@@ -121,6 +134,8 @@ class InferenceService extends GetxService {
       } catch (_) {}
 
       final deviceInfo = Get.find<DeviceInfoService>();
+      await deviceInfo.refreshMemoryInfo();
+
       final calibration = deviceInfo.calculateOptimalParameters(
         modelName: requestedModelName,
         modelSizeBytes: fileSizeBytes,
@@ -129,6 +144,21 @@ class InferenceService extends GetxService {
 
       final finalContextSize = calibration.optimalContextSize;
       final finalMaxTokens = calibration.optimalMaxTokens;
+
+      // Smart RAM verification before allocation
+      final ramSafety = deviceInfo.evaluateModelRamSafety(
+        modelSizeBytes: fileSizeBytes ?? 0,
+        contextSize: finalContextSize,
+        runtime: runtime,
+      );
+
+      if (ramSafety.isTotalRamTooSmall) {
+        print('[Inference] ⚠️ Smart RAM Check: Device total RAM is very tight for this model: ${ramSafety.warningMessage}');
+      } else if (ramSafety.isCriticallyLow) {
+        print('[Inference] ⚠️ Smart RAM Check: Available memory is low (${ramSafety.availableMbFormatted}MB vs ${ramSafety.requiredMbFormatted}MB required). Auto-tuning context size.');
+      } else {
+        print('[Inference] ✓ Smart RAM Check: Memory verified (${ramSafety.availableMbFormatted}MB available / ${ramSafety.requiredMbFormatted}MB required).');
+      }
 
       // Dynamically tune and save optimal context size and token budget
       await _hive.setSetting(AppConstants.keyContextSize, finalContextSize);
@@ -304,13 +334,33 @@ class InferenceService extends GetxService {
     final startTime = DateTime.now();
     DateTime? firstVisibleTokenAt;
     Timer? tokenFlushTimer;
-    final tokenFlushBuffer = StringBuffer();
+    final tokenBatchBuffer = StringBuffer();
+    final fullStreamBuffer = StringBuffer();
+    int lastFpsUpdateMs = 0;
 
-    void flushTokenBuffer() {
-      if (tokenFlushBuffer.isEmpty) return;
-      final text = tokenFlushBuffer.toString();
-      tokenFlushBuffer.clear();
-      onToken?.call(text);
+    void flushTokenBatch({bool forceSync = false}) {
+      if (tokenBatchBuffer.isEmpty) return;
+      final batchText = tokenBatchBuffer.toString();
+      tokenBatchBuffer.clear();
+
+      // Smooth debounced UI update for GetX reactive state
+      streamingText.value = fullStreamBuffer.toString();
+
+      // Dispatch debounced callback
+      onToken?.call(batchText);
+
+      // Throttled speed calculation (every ~200ms) to avoid high-frequency reactive CPU churn
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      if (nowMs - lastFpsUpdateMs >= 200 || forceSync) {
+        lastFpsUpdateMs = nowMs;
+        final speedStart = firstVisibleTokenAt ?? startTime;
+        final elapsedSeconds =
+            DateTime.now().difference(speedStart).inMilliseconds / 1000.0;
+        if (elapsedSeconds > 0.05) {
+          tokensPerSecond.value =
+              double.parse((tokenCount.value / elapsedSeconds).toStringAsFixed(1));
+        }
+      }
     }
 
     try {
@@ -336,28 +386,33 @@ class InferenceService extends GetxService {
         imagePath: imagePath,
         audioPath: audioPath,
         onToken: (token) {
+          if (token.isEmpty) return;
+          final isFirst = tokenCount.value == 0;
           firstVisibleTokenAt ??= DateTime.now();
           tokenCount.value++;
-          streamingText.value += token;
-          final speedStart = firstVisibleTokenAt ?? startTime;
-          final elapsedSeconds =
-              DateTime.now().difference(speedStart).inMilliseconds / 1000.0;
-          if (elapsedSeconds > 0) {
-            tokensPerSecond.value = tokenCount.value / elapsedSeconds;
-          }
-          if (loadedModelRuntime.value == 'litert') {
-            tokenFlushBuffer.write(token);
-            tokenFlushTimer ??= Timer(const Duration(milliseconds: 60), () {
-              tokenFlushTimer = null;
-              flushTokenBuffer();
-            });
+          fullStreamBuffer.write(token);
+          tokenBatchBuffer.write(token);
+
+          if (isFirst) {
+            // Ultra-low latency Time To First Token: deliver first token immediately
+            flushTokenBatch(forceSync: true);
+          } else if (token.contains('\n') || tokenBatchBuffer.length >= 48) {
+            // Natural line/paragraph break: flush immediately for responsive markdown parsing
+            tokenFlushTimer?.cancel();
+            tokenFlushTimer = null;
+            flushTokenBatch();
           } else {
-            onToken?.call(token);
+            // Micro-batch rapid token bursts (debounced at ~28ms / 35 FPS) to keep UI buttery smooth
+            tokenFlushTimer ??= Timer(const Duration(milliseconds: 28), () {
+              tokenFlushTimer = null;
+              flushTokenBatch();
+            });
           }
         },
       );
       tokenFlushTimer?.cancel();
-      flushTokenBuffer();
+      tokenFlushTimer = null;
+      flushTokenBatch(forceSync: true);
 
       await refreshContextInfo();
       isGenerating.value = false;
@@ -385,7 +440,8 @@ class InferenceService extends GetxService {
       generationSource.value = '';
       streamingText.value = '';
       tokenFlushTimer?.cancel();
-      flushTokenBuffer();
+      tokenFlushTimer = null;
+      flushTokenBatch(forceSync: true);
       Get.find<AppLogService>().error('Local generation failed', details: e);
       return 'ERROR: $e';
     }

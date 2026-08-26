@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -254,6 +255,17 @@ class ModelController extends GetxController {
 
   int get downloadedCount => downloadedFiles.length;
 
+  List<AiModel> get installedModels =>
+      availableModels.where((m) => isDownloaded(m.filename)).toList();
+
+  int get totalInstalledBytes {
+    int total = 0;
+    for (final m in installedModels) {
+      total += fileSizes[m.filename] ?? _declaredModelBytes(m);
+    }
+    return total;
+  }
+
   String get activeLocalModelName => _inference.loadedModelName.value;
 
   @override
@@ -264,7 +276,31 @@ class ModelController extends GetxController {
         .map((m) => AiModel.fromMap(m))
         .toList()
       ..addAll(customModels);
+    _loadCatalogModels();
     refreshDownloaded();
+  }
+
+  Future<void> _loadCatalogModels() async {
+    try {
+      final jsonString = await rootBundle.loadString('assets/models.json');
+      final List<dynamic> list = jsonDecode(jsonString);
+      final catalog = list
+          .map((item) => AiModel.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+      if (catalog.isNotEmpty) {
+        final Map<String, AiModel> modelMap = {};
+        for (final m in catalog) {
+          modelMap[m.filename] = m;
+        }
+        for (final m in customModels) {
+          modelMap[m.filename] = m;
+        }
+        availableModels.value = modelMap.values.toList();
+        await refreshDownloaded();
+      }
+    } catch (e) {
+      Get.find<AppLogService>().error('Failed to load assets/models.json catalog', details: e);
+    }
   }
 
   void _loadCustomModels() {
@@ -617,8 +653,46 @@ class ModelController extends GetxController {
     }
 
     final path = await _download.modelPath(filename);
+    final runtime = model?.runtime ?? AiModel.runtimeFromFilename(filename);
+
+    if (_inference.requiresAppRestartForRuntime(runtime)) {
+      await _showRuntimeRestartDialog(
+        currentRuntime: _inference.sessionNativeRuntime,
+        targetRuntime: runtime,
+        pendingModelName: filename,
+        pendingModelPath: path,
+      );
+      return;
+    }
+
     final isImage = filename.toLowerCase().endsWith('.safetensors') ||
         (model != null && isImageModel(model));
+
+    if (!isImage) {
+      final fileBytes = await _modelFileBytes(filename, path, model);
+      final isLiteRt = runtime == AiModel.runtimeLiteRt;
+      final devInfo = Get.find<DeviceInfoService>();
+      await devInfo.refreshMemoryInfo();
+
+      final ramSafety = devInfo.evaluateModelRamSafety(
+        modelSizeBytes: fileBytes,
+        runtime: runtime,
+      );
+
+      if (ramSafety.isCriticallyLow || ramSafety.isTotalRamTooSmall) {
+        final safetyAction = await _confirmModelLoadSafety(
+          filename: filename,
+          fileBytes: fileBytes,
+          isLiteRt: isLiteRt,
+          ramSafety: ramSafety,
+        );
+        if (safetyAction == _ModelLoadAction.cancel) return;
+        if (safetyAction == _ModelLoadAction.unload) {
+          await _inference.unloadModel();
+          return;
+        }
+      }
+    }
 
     if (isImage) {
       if (_localImage.isModelLoaded.value) {
@@ -866,9 +940,10 @@ class ModelController extends GetxController {
     required String filename,
     required int fileBytes,
     required bool isLiteRt,
+    RamSafetyEvaluation? ramSafety,
   }) async {
+    final dev = Get.find<DeviceInfoService>();
     final availableRamGb = await _refreshAvailableRamGb();
-
     final availableBytes = (availableRamGb * 1024 * 1024 * 1024).round();
     final modelLabel = fileBytes > 0
         ? DownloadService.formatWholeMb(fileBytes)
@@ -876,23 +951,27 @@ class ModelController extends GetxController {
     final ramLabel = availableBytes > 0
         ? DownloadService.formatWholeMb(availableBytes)
         : 'Unknown';
+    final requiredRamLabel = ramSafety != null
+        ? '${(ramSafety.requiredBytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB'
+        : 'Unknown';
+    final totalRamLabel = '${dev.totalRamGB.value.toStringAsFixed(1)} GB';
+
     final lower = filename.toLowerCase();
-    final hasMeasuredMemory = availableBytes > 0 && fileBytes > 0;
-    final isCriticallyLow = hasMeasuredMemory &&
-        (availableBytes < fileBytes || _isLowMemoryBytes(availableBytes));
-    final isLargeForRam =
-        availableBytes > 0 && fileBytes > 0 && availableBytes < fileBytes * 2;
-    final isLowRam = availableBytes > 0 && _isLowMemoryBytes(availableBytes);
+    final isCriticallyLow = ramSafety?.isCriticallyLow ??
+        (availableBytes > 0 && fileBytes > 0 && (availableBytes < fileBytes || _isLowMemoryBytes(availableBytes)));
+    final isTotalRamTooSmall = ramSafety?.isTotalRamTooSmall ?? false;
+
     final String warning;
-    if (isCriticallyLow) {
-      warning =
+    if (isTotalRamTooSmall) {
+      warning = ramSafety?.warningMessage ??
+          'This model exceeds your total device RAM capacity and may fail to allocate.';
+    } else if (isCriticallyLow) {
+      warning = ramSafety?.warningMessage ??
           'Available RAM is lower than recommended. This can crash the app if Android cannot reserve enough memory.';
-    } else if (isLargeForRam || isLowRam || isLiteRt) {
-      warning =
-          'This can crash the app if Android cannot reserve enough memory for the model.';
     } else {
-      warning = 'Loading local models can use more memory than the file size.';
+      warning = 'Loading local models requires dedicated memory for weights and KV cache.';
     }
+
     final runtimeLabel = isLiteRt
         ? 'LiteRT-LM'
         : lower.endsWith('.gguf')
@@ -907,16 +986,24 @@ class ModelController extends GetxController {
 
     final result = await Get.dialog<_ModelLoadAction>(
       AlertDialog(
-        title: Text(isCriticallyLow ? 'Restart recommended' : 'Load model?'),
+        title: Text(isTotalRamTooSmall
+            ? 'High RAM requirement'
+            : isCriticallyLow
+                ? 'Low available memory'
+                : 'Load model?'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(filename),
+            Text(
+              filename,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 12),
             Text('Runtime: $runtimeLabel'),
-            Text('Available RAM: $ramLabel'),
-            Text('Model size: $modelLabel'),
+            Text('Model file size: $modelLabel'),
+            Text('Est. RAM required: $requiredRamLabel'),
+            Text('Available RAM: $ramLabel / $totalRamLabel total'),
             if (hasLoadedModel) ...[
               const SizedBox(height: 12),
               Text(
@@ -928,7 +1015,23 @@ class ModelController extends GetxController {
                 const Text('Unload it before loading another model.'),
             ],
             const SizedBox(height: 12),
-            Text(warning),
+            Text(
+              warning,
+              style: TextStyle(
+                color: (isCriticallyLow || isTotalRamTooSmall)
+                    ? Colors.orange.shade800
+                    : null,
+                fontSize: 13,
+              ),
+            ),
+            if (ramSafety?.recommendation != null &&
+                ramSafety!.recommendation.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Tip: ${ramSafety.recommendation}',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
           ],
         ),
         actions: [
@@ -941,7 +1044,7 @@ class ModelController extends GetxController {
               onPressed: () => Get.back(result: _ModelLoadAction.unload),
               child: const Text('Unload'),
             ),
-          if (isCriticallyLow)
+          if (isCriticallyLow && !isTotalRamTooSmall)
             TextButton(
               onPressed: () async {
                 Get.back(result: _ModelLoadAction.cancel);

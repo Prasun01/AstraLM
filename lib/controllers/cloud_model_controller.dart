@@ -35,39 +35,61 @@ class CloudModelController extends GetxController {
   static const _cachePrefix = 'cloud_model_cache_';
   static const _cacheTimePrefix = 'cloud_model_cache_time_';
   static const _defaultModelsByProvider = <String, List<String>>{
-    'openrouter': [
-      'openai/gpt-4o-mini',
-      'openai/gpt-4o',
-      'anthropic/claude-3.5-sonnet',
-      'google/gemini-2.5-flash',
-      'deepseek/deepseek-chat',
-      'meta-llama/llama-3.1-8b-instruct',
-    ],
-    'openai': [
-      'gpt-5.2',
-      'gpt-5.1',
-      'gpt-4.1',
-      'gpt-4.1-mini',
-      'gpt-4o',
-      'gpt-4o-mini',
-    ],
-    'deepseek': [
-      'deepseek-reasoner',
-      'deepseek-chat',
-    ],
     'google': [
       'gemini-2.5-flash',
       'gemini-2.5-pro',
       'gemini-2.0-flash',
-      'gemini-1.5-flash',
-      'gemini-1.5-pro',
+      'gemini-2.0-flash-thinking-exp',
+      'imagen-3.0-generate-002',
+      'imagen-3.0-fast-generate-001',
+    ],
+    'openai': [
+      'gpt-4.5-preview',
+      'gpt-4o',
+      'gpt-4o-mini',
+      'o1',
+      'o3-mini',
+      'dall-e-3',
+    ],
+    'anthropic': [
+      'claude-3-7-sonnet-latest',
+      'claude-3-5-sonnet-latest',
+      'claude-3-5-haiku-latest',
+    ],
+    'deepseek': [
+      'deepseek-chat',
+      'deepseek-reasoner',
     ],
     'nvidia': [
-      'meta/llama-3.1-8b-instruct',
-      'meta/llama-3.1-70b-instruct',
       'meta/llama-3.3-70b-instruct',
-      'mistralai/mixtral-8x7b-instruct-v0.1',
-      'nvidia/llama-3.1-nemotron-70b-instruct',
+      'meta/llama-3.1-405b-instruct',
+      'mistralai/mistral-large-2-instruct',
+      'deepseek-ai/deepseek-r1',
+      'meta/llama-3.1-70b-instruct',
+      'meta/llama-3.1-8b-instruct',
+    ],
+    'groq': [
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'mixtral-8x7b-32768',
+      'gemma2-9b-it',
+      'deepseek-r1-distill-llama-70b',
+    ],
+    'openrouter': [
+      'deepseek/deepseek-r1',
+      'deepseek/deepseek-chat',
+      'anthropic/claude-3.7-sonnet',
+      'anthropic/claude-3.5-sonnet',
+      'openai/gpt-4.5-preview',
+      'openai/gpt-4o',
+      'openai/gpt-4o-mini',
+      'openai/o3-mini',
+      'google/gemini-2.5-pro',
+      'google/gemini-2.5-flash',
+      'google/gemini-2.0-flash-001',
+      'meta-llama/llama-3.3-70b-instruct',
+      'mistralai/mistral-large-2411',
+      'qwen/qwen-2.5-72b-instruct',
     ],
   };
 
@@ -81,25 +103,37 @@ class CloudModelController extends GetxController {
     CloudProviderInfo(
       id: 'openai',
       name: 'OpenAI',
-      description: 'Native OpenAI chat models',
+      description: 'GPT-4.5, GPT-4o, o1, o3-mini & DALL-E 3',
       icon: PhosphorIconsBold.sparkle,
     ),
     CloudProviderInfo(
-      id: 'deepseek',
-      name: 'DeepSeek',
-      description: 'OpenAI compatible V4 models',
+      id: 'anthropic',
+      name: 'Anthropic Claude',
+      description: 'Claude 3.7 Sonnet (Thinking) & 3.5',
       icon: PhosphorIconsBold.brain,
     ),
     CloudProviderInfo(
       id: 'google',
       name: 'Google Gemini',
-      description: 'Gemini native API models',
+      description: 'Gemini 2.5 Flash/Pro & Imagen 3',
       icon: PhosphorIconsBold.diamond,
+    ),
+    CloudProviderInfo(
+      id: 'deepseek',
+      name: 'DeepSeek',
+      description: 'DeepSeek-V3 & DeepSeek-R1 Reasoning',
+      icon: PhosphorIconsBold.lightning,
+    ),
+    CloudProviderInfo(
+      id: 'groq',
+      name: 'Groq',
+      description: 'Ultra-fast LPU inference · Llama 3.3',
+      icon: PhosphorIconsBold.lightning,
     ),
     CloudProviderInfo(
       id: 'nvidia',
       name: 'NVIDIA NIM',
-      description: 'OpenAI compatible hosted NIM models',
+      description: 'Hosted frontier open models & Llama 3.3',
       icon: PhosphorIconsBold.cpu,
     ),
     CloudProviderInfo(
@@ -153,12 +187,16 @@ class CloudModelController extends GetxController {
     switch (provider) {
       case 'openrouter':
         return _settings.openRouterModel.value;
+      case 'anthropic':
+        return _settings.anthropicModel.value;
       case 'deepseek':
         return _settings.deepSeekModel.value;
       case 'google':
         return _settings.googleModel.value;
       case 'nvidia':
         return _settings.nvidiaModel.value;
+      case 'groq':
+        return _settings.groqModel.value;
       case 'custom':
         return _settings.customCloudModel.value;
       default:
@@ -170,12 +208,16 @@ class CloudModelController extends GetxController {
     switch (provider) {
       case 'openrouter':
         return _settings.openRouterKey.value;
+      case 'anthropic':
+        return _settings.anthropicKey.value;
       case 'deepseek':
         return _settings.deepSeekKey.value;
       case 'google':
         return _settings.googleKey.value;
       case 'nvidia':
         return _settings.nvidiaKey.value;
+      case 'groq':
+        return _settings.groqKey.value;
       case 'custom':
         return _settings.customCloudKey.value;
       default:
@@ -242,6 +284,8 @@ class CloudModelController extends GetxController {
     final normalized =
         provider == 'google' ? modelId.replaceFirst('models/', '') : modelId;
     if (provider == 'nvidia') return const ['NIM'];
+    if (provider == 'groq') return const ['LPU'];
+    if (provider == 'anthropic') return const ['Anthropic'];
     return modelTagsByProvider[provider]?[normalized] ??
         modelTagsByProvider[provider]?[modelId] ??
         const <String>[];
@@ -264,6 +308,18 @@ class CloudModelController extends GetxController {
 
   Future<void> saveApiKey(String provider, String value) async {
     await _settings.setApiKey(provider, value);
+  }
+
+  Future<void> removeApiKey(String provider) async {
+    await _settings.removeApiKey(provider);
+    if (provider == 'custom') {
+      await _settings.clearCustomCloudConfig();
+    }
+    await _hive.setSetting('$_cachePrefix$provider', null);
+    await _hive.setSetting('$_cacheTimePrefix$provider', null);
+    modelsByProvider[provider] = [];
+    ensureDefaultModels(provider);
+    update();
   }
 
   void ensureDefaultModels(String provider) {
@@ -426,6 +482,19 @@ class CloudModelController extends GetxController {
           Uri.parse('${AppConstants.nvidiaEndpoint}/models'),
           headers: {'Authorization': 'Bearer ${apiKeyFor(provider)}'},
         );
+      case 'groq':
+        return http.get(
+          Uri.parse('${AppConstants.groqEndpoint}/models'),
+          headers: {'Authorization': 'Bearer ${apiKeyFor(provider)}'},
+        );
+      case 'anthropic':
+        return http.get(
+          Uri.parse('https://api.anthropic.com/v1/models'),
+          headers: {
+            'x-api-key': apiKeyFor(provider),
+            'anthropic-version': '2023-06-01',
+          },
+        );
       default:
         return http.get(
           Uri.parse('https://api.openai.com/v1/models'),
@@ -445,8 +514,9 @@ class CloudModelController extends GetxController {
         final name = item['name']?.toString() ?? '';
         final methods = item['supportedGenerationMethods'] as List? ?? [];
 
-        // Only include models that support generateContent
-        final supportsChat = methods.any((m) => m.toString() == 'generateContent');
+        // Only include models that support generateContent or predict
+        final supportsChat = methods.any((m) =>
+            m.toString() == 'generateContent' || m.toString() == 'predict');
         if (!supportsChat) continue;
 
         // Clean model ID (strip 'models/' prefix)
@@ -459,7 +529,6 @@ class CloudModelController extends GetxController {
             lower.contains('aqa') ||
             lower.contains('bison') ||
             lower.contains('gecko') ||
-            lower.contains('imagen') ||
             lower.startsWith('text-')) {
           continue;
         }
@@ -483,7 +552,7 @@ class CloudModelController extends GetxController {
       if (lower.contains('embedding') ||
           lower.contains('whisper') ||
           lower.contains('tts-') ||
-          lower.contains('dall-e') ||
+          (lower.contains('dall-e') && provider != 'openai') ||
           lower.contains('moderation') ||
           lower.contains('rerank') ||
           lower.contains('retriever') ||
@@ -502,11 +571,12 @@ class CloudModelController extends GetxController {
 
       // OpenAI specific filtering
       if (provider == 'openai') {
-        final isChatGpt = lower.startsWith('gpt-') ||
+        final isChatOrVision = lower.startsWith('gpt-') ||
             lower.startsWith('o1') ||
             lower.startsWith('o3') ||
-            lower.startsWith('chatgpt');
-        if (!isChatGpt || lower.contains('-instruct')) continue;
+            lower.startsWith('chatgpt') ||
+            lower.startsWith('dall-e');
+        if (!isChatOrVision || lower.contains('-instruct')) continue;
       }
 
       // NVIDIA specific filtering
@@ -537,13 +607,18 @@ class CloudModelController extends GetxController {
   }
 
   int _modelPriorityScore(String modelId) {
-    if (modelId.contains('deepseek-r1') || modelId.contains('deepseek-reasoner')) return 100;
-    if (modelId.contains('gpt-4o') || modelId.contains('claude-3.5-sonnet') || modelId.contains('gemini-2.5-pro')) return 95;
-    if (modelId.contains('gemini-2.5-flash') || modelId.contains('gpt-4o-mini') || modelId.contains('deepseek-chat')) return 90;
-    if (modelId.contains('o1') || modelId.contains('o3')) return 85;
-    if (modelId.contains('llama-3.3') || modelId.contains('llama-3.1')) return 80;
-    if (modelId.contains('qwen') || modelId.contains('mistral')) return 75;
-    if (modelId.contains('free')) return 70;
+    final m = modelId.toLowerCase();
+    if (m.contains('claude-3-7') || m.contains('claude-3.7')) return 115;
+    if (m.contains('deepseek-r1') || m.contains('deepseek-reasoner')) return 110;
+    if (m.contains('o3-mini') || m.contains('o1')) return 105;
+    if (m.contains('gpt-4.5') || m.contains('gemini-2.5-pro')) return 100;
+    if (m.contains('gemini-2.5-flash') || m.contains('gpt-4o') || m.contains('claude-3.5-sonnet') || m.contains('claude-3-5-sonnet')) return 95;
+    if (m.contains('deepseek-chat') || m.contains('gpt-4o-mini') || m.contains('gemini-2.0-flash')) return 90;
+    if (m.contains('llama-3.3') || m.contains('claude-3-5-haiku') || m.contains('claude-3-haiku')) return 85;
+    if (m.contains('llama-3.1-405b') || m.contains('llama-3.1-70b') || m.contains('mistral-large')) return 80;
+    if (m.contains('llama-3.1') || m.contains('gemma-2') || m.contains('gemma2') || m.contains('qwen')) return 75;
+    if (m.contains('imagen-3') || m.contains('dall-e-3')) return 70;
+    if (m.contains('free')) return 65;
     return 10;
   }
 

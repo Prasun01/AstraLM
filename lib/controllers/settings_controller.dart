@@ -26,6 +26,7 @@ class SettingsController extends GetxController {
   final kimiKey = ''.obs;
   final stabilityKey = ''.obs;
   final nvidiaKey = ''.obs;
+  final groqKey = ''.obs;
   final openRouterKey = ''.obs;
   final deepSeekKey = ''.obs;
   final customCloudName = 'Custom API'.obs;
@@ -33,14 +34,15 @@ class SettingsController extends GetxController {
   final customCloudKey = ''.obs;
   final customCloudProfiles = <Map<String, String>>[].obs;
   final customCloudProfileIndex = (-1).obs;
-  final openaiModel = 'gpt-5.2'.obs;
-  final anthropicModel = 'claude-sonnet-4-6'.obs;
+  final openaiModel = 'gpt-4o'.obs;
+  final anthropicModel = 'claude-3-7-sonnet-latest'.obs;
   final googleModel = 'gemini-2.5-flash'.obs;
   final kimiModel = 'kimi-k2.6'.obs;
   final stabilityModel = 'sd3.5-large-turbo'.obs;
-  final nvidiaModel = 'meta/llama-3.1-8b-instruct'.obs;
+  final nvidiaModel = 'meta/llama-3.3-70b-instruct'.obs;
+  final groqModel = 'llama-3.3-70b-versatile'.obs;
   final openRouterModel = 'openai/gpt-4o-mini'.obs;
-  final deepSeekModel = 'deepseek-reasoner'.obs;
+  final deepSeekModel = 'deepseek-chat'.obs;
   final customCloudModel = ''.obs;
   final globalSystemPrompt = AppConstants.systemPrompt.obs;
   final nvidiaModels = <String>[].obs;
@@ -66,6 +68,7 @@ class SettingsController extends GetxController {
   final kimiKeyController = TextEditingController();
   final stabilityKeyController = TextEditingController();
   final nvidiaKeyController = TextEditingController();
+  final groqKeyController = TextEditingController();
   final openRouterKeyController = TextEditingController();
   final deepSeekKeyController = TextEditingController();
   final customCloudNameController = TextEditingController();
@@ -79,6 +82,7 @@ class SettingsController extends GetxController {
   final kimiModelController = TextEditingController();
   final stabilityModelController = TextEditingController();
   final nvidiaModelController = TextEditingController();
+  final groqModelController = TextEditingController();
   final openRouterModelController = TextEditingController();
   final deepSeekModelController = TextEditingController();
   final customCloudModelController = TextEditingController();
@@ -110,6 +114,7 @@ class SettingsController extends GetxController {
     kimiKeyController.dispose();
     stabilityKeyController.dispose();
     nvidiaKeyController.dispose();
+    groqKeyController.dispose();
     openRouterKeyController.dispose();
     deepSeekKeyController.dispose();
     customCloudNameController.dispose();
@@ -122,6 +127,7 @@ class SettingsController extends GetxController {
     kimiModelController.dispose();
     stabilityModelController.dispose();
     nvidiaModelController.dispose();
+    groqModelController.dispose();
     openRouterModelController.dispose();
     deepSeekModelController.dispose();
     customCloudModelController.dispose();
@@ -145,6 +151,7 @@ class SettingsController extends GetxController {
     kimiKey.value = _hive.getSetting(AppConstants.keyKimiKey) ?? '';
     stabilityKey.value = _hive.getSetting(AppConstants.keyStabilityKey) ?? '';
     nvidiaKey.value = _hive.getSetting(AppConstants.keyNvidiaKey) ?? '';
+    groqKey.value = _hive.getSetting(AppConstants.keyGroqKey) ?? '';
     openRouterKey.value = _hive.getSetting(AppConstants.keyOpenRouterKey) ?? '';
     deepSeekKey.value = _hive.getSetting(AppConstants.keyDeepSeekKey) ?? '';
     customCloudName.value = _hive.getSetting(AppConstants.keyCustomCloudName,
@@ -155,11 +162,11 @@ class SettingsController extends GetxController {
     customCloudKey.value =
         _hive.getSetting(AppConstants.keyCustomCloudKey) ?? '';
     openaiModel.value = _hive.getSetting(AppConstants.keyOpenaiModel,
-            defaultValue: 'gpt-5.2') ??
-        'gpt-5.2';
+            defaultValue: 'gpt-4o') ??
+        'gpt-4o';
     anthropicModel.value = _hive.getSetting(AppConstants.keyAnthropicModel,
-            defaultValue: 'claude-sonnet-4-6') ??
-        'claude-sonnet-4-6';
+            defaultValue: 'claude-3-7-sonnet-latest') ??
+        'claude-3-7-sonnet-latest';
     googleModel.value = _hive.getSetting(AppConstants.keyGoogleModel,
             defaultValue: 'gemini-2.5-flash') ??
         'gemini-2.5-flash';
@@ -173,14 +180,17 @@ class SettingsController extends GetxController {
         ? 'sd3.5-large-turbo'
         : savedStability;
     nvidiaModel.value = _hive.getSetting(AppConstants.keyNvidiaModel,
-            defaultValue: 'meta/llama-3.1-8b-instruct') ??
-        'meta/llama-3.1-8b-instruct';
+            defaultValue: 'meta/llama-3.3-70b-instruct') ??
+        'meta/llama-3.3-70b-instruct';
+    groqModel.value = _hive.getSetting(AppConstants.keyGroqModel,
+            defaultValue: 'llama-3.3-70b-versatile') ??
+        'llama-3.3-70b-versatile';
     openRouterModel.value = _hive.getSetting(AppConstants.keyOpenRouterModel,
             defaultValue: 'openai/gpt-4o-mini') ??
         'openai/gpt-4o-mini';
     deepSeekModel.value = _hive.getSetting(AppConstants.keyDeepSeekModel,
-            defaultValue: 'deepseek-reasoner') ??
-        'deepseek-reasoner';
+            defaultValue: 'deepseek-chat') ??
+        'deepseek-chat';
     customCloudModel.value =
         _hive.getSetting(AppConstants.keyCustomCloudModel) ?? '';
     _loadCustomCloudProfiles();
@@ -241,6 +251,7 @@ class SettingsController extends GetxController {
     kimiKeyController.text = kimiKey.value;
     stabilityKeyController.text = stabilityKey.value;
     nvidiaKeyController.text = nvidiaKey.value;
+    groqKeyController.text = groqKey.value;
     openRouterKeyController.text = openRouterKey.value;
     deepSeekKeyController.text = deepSeekKey.value;
     customCloudNameController.text = customCloudName.value;
@@ -254,6 +265,7 @@ class SettingsController extends GetxController {
     kimiModelController.text = kimiModel.value;
     stabilityModelController.text = stabilityModel.value;
     nvidiaModelController.text = nvidiaModel.value;
+    groqModelController.text = groqModel.value;
     openRouterModelController.text = openRouterModel.value;
     deepSeekModelController.text = deepSeekModel.value;
     customCloudModelController.text = customCloudModel.value;
@@ -271,6 +283,8 @@ class SettingsController extends GetxController {
         return stabilityKeyController;
       case 'nvidia':
         return nvidiaKeyController;
+      case 'groq':
+        return groqKeyController;
       case 'openrouter':
         return openRouterKeyController;
       case 'deepseek':
@@ -294,6 +308,8 @@ class SettingsController extends GetxController {
         return stabilityModelController;
       case 'nvidia':
         return nvidiaModelController;
+      case 'groq':
+        return groqModelController;
       case 'openrouter':
         return openRouterModelController;
       case 'deepseek':
@@ -317,6 +333,8 @@ class SettingsController extends GetxController {
         return stabilityModel.value;
       case 'nvidia':
         return nvidiaModel.value;
+      case 'groq':
+        return groqModel.value;
       case 'openrouter':
         return openRouterModel.value;
       case 'deepseek':
@@ -333,12 +351,20 @@ class SettingsController extends GetxController {
     await _hive.setSetting(AppConstants.keyInferenceMode, mode);
     if (mode == 'cloud') {
       try {
-        final inf = Get.find<InferenceService>();
-        if (inf.isModelLoaded.value) {
-          await inf.unloadModel();
+        if (Get.isRegistered<InferenceService>()) {
+          final inf = Get.find<InferenceService>();
+          inf.cancelLoading();
+          if (inf.isModelLoaded.value) {
+            await inf.unloadModel();
+          }
         }
       } catch (_) {}
     }
+  }
+
+  Future<void> removeApiKey(String provider) async {
+    cancelApiKeyDebounce();
+    await setApiKey(provider, '');
   }
 
   Future<void> setCloudProvider(String provider) async {
@@ -384,6 +410,11 @@ class SettingsController extends GetxController {
         nvidiaKeyController.text = trimmed;
         await _hive.setSetting(AppConstants.keyNvidiaKey, trimmed);
         await refreshNvidiaModels();
+        break;
+      case 'groq':
+        groqKey.value = trimmed;
+        groqKeyController.text = trimmed;
+        await _hive.setSetting(AppConstants.keyGroqKey, trimmed);
         break;
       case 'openrouter':
         openRouterKey.value = trimmed;
@@ -445,6 +476,11 @@ class SettingsController extends GetxController {
         nvidiaModel.value = model;
         nvidiaModelController.text = model;
         await _hive.setSetting(AppConstants.keyNvidiaModel, model);
+        break;
+      case 'groq':
+        groqModel.value = model;
+        groqModelController.text = model;
+        await _hive.setSetting(AppConstants.keyGroqModel, model);
         break;
       case 'openrouter':
         openRouterModel.value = model;

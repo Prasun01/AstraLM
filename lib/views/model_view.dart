@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,12 +24,13 @@ class ModelView extends GetView<ModelController> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('Models',
             style: GoogleFonts.bricolageGrotesque(fontWeight: FontWeight.w700, fontSize: 24)),
         actions: [
           Obx(() {
-            if (controller.modelScope.value != 'local') {
+            if (controller.modelScope.value == 'online') {
               return const SizedBox.shrink();
             }
             return Row(
@@ -51,54 +53,36 @@ class ModelView extends GetView<ModelController> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          if (controller.modelScope.value == 'local') {
+          if (controller.modelScope.value != 'online') {
             await controller.refreshDownloaded();
           }
         },
         color: Theme.of(context).colorScheme.primary,
         child: _buildVerticalFadingEdge(
-          child: Obx(() => ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
+          child: Obx(() {
+            final scope = controller.modelScope.value;
+            final isInstalled = scope == 'installed';
+            final isDiscover = scope == 'discover' || scope == 'local';
+            final isCloud = scope == 'online' || scope == 'cloud';
+
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              children: [
                 _buildScopeToggle(context),
                 const SizedBox(height: 14),
-                // Active model banner
                 _buildActiveModelBanner(context),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
-                if (controller.modelScope.value == 'local') ...[
-                  _buildImportingProgress(context),
-                  _buildRecommendedSection(context),
-                  _buildLocalFilterChips(context),
-                  const SizedBox(height: 14),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'ALL MODELS (${controller.filteredDisplayedModels.length})',
-                        style: GoogleFonts.manrope(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          color: isDark
-                              ? const Color(0xFF8E95A8)
-                              : const Color(0xFF5A6074),
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                      _buildSortSelector(context),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  if (controller.filteredDisplayedModels.isEmpty)
-                    _buildEmptyLocalState(context)
-                  else
-                    ...controller.filteredDisplayedModels
-                        .map((model) => _buildModelCard(context, model)),
+                if (isInstalled) ...[
+                  _buildInstalledSection(context),
+                ] else if (isDiscover) ...[
+                  _buildDiscoverSection(context),
                 ] else ...[
                   _buildOnlineProviders(context),
                 ],
               ],
-            )),
+            );
+          }),
         ),
       ),
     );
@@ -109,170 +93,433 @@ class ModelView extends GetView<ModelController> {
     final cloud = Get.find<CloudModelController>();
 
     return Obx(() {
-      final isLocal = controller.modelScope.value == 'local';
-      final isOnline = controller.modelScope.value == 'online';
-      final downloadedCount = controller.downloadedCount;
+      final scope = controller.modelScope.value;
+      final isInstalled = scope == 'installed';
+      final isDiscover = scope == 'discover' || scope == 'local';
+      final isOnline = scope == 'online' || scope == 'cloud';
+      final installedCount = controller.downloadedCount;
       final configuredCloudCount = cloud.providers.where((p) => cloud.isConfigured(p.id)).length;
 
-      return Row(
-        children: [
-          // ── Local Models Button ──
-          Expanded(
-            child: PressableScale(
-              onTap: () => controller.modelScope.value = 'local',
-              pressedScale: 0.96,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isLocal
-                      ? (isDark ? Colors.white : Colors.black)
-                      : (isDark ? const Color(0xFF14161E) : const Color(0xFFF0F2F6)),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: isLocal
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ]
-                      : [],
+      return Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF10121A) : const Color(0xFFECEFF5),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            // Tab 1: Installed
+            _buildScopeTabItem(
+              context: context,
+              title: 'Installed',
+              badge: installedCount > 0 ? '$installedCount' : null,
+              icon: PhosphorIconsBold.hardDrives,
+              isSelected: isInstalled,
+              onTap: () => controller.modelScope.value = 'installed',
+              isDark: isDark,
+            ),
+            const SizedBox(width: 4),
+
+            // Tab 2: Discover (Catalog)
+            _buildScopeTabItem(
+              context: context,
+              title: 'Discover',
+              badge: null,
+              icon: PhosphorIconsBold.compass,
+              isSelected: isDiscover,
+              onTap: () => controller.modelScope.value = 'discover',
+              isDark: isDark,
+            ),
+            const SizedBox(width: 4),
+
+            // Tab 3: Cloud
+            _buildScopeTabItem(
+              context: context,
+              title: 'Cloud',
+              badge: configuredCloudCount > 0 ? '$configuredCloudCount' : null,
+              icon: PhosphorIconsBold.cloud,
+              isSelected: isOnline,
+              onTap: () => controller.modelScope.value = 'online',
+              isDark: isDark,
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildScopeTabItem({
+    required BuildContext context,
+    required String title,
+    required String? badge,
+    required PhosphorIconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return Expanded(
+      child: PressableScale(
+        onTap: onTap,
+        pressedScale: 0.96,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (isDark ? Colors.white : Colors.black)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.10),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              PhosphorIcon(
+                icon,
+                size: 15,
+                color: isSelected
+                    ? (isDark ? Colors.black : Colors.white)
+                    : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
+              ),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.manrope(
+                    fontSize: 12.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                    color: isSelected
+                        ? (isDark ? Colors.black : Colors.white)
+                        : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155)),
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    PhosphorIcon(
-                      PhosphorIconsBold.hardDrives,
-                      size: 20,
-                      color: isLocal
+              ),
+              if (badge != null) ...[
+                const SizedBox(width: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? (isDark ? const Color(0xFFE2E8F0) : const Color(0xFF333333))
+                        : (isDark ? const Color(0xFF1E222F) : const Color(0xFFDFE3EC)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    badge,
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected
                           ? (isDark ? Colors.black : Colors.white)
                           : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Local Models',
-                            style: GoogleFonts.manrope(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: isLocal
-                                  ? (isDark ? Colors.black : Colors.white)
-                                  : (isDark ? Colors.white : Colors.black),
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            downloadedCount > 0 ? '$downloadedCount installed' : 'On-Device AI',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: isLocal
-                                  ? (isDark ? const Color(0xFF333333) : const Color(0xFFCCCCCC))
-                                  : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
-                            ),
-                          ),
-                        ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Tab 1: Installed Models View ──
+  Widget _buildInstalledSection(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final installed = controller.installedModels;
+    final totalBytes = controller.totalInstalledBytes;
+    final formattedSize = totalBytes > 0 ? DownloadService.formatBytes(totalBytes) : '0 MB';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Storage Footprint Summary
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF10121A) : const Color(0xFFF1F4F9),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              PhosphorIcon(
+                PhosphorIconsBold.hardDrives,
+                size: 20,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${installed.length} ${installed.length == 1 ? "Model" : "Models"} Installed',
+                      style: GoogleFonts.manrope(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : const Color(0xFF0E1017),
                       ),
                     ),
-                    if (isLocal)
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.black : Colors.white,
-                          shape: BoxShape.circle,
+                    const SizedBox(height: 1),
+                    Text(
+                      '$formattedSize total local storage used',
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PressableScale(
+                onTap: () => controller.modelScope.value = 'discover',
+                pressedScale: 0.94,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E222F) : Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PhosphorIcon(
+                        PhosphorIconsBold.plus,
+                        size: 13,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Add Model',
+                        style: GoogleFonts.manrope(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : Colors.black,
                         ),
                       ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Models List or Empty State
+        if (installed.isEmpty)
+          _buildEmptyInstalledState(context)
+        else ...[
+          Text(
+            'READY TO RUN (${installed.length})',
+            style: GoogleFonts.manrope(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074),
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...installed.asMap().entries.map((entry) => _buildModelCard(context, entry.value)
+              .animate(delay: ((entry.key < 10 ? entry.key : 10) * 35).ms)
+              .fadeIn(duration: 220.ms, curve: Curves.easeOut)
+              .slideY(begin: 0.05, end: 0, curve: Curves.easeOutQuad)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildEmptyInstalledState(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF10121A) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Center(
+        child: Column(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1A1D28) : const Color(0xFFECEFF6),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: PhosphorIcon(
+                  PhosphorIconsBold.hardDrives,
+                  size: 24,
+                  color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'No Models Installed Yet',
+              style: GoogleFonts.manrope(
+                fontSize: 15.5,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : const Color(0xFF0E1017),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Download models from our curated catalog or import custom GGUF/LiteRT models to chat offline.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B),
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 18),
+            PressableScale(
+              onTap: () => controller.modelScope.value = 'discover',
+              pressedScale: 0.95,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white : Colors.black,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIconsBold.compass,
+                      size: 16,
+                      color: isDark ? Colors.black : Colors.white,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Browse Discover Catalog',
+                      style: GoogleFonts.manrope(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.black : Colors.white,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
+          ],
+        ),
+      ),
+    );
+  }
 
-          // ── Online Models Button ──
-          Expanded(
-            child: PressableScale(
-              onTap: () => controller.modelScope.value = 'online',
-              pressedScale: 0.96,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isOnline
-                      ? (isDark ? Colors.white : Colors.black)
-                      : (isDark ? const Color(0xFF14161E) : const Color(0xFFF0F2F6)),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: isOnline
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ]
-                      : [],
-                ),
-                child: Row(
-                  children: [
-                    PhosphorIcon(
-                      PhosphorIconsBold.cloud,
-                      size: 20,
-                      color: isOnline
-                          ? (isDark ? Colors.black : Colors.white)
-                          : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Online Models',
-                            style: GoogleFonts.manrope(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: isOnline
-                                  ? (isDark ? Colors.black : Colors.white)
-                                  : (isDark ? Colors.white : Colors.black),
-                            ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            configuredCloudCount > 0 ? '$configuredCloudCount ready' : 'Cloud APIs',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: isOnline
-                                  ? (isDark ? const Color(0xFF333333) : const Color(0xFFCCCCCC))
-                                  : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (isOnline)
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.black : Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                  ],
-                ),
+  // ── Tab 2: Discover Catalog View ──
+  Widget _buildDiscoverSection(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildImportingProgress(context),
+        _buildRecommendedSection(context),
+        _buildLocalFilterChips(context),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'CATALOG MODELS (${controller.filteredDisplayedModels.length})',
+              style: GoogleFonts.manrope(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: isDark
+                    ? const Color(0xFF8E95A8)
+                    : const Color(0xFF5A6074),
+                letterSpacing: 1.0,
               ),
+            ),
+            _buildSortSelector(context),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (controller.filteredDisplayedModels.isEmpty)
+          _buildEmptyLocalState(context)
+        else
+          ...controller.filteredDisplayedModels.asMap().entries.map((entry) => _buildModelCard(context, entry.value)
+              .animate(delay: ((entry.key < 12 ? entry.key : 12) * 30).ms)
+              .fadeIn(duration: 200.ms, curve: Curves.easeOut)
+              .slideY(begin: 0.05, end: 0, curve: Curves.easeOutQuad)),
+      ],
+    );
+  }
+
+  // ── Smart Hardware Fit Badge ──
+  Widget _buildHardwareFitBadge(BuildContext context, AiModel model) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final devInfo = Get.find<DeviceInfoService>();
+    final ram = devInfo.totalRamGB.value;
+
+    final sizeStr = model.size.toLowerCase();
+    double estimatedGb = 1.0;
+    if (sizeStr.contains('gb')) {
+      estimatedGb = double.tryParse(sizeStr.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 1.5;
+    } else if (sizeStr.contains('mb')) {
+      final mb = double.tryParse(sizeStr.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 800;
+      estimatedGb = mb / 1024.0;
+    }
+
+    final Color badgeBg;
+    final Color badgeFg;
+    final String fitLabel;
+    final PhosphorIconData fitIcon;
+
+    if (estimatedGb <= 1.2 || model.name.toLowerCase().contains('0.5b') || model.name.toLowerCase().contains('360m')) {
+      badgeBg = const Color(0xFF22C55E).withValues(alpha: isDark ? 0.15 : 0.12);
+      badgeFg = isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A);
+      fitLabel = 'Optimal Fit';
+      fitIcon = PhosphorIconsBold.checkCircle;
+    } else if (estimatedGb <= (ram > 0 ? ram * 0.55 : 3.2)) {
+      badgeBg = const Color(0xFFEAB308).withValues(alpha: isDark ? 0.15 : 0.12);
+      badgeFg = isDark ? const Color(0xFFFDE047) : const Color(0xFFCA8A04);
+      fitLabel = 'Capable';
+      fitIcon = PhosphorIconsBold.gauge;
+    } else {
+      badgeBg = const Color(0xFFF97316).withValues(alpha: isDark ? 0.15 : 0.12);
+      badgeFg = isDark ? const Color(0xFFFB923C) : const Color(0xFFEA580C);
+      fitLabel = 'High RAM';
+      fitIcon = PhosphorIconsBold.warning;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: badgeBg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          PhosphorIcon(fitIcon, size: 11, color: badgeFg),
+          const SizedBox(width: 4),
+          Text(
+            fitLabel,
+            style: GoogleFonts.inter(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: badgeFg,
             ),
           ),
         ],
-      );
-    });
+      ),
+    );
   }
 
   Widget _buildLocalActions(BuildContext context) {
@@ -461,7 +708,10 @@ class ModelView extends GetView<ModelController> {
                     ],
                   ),
                 ),
-              );
+              )
+                  .animate(delay: (idx * 45).ms)
+                  .fadeIn(duration: 200.ms, curve: Curves.easeOut)
+                  .slideX(begin: 0.06, end: 0, curve: Curves.easeOutQuad);
             },
           ),
         )),
@@ -1239,8 +1489,11 @@ class ModelView extends GetView<ModelController> {
             ),
           ),
           const SizedBox(height: 12),
-          for (final provider in cloud.providers)
-            _buildOnlineProviderRow(context, cloud, provider),
+          for (int i = 0; i < cloud.providers.length; i++)
+            _buildOnlineProviderRow(context, cloud, cloud.providers[i])
+                .animate(delay: (i * 35).ms)
+                .fadeIn(duration: 200.ms, curve: Curves.easeOut)
+                .slideY(begin: 0.05, end: 0, curve: Curves.easeOutQuad),
           const SizedBox(height: 24),
           _buildOnlineApiFaq(context),
         ],
@@ -1623,6 +1876,40 @@ class ModelView extends GetView<ModelController> {
                         );
                       },
                     ),
+                    if (configured) ...[
+                      const SizedBox(height: 8),
+                      ListTile(
+                        contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                        leading: Icon(
+                          PhosphorIconsBold.trash,
+                          size: 26,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        title: Text(
+                          'Remove API key',
+                          style: GoogleFonts.manrope(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Clear saved key for ${provider.name}',
+                          style: GoogleFonts.openSans(fontSize: 13),
+                        ),
+                        onTap: () async {
+                          Get.back();
+                          await cloud.removeApiKey(provider.id);
+                          Get.snackbar(
+                            'Key Removed',
+                            '${provider.name} API key removed.',
+                            snackPosition: SnackPosition.BOTTOM,
+                            duration: const Duration(seconds: 2),
+                            margin: const EdgeInsets.all(12),
+                          );
+                        },
+                      ),
+                    ],
                     const SizedBox(height: 8),
                   ],
                   ListTile(
@@ -1785,6 +2072,27 @@ class ModelView extends GetView<ModelController> {
                     label: Text(isCustom ? 'Configure' : 'Select Model'),
                   ),
                 ),
+                if (configured) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Remove API Key',
+                    icon: Icon(
+                      PhosphorIconsBold.trash,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    onPressed: () async {
+                      await cloud.removeApiKey(provider.id);
+                      Get.snackbar(
+                        'Key Removed',
+                        '${provider.name} API key removed.',
+                        snackPosition: SnackPosition.BOTTOM,
+                        duration: const Duration(seconds: 2),
+                        margin: const EdgeInsets.all(12),
+                      );
+                    },
+                  ),
+                ],
               ],
             ),
           ],
@@ -1899,6 +2207,29 @@ class ModelView extends GetView<ModelController> {
         ),
       ),
       actions: [
+        if (cloud.isConfigured(provider.id))
+          TextButton.icon(
+            onPressed: () async {
+              await cloud.removeApiKey(provider.id);
+              Get.back(closeOverlays: false);
+              Get.snackbar(
+                'Key Removed',
+                '${provider.name} API key removed.',
+                snackPosition: SnackPosition.BOTTOM,
+                duration: const Duration(seconds: 2),
+                margin: const EdgeInsets.all(12),
+              );
+            },
+            icon: Icon(
+              PhosphorIconsBold.trash,
+              size: 16,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            label: Text(
+              'Remove Key',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
         TextButton(
           onPressed: () => Get.back(closeOverlays: false),
           style: TextButton.styleFrom(
@@ -2854,7 +3185,13 @@ class ModelView extends GetView<ModelController> {
                                   ),
                         ),
                         const SizedBox(height: 8),
-                        _buildModelBadges(context, model),
+                        Row(
+                        children: [
+                          _buildHardwareFitBadge(context, model),
+                          const SizedBox(width: 6),
+                          Expanded(child: _buildModelBadges(context, model)),
+                        ],
+                      ),
                         const SizedBox(height: 8),
                         Text(
                           model.description,
