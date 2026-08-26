@@ -1,15 +1,21 @@
 [
   {
-    "name": "Qwen 2.5 0.5B Instruct (LiteRT-LM)",
-    "filename": "Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
-    "url": "https://huggingface.co/litert-community/Qwen2.5-0.5B-Instruct/resolve/main/Qwen2.5-0.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
-    "size": "586 MB",
-    "description": "Ultra-lightweight Qwen 2.5 model optimized with LiteRT int8 quantization for ultra-fast response on low-RAM devices",
-    "template": "litert",
-    "runtime": "litert",
-    "quantization": "int8",
+    "name": "Qwen 2.5 0.5B Instruct (Q8_0)",
+    "filename": "qwen2.5-0.5b-instruct-q8_0.gguf",
+    "url": "https://huggingface.co/bartowski/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/Qwen2.5-0.5B-Instruct-Q8_0.gguf",
+    "size": "660 MB",
+    "description": "High precision 8-bit Qwen 2.5 0.5B model for exceptional accuracy on lightweight devices",
+    "template": "chatml",
+    "runtime": "llama",
+    "quantization": "Q8_0",
     "ram_required": "1.2 GB",
-    "tags": ["general", "fast", "tiny", "qwen", "litert"]
+    "tags": [
+      "general",
+      "fast",
+      "tiny",
+      "qwen",
+      "gguf"
+    ]
   },
   {
     "name": "Qwen2.5-0.5B Instruct (Q4_K_M)",
@@ -21,7 +27,13 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "1.0 GB",
-    "tags": ["general", "fast", "tiny", "qwen", "gguf"]
+    "tags": [
+      "general",
+      "fast",
+      "tiny",
+      "qwen",
+      "gguf"
+    ]
   },
   {
     "name": "Qwen 2.5 1.5B Instruct (LiteRT-LM)",
@@ -33,7 +45,13 @@
     "runtime": "litert",
     "quantization": "int8",
     "ram_required": "2.5 GB",
-    "tags": ["general", "balanced", "coding", "qwen", "litert"]
+    "tags": [
+      "general",
+      "balanced",
+      "coding",
+      "qwen",
+      "litert"
+    ]
   },
   {
     "name": "Qwen2.5-1.5B Instruct (Q4_K_M)",
@@ -45,19 +63,30 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "2.0 GB",
-    "tags": ["general", "balanced", "coding", "qwen", "gguf"]
+    "tags": [
+      "general",
+      "balanced",
+      "coding",
+      "qwen",
+      "gguf"
+    ]
   },
   {
-    "name": "Qwen 2.5 3B Instruct (LiteRT-LM)",
-    "filename": "Qwen2.5-3B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
-    "url": "https://huggingface.co/litert-community/Qwen2.5-3B-Instruct/resolve/main/Qwen2.5-3B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
-    "size": "3.05 GB",
-    "description": "High intelligence 3B LiteRT-LM model with GPU acceleration support for mid-to-high tier mobile devices",
-    "template": "litert",
-    "runtime": "litert",
-    "quantization": "int8",
-    "ram_required": "4.5 GB",
-    "tags": ["general", "coding", "reasoning", "qwen", "litert"]
+    "name": "Qwen 2.5 Coder 3B Instruct (Q4_K_M)",
+    "filename": "qwen2.5-coder-3b-instruct-q4_k_m.gguf",
+    "url": "https://huggingface.co/bartowski/Qwen2.5-Coder-3B-Instruct-GGUF/resolve/main/Qwen2.5-Coder-3B-Instruct-Q4_K_M.gguf",
+    "size": "2.09 GB",
+    "description": "Specialized coding powerhouse with 3B parameters; excels at Dart, Python, and web code",
+    "template": "chatml",
+    "runtime": "llama",
+    "quantization": "Q4_K_M",
+    "ram_required": "3.5 GB",
+    "tags": [
+      "coding",
+      "specialized",
+      "qwen",
+      "gguf"
+    ]
   },
   {
     "name": "Qwen2.5-3B Instruct (Q4_K_M)",
@@ -69,19 +98,31 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "3.5 GB",
-    "tags": ["general", "coding", "reasoning", "qwen", "gguf"]
+    "tags": [
+      "general",
+      "coding",
+      "reasoning",
+      "qwen",
+      "gguf"
+    ]
   },
   {
-    "name": "Qwen 2.5 7B Instruct (LiteRT-LM)",
-    "filename": "Qwen2.5-7B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
-    "url": "https://huggingface.co/litert-community/Qwen2.5-7B-Instruct/resolve/main/Qwen2.5-7B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
-    "size": "7.18 GB",
-    "description": "Flagship 7B LiteRT-LM model for ultra-tier devices with 12GB+ RAM; enterprise-grade local intelligence",
-    "template": "litert",
-    "runtime": "litert",
-    "quantization": "int8",
-    "ram_required": "8.5 GB",
-    "tags": ["flagship", "coding", "reasoning", "qwen", "litert"]
+    "name": "Qwen 2.5 Coder 7B Instruct (Q4_K_M)",
+    "filename": "qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+    "url": "https://huggingface.co/bartowski/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
+    "size": "4.68 GB",
+    "description": "State-of-the-art 7B code & reasoning model for advanced development and math",
+    "template": "chatml",
+    "runtime": "llama",
+    "quantization": "Q4_K_M",
+    "ram_required": "6.8 GB",
+    "tags": [
+      "coding",
+      "flagship",
+      "reasoning",
+      "qwen",
+      "gguf"
+    ]
   },
   {
     "name": "Qwen2.5-7B Instruct (Q4_K_M)",
@@ -93,7 +134,13 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "6.5 GB",
-    "tags": ["flagship", "coding", "reasoning", "qwen", "gguf"]
+    "tags": [
+      "flagship",
+      "coding",
+      "reasoning",
+      "qwen",
+      "gguf"
+    ]
   },
   {
     "name": "DeepSeek R1 Distill Qwen 1.5B (LiteRT-LM)",
@@ -105,7 +152,13 @@
     "runtime": "litert",
     "quantization": "int8",
     "ram_required": "2.8 GB",
-    "tags": ["reasoning", "math", "coding", "deepseek", "litert"]
+    "tags": [
+      "reasoning",
+      "math",
+      "coding",
+      "deepseek",
+      "litert"
+    ]
   },
   {
     "name": "DeepSeek-R1-Distill-Qwen-1.5B (Q4_K_M)",
@@ -117,7 +170,13 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "2.2 GB",
-    "tags": ["reasoning", "math", "coding", "deepseek", "gguf"]
+    "tags": [
+      "reasoning",
+      "math",
+      "coding",
+      "deepseek",
+      "gguf"
+    ]
   },
   {
     "name": "DeepSeek-R1-Distill-Qwen-7B (Q4_K_M)",
@@ -129,43 +188,65 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "6.8 GB",
-    "tags": ["reasoning", "flagship", "math", "coding", "deepseek", "gguf"]
+    "tags": [
+      "reasoning",
+      "flagship",
+      "math",
+      "coding",
+      "deepseek",
+      "gguf"
+    ]
   },
   {
-    "name": "Gemma 2 2B Instruct (LiteRT-LM)",
-    "filename": "gemma-2-2b-it.litertlm",
-    "url": "https://huggingface.co/litert-community/gemma-2-2b-it/resolve/main/gemma-2-2b-it.litertlm",
-    "size": "2.41 GB",
-    "description": "Google's official Gemma 2 2B tuned for LiteRT-LM on mobile devices with high conversational fluency",
-    "template": "litert",
-    "runtime": "litert",
-    "quantization": "int8",
-    "ram_required": "3.5 GB",
-    "tags": ["general", "google", "gemma", "litert"]
+    "name": "Gemma 2 2B Instruct (Q8_0)",
+    "filename": "gemma-2-2b-it-q8_0.gguf",
+    "url": "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q8_0.gguf",
+    "size": "2.78 GB",
+    "description": "Full 8-bit precision Gemma 2 2B model offering maximum conversational eloquence",
+    "template": "gemma",
+    "runtime": "llama",
+    "quantization": "Q8_0",
+    "ram_required": "4.0 GB",
+    "tags": [
+      "general",
+      "google",
+      "gemma",
+      "gguf"
+    ]
   },
   {
     "name": "Gemma 2 2B Instruct (Q4_K_M)",
     "filename": "gemma-2-2b-it-q4_k_m.gguf",
     "url": "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf",
     "size": "1.71 GB",
-    "description": "Google's lightweight general chat model — fast, smart, and highly calibrated for general assistance",
+    "description": "Google's lightweight general chat model \u2014 fast, smart, and highly calibrated for general assistance",
     "template": "gemma",
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "2.8 GB",
-    "tags": ["general", "google", "gemma", "gguf"]
+    "tags": [
+      "general",
+      "google",
+      "gemma",
+      "gguf"
+    ]
   },
   {
-    "name": "Gemma 2 9B Instruct (LiteRT-LM)",
-    "filename": "gemma-2-9b-it.litertlm",
-    "url": "https://huggingface.co/litert-community/gemma-2-9b-it/resolve/main/gemma-2-9b-it.litertlm",
-    "size": "9.12 GB",
-    "description": "Google Gemma 2 9B LiteRT-LM format for devices with 12GB+ RAM; exceptional knowledge and reasoning",
-    "template": "litert",
-    "runtime": "litert",
-    "quantization": "int8",
-    "ram_required": "10.5 GB",
-    "tags": ["flagship", "google", "gemma", "litert"]
+    "name": "Gemma 2 9B Instruct (Q3_K_M)",
+    "filename": "gemma-2-9b-it-q3_k_m.gguf",
+    "url": "https://huggingface.co/bartowski/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it-Q3_K_M.gguf",
+    "size": "4.66 GB",
+    "description": "Memory-optimized 9B Gemma 2 model fitting comfortably within 8GB RAM devices",
+    "template": "gemma",
+    "runtime": "llama",
+    "quantization": "Q3_K_M",
+    "ram_required": "6.5 GB",
+    "tags": [
+      "flagship",
+      "google",
+      "gemma",
+      "gguf"
+    ]
   },
   {
     "name": "Gemma 2 9B Instruct (Q4_K_M)",
@@ -177,19 +258,30 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "7.8 GB",
-    "tags": ["flagship", "google", "gemma", "reasoning", "gguf"]
+    "tags": [
+      "flagship",
+      "google",
+      "gemma",
+      "reasoning",
+      "gguf"
+    ]
   },
   {
-    "name": "Llama 3.2 1B Instruct (LiteRT-LM)",
-    "filename": "Llama-3.2-1B-Instruct.litertlm",
-    "url": "https://huggingface.co/litert-community/Llama-3.2-1B-Instruct/resolve/main/Llama-3.2-1B-Instruct.litertlm",
-    "size": "780 MB",
-    "description": "Meta's ultra-compact Llama 3.2 1B model running on Google LiteRT with instant token generation",
-    "template": "litert",
-    "runtime": "litert",
-    "quantization": "int8",
-    "ram_required": "1.6 GB",
-    "tags": ["general", "fast", "meta", "llama", "litert"]
+    "name": "Llama 3.2 1B Instruct (Q8_0)",
+    "filename": "llama-3.2-1b-instruct-q8_0.gguf",
+    "url": "https://huggingface.co/bartowski/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q8_0.gguf",
+    "size": "1.32 GB",
+    "description": "High precision 8-bit Llama 3.2 1B model with high instruct adherence and speed",
+    "template": "llama3",
+    "runtime": "llama",
+    "quantization": "Q8_0",
+    "ram_required": "2.2 GB",
+    "tags": [
+      "general",
+      "meta",
+      "llama",
+      "gguf"
+    ]
   },
   {
     "name": "Llama 3.2 1B Instruct (Q4_K_M)",
@@ -201,19 +293,30 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "1.6 GB",
-    "tags": ["general", "fast", "meta", "llama", "gguf"]
+    "tags": [
+      "general",
+      "fast",
+      "meta",
+      "llama",
+      "gguf"
+    ]
   },
   {
-    "name": "Llama 3.2 3B Instruct (LiteRT-LM)",
-    "filename": "Llama-3.2-3B-Instruct.litertlm",
-    "url": "https://huggingface.co/litert-community/Llama-3.2-3B-Instruct/resolve/main/Llama-3.2-3B-Instruct.litertlm",
-    "size": "3.08 GB",
-    "description": "Meta's flagship edge model with 3B parameters optimized for LiteRT-LM mobile hardware acceleration",
-    "template": "litert",
-    "runtime": "litert",
-    "quantization": "int8",
-    "ram_required": "4.5 GB",
-    "tags": ["general", "balanced", "meta", "llama", "litert"]
+    "name": "Llama 3.2 3B Instruct (Q8_0)",
+    "filename": "llama-3.2-3b-instruct-q8_0.gguf",
+    "url": "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q8_0.gguf",
+    "size": "3.42 GB",
+    "description": "Full 8-bit precision Llama 3.2 3B model for top tier reasoning and summarization",
+    "template": "llama3",
+    "runtime": "llama",
+    "quantization": "Q8_0",
+    "ram_required": "4.8 GB",
+    "tags": [
+      "general",
+      "meta",
+      "llama",
+      "gguf"
+    ]
   },
   {
     "name": "Llama 3.2 3B Instruct (Q4_K_M)",
@@ -225,7 +328,13 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "3.5 GB",
-    "tags": ["general", "balanced", "meta", "llama", "gguf"]
+    "tags": [
+      "general",
+      "balanced",
+      "meta",
+      "llama",
+      "gguf"
+    ]
   },
   {
     "name": "SmolLM2-360M Instruct (Q4_K_M)",
@@ -237,7 +346,13 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "0.8 GB",
-    "tags": ["general", "tiny", "ultra-fast", "smollm", "gguf"]
+    "tags": [
+      "general",
+      "tiny",
+      "ultra-fast",
+      "smollm",
+      "gguf"
+    ]
   },
   {
     "name": "SmolLM2-1.7B Instruct (Q4_K_M)",
@@ -249,7 +364,12 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "2.0 GB",
-    "tags": ["general", "fast", "smollm", "gguf"]
+    "tags": [
+      "general",
+      "fast",
+      "smollm",
+      "gguf"
+    ]
   },
   {
     "name": "Phi-3.5 Mini Instruct (Q4_K_M)",
@@ -261,7 +381,13 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "3.8 GB",
-    "tags": ["reasoning", "coding", "microsoft", "phi", "gguf"]
+    "tags": [
+      "reasoning",
+      "coding",
+      "microsoft",
+      "phi",
+      "gguf"
+    ]
   },
   {
     "name": "SD Turbo FP16 (SD Turbo)",
@@ -273,7 +399,12 @@
     "runtime": "sd",
     "quantization": "FP16",
     "ram_required": "4.5 GB",
-    "tags": ["image", "turbo", "fast", "sd"]
+    "tags": [
+      "image",
+      "turbo",
+      "fast",
+      "sd"
+    ]
   },
   {
     "name": "DreamShaper 8 LCM (SD 1.5)",
@@ -285,7 +416,12 @@
     "runtime": "sd",
     "quantization": "FP16",
     "ram_required": "4.5 GB",
-    "tags": ["image", "art", "lcm", "sd"]
+    "tags": [
+      "image",
+      "art",
+      "lcm",
+      "sd"
+    ]
   },
   {
     "name": "CyberRealistic V8 FP16 (SD 1.5)",
@@ -297,7 +433,12 @@
     "runtime": "sd",
     "quantization": "FP16",
     "ram_required": "4.5 GB",
-    "tags": ["image", "photo", "realistic", "sd"]
+    "tags": [
+      "image",
+      "photo",
+      "realistic",
+      "sd"
+    ]
   },
   {
     "name": "Realistic Vision V5.1 fp16 (SD 1.5)",
@@ -309,7 +450,12 @@
     "runtime": "sd",
     "quantization": "FP16",
     "ram_required": "4.5 GB",
-    "tags": ["image", "photo", "realistic", "sd"]
+    "tags": [
+      "image",
+      "photo",
+      "realistic",
+      "sd"
+    ]
   },
   {
     "name": "AnyLoRA (SD 1.5)",
@@ -321,7 +467,12 @@
     "runtime": "sd",
     "quantization": "FP16",
     "ram_required": "4.5 GB",
-    "tags": ["image", "anime", "art", "sd"]
+    "tags": [
+      "image",
+      "anime",
+      "art",
+      "sd"
+    ]
   },
   {
     "name": "Qwen 3 0.6B (LiteRT-LM)",
@@ -333,7 +484,13 @@
     "runtime": "litert",
     "quantization": "int8",
     "ram_required": "1.2 GB",
-    "tags": ["general", "fast", "tiny", "qwen", "litert"]
+    "tags": [
+      "general",
+      "fast",
+      "tiny",
+      "qwen",
+      "litert"
+    ]
   },
   {
     "name": "Gemma 4 E2B Instruct (LiteRT-LM)",
@@ -346,7 +503,13 @@
     "quantization": "int8",
     "ram_required": "3.8 GB",
     "vision": "true",
-    "tags": ["general", "vision", "google", "gemma", "litert"]
+    "tags": [
+      "general",
+      "vision",
+      "google",
+      "gemma",
+      "litert"
+    ]
   },
   {
     "name": "Gemma 4 E4B Instruct (LiteRT-LM)",
@@ -359,56 +522,83 @@
     "quantization": "int8",
     "ram_required": "5.0 GB",
     "vision": "true",
-    "tags": ["flagship", "vision", "google", "gemma", "litert"]
+    "tags": [
+      "flagship",
+      "vision",
+      "google",
+      "gemma",
+      "litert"
+    ]
   },
   {
     "name": "Qwen2-VL-2B Instruct (Q4_K_M)",
     "filename": "qwen2-vl-2b-instruct-q4_k_m.gguf",
     "url": "https://huggingface.co/bartowski/Qwen2-VL-2B-Instruct-GGUF/resolve/main/Qwen2-VL-2B-Instruct-Q4_K_M.gguf",
     "size": "1.30 GB",
-    "description": "Vision-capable Qwen model — understands images, diagrams, charts, and document screenshots",
+    "description": "Vision-capable Qwen model \u2014 understands images, diagrams, charts, and document screenshots",
     "template": "chatml",
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "2.5 GB",
     "vision": "true",
-    "tags": ["vision", "general", "qwen", "gguf"]
+    "tags": [
+      "vision",
+      "general",
+      "qwen",
+      "gguf"
+    ]
   },
   {
     "name": "Kimi Moonlight 16B-A3B (Q3_K_S)",
     "filename": "moonlight-16b-a3b-instruct-q3_k_s.gguf",
     "url": "https://huggingface.co/mmnga/Moonlight-16B-A3B-Instruct-gguf/resolve/main/Moonlight-16B-A3B-Instruct-Q3_K_S.gguf",
     "size": "7.10 GB",
-    "description": "Moonshot AI (Kimi) — 3B active parameter Mixture-of-Experts (MoE) with exceptional quality",
+    "description": "Moonshot AI (Kimi) \u2014 3B active parameter Mixture-of-Experts (MoE) with exceptional quality",
     "template": "chatml",
     "runtime": "llama",
     "quantization": "Q3_K_S",
     "ram_required": "8.5 GB",
-    "tags": ["flagship", "moe", "kimi", "reasoning", "gguf"]
+    "tags": [
+      "flagship",
+      "moe",
+      "kimi",
+      "reasoning",
+      "gguf"
+    ]
   },
   {
     "name": "Dolphin-3.0-Qwen2.5-1.5B (Q4_K_M)",
     "filename": "dolphin-3.0-qwen2.5-1.5b-q4_k_m.gguf",
     "url": "https://huggingface.co/bartowski/Dolphin3.0-Qwen2.5-1.5B-GGUF/resolve/main/Dolphin3.0-Qwen2.5-1.5B-Q4_K_M.gguf",
     "size": "1.10 GB",
-    "description": "Uncensored Dolphin 3.0 based on Qwen 2.5 — Fast, highly capable, and unrestricted",
+    "description": "Uncensored Dolphin 3.0 based on Qwen 2.5 \u2014 Fast, highly capable, and unrestricted",
     "template": "chatml",
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "2.2 GB",
-    "tags": ["uncensored", "general", "qwen", "gguf"]
+    "tags": [
+      "uncensored",
+      "general",
+      "qwen",
+      "gguf"
+    ]
   },
   {
     "name": "Llama-3.2-3B Uncensored (Q4_K_M)",
     "filename": "llama-3.2-3b-instruct-uncensored-q4_k_m.gguf",
     "url": "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-uncensored-GGUF/resolve/main/Llama-3.2-3B-Instruct-uncensored-Q4_K_M.gguf",
     "size": "2.10 GB",
-    "description": "Uncensored Llama 3.2 3B — Smarter, completely unfiltered assistance for creative and technical work",
+    "description": "Uncensored Llama 3.2 3B \u2014 Smarter, completely unfiltered assistance for creative and technical work",
     "template": "llama3",
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "3.5 GB",
-    "tags": ["uncensored", "general", "llama", "gguf"]
+    "tags": [
+      "uncensored",
+      "general",
+      "llama",
+      "gguf"
+    ]
   },
   {
     "name": "SmolLM2-1.7B-Uncensored (Q4_K_M)",
@@ -420,30 +610,45 @@
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "2.0 GB",
-    "tags": ["uncensored", "general", "smollm", "gguf"]
+    "tags": [
+      "uncensored",
+      "general",
+      "smollm",
+      "gguf"
+    ]
   },
   {
     "name": "Gemma-2-2B-Abliterated (Q4_K_M)",
     "filename": "gemma-2-2b-it-abliterated-q4_k_m.gguf",
     "url": "https://huggingface.co/bartowski/gemma-2-2b-it-abliterated-GGUF/resolve/main/gemma-2-2b-it-abliterated-Q4_K_M.gguf",
     "size": "1.60 GB",
-    "description": "Abliterated Gemma 2 — Permanently uncensored, highly intelligent and concise",
+    "description": "Abliterated Gemma 2 \u2014 Permanently uncensored, highly intelligent and concise",
     "template": "gemma",
     "runtime": "llama",
     "quantization": "Q4_K_M",
     "ram_required": "2.8 GB",
-    "tags": ["uncensored", "google", "gemma", "gguf"]
+    "tags": [
+      "uncensored",
+      "google",
+      "gemma",
+      "gguf"
+    ]
   },
   {
-    "name": "Ministral-3B Instruct (Q4_K_M)",
-    "filename": "ministral-3b-instruct-q4_k_m.gguf",
-    "url": "https://huggingface.co/bartowski/ministral-3b-instruct-GGUF/resolve/main/ministral-3b-instruct-Q4_K_M.gguf",
-    "size": "2.10 GB",
-    "description": "Mistral AI flagship 3B edge model for fast, sharp, multilingual tasks",
-    "template": "mistral",
+    "name": "Qwen 2.5 Coder 1.5B Instruct (Q4_K_M)",
+    "filename": "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+    "url": "https://huggingface.co/bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf",
+    "size": "986 MB",
+    "description": "Dedicated code generation and bug-fixing model for mobile coding assistance",
+    "template": "chatml",
     "runtime": "llama",
     "quantization": "Q4_K_M",
-    "ram_required": "3.5 GB",
-    "tags": ["general", "mistral", "coding", "gguf"]
+    "ram_required": "2.0 GB",
+    "tags": [
+      "coding",
+      "specialized",
+      "qwen",
+      "gguf"
+    ]
   }
 ]
