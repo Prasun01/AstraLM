@@ -151,13 +151,13 @@ class DeviceInfoService extends GetxService {
 
     final double estimatedRequiredBytes;
     if (isSd) {
-      estimatedRequiredBytes = modelSizeBytes + 1800.0 * 1024 * 1024;
+      estimatedRequiredBytes = modelSizeBytes + 1200.0 * 1024 * 1024;
     } else if (isLiteRt) {
-      final kvBuffer = ctx * 1.2 * 1024 * 1024; // KV cache and activations
-      estimatedRequiredBytes = modelSizeBytes + kvBuffer + 350.0 * 1024 * 1024;
+      final kvBuffer = ctx * 120.0 * 1024; // ~120KB per context token (~480MB for 4k ctx)
+      estimatedRequiredBytes = modelSizeBytes + kvBuffer + 250.0 * 1024 * 1024;
     } else {
-      final kvBuffer = ctx * 1.5 * 1024 * 1024; // GGUF context graph and KV buffer
-      estimatedRequiredBytes = modelSizeBytes + kvBuffer + 300.0 * 1024 * 1024;
+      final kvBuffer = ctx * 150.0 * 1024; // ~150KB per context token for GGUF (~600MB for 4k ctx)
+      estimatedRequiredBytes = modelSizeBytes + kvBuffer + 250.0 * 1024 * 1024;
     }
 
     final totalBytes = (totalRamGB.value * 1024 * 1024 * 1024).round();
