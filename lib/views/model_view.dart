@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,7 +22,7 @@ class ModelView extends GetView<ModelController> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: isDark ? const Color(0xFF0A0C10) : const Color(0xFFFAFBFD),
       appBar: AppBar(
         title: Text('Models',
             style: GoogleFonts.bricolageGrotesque(fontWeight: FontWeight.w700, fontSize: 24)),
@@ -329,10 +327,7 @@ class ModelView extends GetView<ModelController> {
             ),
           ),
           const SizedBox(height: 12),
-          ...installed.asMap().entries.map((entry) => _buildModelCard(context, entry.value)
-              .animate(delay: ((entry.key < 10 ? entry.key : 10) * 35).ms)
-              .fadeIn(duration: 220.ms, curve: Curves.easeOut)
-              .slideY(begin: 0.05, end: 0, curve: Curves.easeOutQuad)),
+          ...installed.map((model) => _buildModelCard(context, model)),
         ],
       ],
     );
@@ -453,10 +448,7 @@ class ModelView extends GetView<ModelController> {
         if (controller.filteredDisplayedModels.isEmpty)
           _buildEmptyLocalState(context)
         else
-          ...controller.filteredDisplayedModels.asMap().entries.map((entry) => _buildModelCard(context, entry.value)
-              .animate(delay: ((entry.key < 12 ? entry.key : 12) * 30).ms)
-              .fadeIn(duration: 200.ms, curve: Curves.easeOut)
-              .slideY(begin: 0.05, end: 0, curve: Curves.easeOutQuad)),
+          ...controller.filteredDisplayedModels.map((model) => _buildModelCard(context, model)),
       ],
     );
   }
@@ -708,10 +700,7 @@ class ModelView extends GetView<ModelController> {
                     ],
                   ),
                 ),
-              )
-                  .animate(delay: (idx * 45).ms)
-                  .fadeIn(duration: 200.ms, curve: Curves.easeOut)
-                  .slideX(begin: 0.06, end: 0, curve: Curves.easeOutQuad);
+              );
             },
           ),
         )),
@@ -1489,11 +1478,8 @@ class ModelView extends GetView<ModelController> {
             ),
           ),
           const SizedBox(height: 12),
-          for (int i = 0; i < cloud.providers.length; i++)
-            _buildOnlineProviderRow(context, cloud, cloud.providers[i])
-                .animate(delay: (i * 35).ms)
-                .fadeIn(duration: 200.ms, curve: Curves.easeOut)
-                .slideY(begin: 0.05, end: 0, curve: Curves.easeOutQuad),
+          for (final provider in cloud.providers)
+            _buildOnlineProviderRow(context, cloud, provider),
           const SizedBox(height: 24),
           _buildOnlineApiFaq(context),
         ],
