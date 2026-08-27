@@ -11,12 +11,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../widgets/pressable_scale.dart';
 import 'app_log_service.dart';
+import 'hive_service.dart';
 
 class AppUpdateService extends GetxService {
   static const String repoOwner = 'Prasun01';
   static const String repoName = 'AstraLM';
   static const String releasesApiUrl =
       'https://api.github.com/repos/$repoOwner/$repoName/releases/latest';
+  static const String keyAutoDownloadUpdates = 'auto_download_updates_ota';
 
   final isChecking = false.obs;
   final isDownloading = false.obs;
@@ -29,10 +31,59 @@ class AppUpdateService extends GetxService {
   final apkUrl = ''.obs;
   final hasUpdate = false.obs;
 
+  // Background OTA telemetry
+  final isOtaReady = false.obs;
+  final otaDownloadedApkPath = ''.obs;
+  final isOtaDownloading = false.obs;
+
   CancelToken? _cancelToken;
 
+  @override
+  void onInit() {
+    super.onInit();
+    // Silently check for updates & start background OTA download on launch
+    Future.delayed(const Duration(seconds: 4), () {
+      checkAndAutoDownloadOta();
+    });
+  }
+
+  bool get isAutoDownloadEnabled {
+    try {
+      final hive = Get.find<HiveService>();
+      return hive.getSetting<bool>(keyAutoDownloadUpdates, defaultValue: true) ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<void> setAutoDownloadEnabled(bool enabled) async {
+    try {
+      final hive = Get.find<HiveService>();
+      await hive.setSetting(keyAutoDownloadUpdates, enabled);
+    } catch (_) {}
+  }
+
+  /// Automatically check for and silently download the latest APK in the background
+  Future<void> checkAndAutoDownloadOta() async {
+    if (!isAutoDownloadEnabled) return;
+    if (isChecking.value || isDownloading.value || isOtaDownloading.value) return;
+
+    try {
+      final hasNew = await checkForUpdates(isManual: false, isBackgroundAuto: true);
+      if (hasNew && apkUrl.value.isNotEmpty && !isOtaReady.value) {
+        await _silentBackgroundOtaDownload(apkUrl.value, latestVersion.value);
+      }
+    } catch (e) {
+      Get.find<AppLogService>().error('[AppUpdateService] Auto OTA check failed: $e');
+    }
+  }
+
   /// Check GitHub for latest release
-  Future<bool> checkForUpdates({bool isManual = false, BuildContext? context}) async {
+  Future<bool> checkForUpdates({
+    bool isManual = false,
+    bool isBackgroundAuto = false,
+    BuildContext? context,
+  }) async {
     if (isChecking.value) return false;
     isChecking.value = true;
 
@@ -62,7 +113,6 @@ class AppUpdateService extends GetxService {
           final downloadUrl = (a['browser_download_url'] ?? '').toString();
           if (name.endsWith('.apk') && downloadUrl.isNotEmpty) {
             foundApkUrl = downloadUrl;
-            // Prioritize release apk over debug if multiple exist
             if (name.contains('release')) break;
           }
         }
@@ -75,10 +125,12 @@ class AppUpdateService extends GetxService {
         hasUpdate.value = isNewer;
 
         if (isNewer && foundApkUrl != null && foundApkUrl.isNotEmpty) {
-          if (context != null && context.mounted) {
-            showUpdateDialog(context, currentVersion, tag, body, foundApkUrl);
-          } else if (Get.context != null) {
-            showUpdateDialog(Get.context!, currentVersion, tag, body, foundApkUrl);
+          if (!isBackgroundAuto) {
+            if (context != null && context.mounted) {
+              showUpdateDialog(context, currentVersion, tag, body, foundApkUrl);
+            } else if (Get.context != null) {
+              showUpdateDialog(Get.context!, currentVersion, tag, body, foundApkUrl);
+            }
           }
           return true;
         } else if (isManual) {
@@ -114,7 +166,94 @@ class AppUpdateService extends GetxService {
     return false;
   }
 
-  /// Download and install the update APK
+  /// Download APK silently in the background
+  Future<void> _silentBackgroundOtaDownload(String url, String version) async {
+    if (isOtaDownloading.value || isDownloading.value) return;
+    isOtaDownloading.value = true;
+
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final apkPath = '${tempDir.path}/AstraLM-v$version.apk';
+      final file = File(apkPath);
+
+      if (await file.exists() && await file.length() > 10 * 1024 * 1024) {
+        // Already downloaded in background!
+        isOtaReady.value = true;
+        otaDownloadedApkPath.value = apkPath;
+        _notifyOtaReady(version, apkPath);
+        return;
+      }
+
+      final dio = Dio();
+      await dio.download(
+        url,
+        apkPath,
+      );
+
+      if (await File(apkPath).exists()) {
+        isOtaReady.value = true;
+        otaDownloadedApkPath.value = apkPath;
+        _notifyOtaReady(version, apkPath);
+      }
+    } catch (e) {
+      Get.find<AppLogService>().error('[AppUpdateService] Background OTA download failed: $e');
+    } finally {
+      isOtaDownloading.value = false;
+    }
+  }
+
+  void _notifyOtaReady(String version, String apkPath) {
+    Get.rawSnackbar(
+      titleText: Text(
+        'AstraLM v$version Ready to Install',
+        style: GoogleFonts.manrope(
+          fontWeight: FontWeight.w700,
+          fontSize: 14,
+          color: Colors.white,
+        ),
+      ),
+      messageText: Text(
+        'Update downloaded in background. Tap to apply.',
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          color: const Color(0xFF94A3B8),
+        ),
+      ),
+      icon: const Padding(
+        padding: EdgeInsets.only(left: 12, right: 8),
+        child: PhosphorIcon(PhosphorIconsBold.rocket, color: Color(0xFF3DDC84), size: 22),
+      ),
+      mainButton: TextButton(
+        onPressed: () => installDownloadedOta(),
+        child: Text(
+          'Install Now',
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF3DDC84),
+          ),
+        ),
+      ),
+      duration: const Duration(seconds: 8),
+      backgroundColor: const Color(0xFF141A24),
+      margin: const EdgeInsets.all(16),
+      borderRadius: 14,
+      snackPosition: SnackPosition.TOP,
+    );
+  }
+
+  Future<void> installDownloadedOta() async {
+    final path = otaDownloadedApkPath.value;
+    if (path.isNotEmpty && await File(path).exists()) {
+      await OpenFilex.open(
+        path,
+        type: 'application/vnd.android.package-archive',
+      );
+    } else if (apkUrl.value.isNotEmpty) {
+      await downloadAndInstallApk(apkUrl.value);
+    }
+  }
+
+  /// Download and install the update APK with active progress UI
   Future<void> downloadAndInstallApk(String url) async {
     if (isDownloading.value) return;
     isDownloading.value = true;
@@ -158,7 +297,6 @@ class AppUpdateService extends GetxService {
       downloadStatus.value = 'Download complete. Launching installer…';
       await Future.delayed(const Duration(milliseconds: 300));
 
-      // Open APK installer
       final result = await OpenFilex.open(
         apkPath,
         type: 'application/vnd.android.package-archive',
@@ -242,7 +380,6 @@ class AppUpdateService extends GetxService {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top Drag Handle
                   Center(
                     child: Container(
                       width: 36,
@@ -255,7 +392,6 @@ class AppUpdateService extends GetxService {
                   ),
                   const SizedBox(height: 16),
 
-                  // Header with Icon & Version Badges
                   Row(
                     children: [
                       Container(
@@ -324,7 +460,6 @@ class AppUpdateService extends GetxService {
                   ),
                   const SizedBox(height: 16),
 
-                  // Release notes markdown
                   if (notes.trim().isNotEmpty) ...[
                     Text(
                       "What's New:",
@@ -362,11 +497,11 @@ class AppUpdateService extends GetxService {
                     const SizedBox(height: 16),
                   ],
 
-                  // Download Progress / Action Buttons
                   Obx(() {
                     final downloading = isDownloading.value;
                     final progress = downloadProgress.value;
                     final status = downloadStatus.value;
+                    final ready = isOtaReady.value;
 
                     if (downloading) {
                       return Column(
@@ -433,7 +568,13 @@ class AppUpdateService extends GetxService {
                         Expanded(
                           flex: 2,
                           child: PressableScale(
-                            onTap: () => downloadAndInstallApk(downloadUrl),
+                            onTap: () {
+                              if (ready) {
+                                installDownloadedOta();
+                              } else {
+                                downloadAndInstallApk(downloadUrl);
+                              }
+                            },
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
@@ -449,7 +590,7 @@ class AppUpdateService extends GetxService {
                               ),
                               child: Center(
                                 child: Text(
-                                  'Update Now',
+                                  ready ? 'Install Ready Update' : 'Update Now',
                                   style: GoogleFonts.manrope(
                                     fontSize: 13.5,
                                     fontWeight: FontWeight.w700,
