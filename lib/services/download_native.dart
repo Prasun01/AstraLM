@@ -143,155 +143,222 @@ Future<String> downloadModel({
     } catch (_) {}
   }
 
+  // Acquire Android WifiLock & WakeLock for unthrottled maximum throughput
+  if (Platform.isAndroid) {
+    try {
+      await _channel.invokeMethod('acquireLocks');
+    } catch (_) {}
+  }
+
   // First, get remote file size if not known
   expectedTotalBytes = await getRemoteFileSize(url, authToken: authToken);
 
   var attempts = 0;
   const maxAttempts = 6;
 
-  while (attempts < maxAttempts) {
-    attempts++;
-    var startByte = 0;
-    if (await tempFile.exists()) {
-      startByte = await tempFile.length();
-    }
-
-    if (expectedTotalBytes > 0 && startByte >= expectedTotalBytes) {
-      // Already fully downloaded in temp
-      final finalFile = File(savePath);
-      if (await finalFile.exists()) {
-        await finalFile.delete();
-      }
-      await tempFile.rename(savePath);
-      _cancelTokens.remove(filename);
-      return savePath;
-    }
-
-    final headers = <String, dynamic>{
-      'User-Agent':
-          'Mozilla/5.0 (Linux; Android 14; Mobile; arm64-v8a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36 AstraLM/1.0.9',
-      'Accept': '*/*',
-    };
-    if (authToken != null && authToken.isNotEmpty) {
-      headers['Authorization'] = 'Bearer $authToken';
-    }
-
-    if (startByte > 0) {
-      headers['Range'] = 'bytes=$startByte-';
-    }
-
-    IOSink? sink;
-    try {
-      final response = await _dio.get<ResponseBody>(
-        url,
-        cancelToken: cancelToken,
-        options: Options(
-          headers: headers,
-          responseType: ResponseType.stream,
-          followRedirects: true,
-          maxRedirects: 10,
-          validateStatus: (status) =>
-              status != null && (status >= 200 && status < 400),
-        ),
-      );
-
-      final isPartial = response.statusCode == 206;
-      sink = tempFile.openWrite(
-        mode: (isPartial && startByte > 0) ? FileMode.append : FileMode.write,
-      );
-
-      final streamLength = int.tryParse(
-            response.headers.value(Headers.contentLengthHeader) ?? '',
-          ) ??
-          0;
-
-      if (isPartial) {
-        if (expectedTotalBytes <= 0) {
-          expectedTotalBytes = startByte + streamLength;
-        }
-      } else {
-        startByte = 0;
-        if (streamLength > 0) {
-          expectedTotalBytes = streamLength;
-        }
+  try {
+    while (attempts < maxAttempts) {
+      attempts++;
+      var startByte = 0;
+      if (await tempFile.exists()) {
+        startByte = await tempFile.length();
       }
 
-      var receivedBytes = startByte;
-      if (onProgress != null && expectedTotalBytes > 0) {
-        onProgress(receivedBytes, expectedTotalBytes);
+      if (expectedTotalBytes > 0 && startByte >= expectedTotalBytes) {
+        // Already fully downloaded in temp
+        final finalFile = File(savePath);
+        if (await finalFile.exists()) {
+          await finalFile.delete();
+        }
+        await tempFile.rename(savePath);
+        _cancelTokens.remove(filename);
+        if (Platform.isAndroid) {
+          try {
+            await _channel.invokeMethod('releaseLocks');
+          } catch (_) {}
+        }
+        return savePath;
       }
 
-      await for (final chunk in response.data!.stream) {
-        if (cancelToken.isCancelled) {
-          await sink.flush();
-          await sink.close();
-          _cancelTokens.remove(filename);
-          return 'PAUSED';
+      final headers = <String, dynamic>{
+        'User-Agent':
+            'Mozilla/5.0 (Linux; Android 14; Mobile; arm64-v8a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36 AstraLM/2.0',
+        'Accept': '*/*',
+        'Accept-Encoding': 'identity',
+      };
+      if (authToken != null && authToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $authToken';
+      }
+
+      if (startByte > 0) {
+        headers['Range'] = 'bytes=$startByte-';
+      }
+
+      IOSink? sink;
+      try {
+        final response = await _dio.get<ResponseBody>(
+          url,
+          cancelToken: cancelToken,
+          options: Options(
+            headers: headers,
+            responseType: ResponseType.stream,
+            followRedirects: true,
+            maxRedirects: 10,
+            validateStatus: (status) =>
+                status != null && (status >= 200 && status < 400),
+          ),
+        );
+
+        final isPartial = response.statusCode == 206;
+        sink = tempFile.openWrite(
+          mode: (isPartial && startByte > 0) ? FileMode.append : FileMode.write,
+        );
+
+        final streamLength = int.tryParse(
+              response.headers.value(Headers.contentLengthHeader) ?? '',
+            ) ??
+            0;
+
+        if (isPartial) {
+          if (expectedTotalBytes <= 0) {
+            expectedTotalBytes = startByte + streamLength;
+          }
+        } else {
+          startByte = 0;
+          if (streamLength > 0) {
+            expectedTotalBytes = streamLength;
+          }
         }
-        sink.add(chunk);
-        receivedBytes += chunk.length;
+
+        var receivedBytes = startByte;
+        if (onProgress != null && expectedTotalBytes > 0) {
+          onProgress(receivedBytes, expectedTotalBytes);
+        }
+
+        var lastProgressUpdate = DateTime.now();
+        var lastFlush = DateTime.now();
+
+        await for (final chunk in response.data!.stream) {
+          if (cancelToken.isCancelled) {
+            await sink.flush();
+            await sink.close();
+            _cancelTokens.remove(filename);
+            if (Platform.isAndroid) {
+              try {
+                await _channel.invokeMethod('releaseLocks');
+              } catch (_) {}
+            }
+            return 'PAUSED';
+          }
+          sink.add(chunk);
+          receivedBytes += chunk.length;
+
+          final now = DateTime.now();
+          if (now.difference(lastProgressUpdate).inMilliseconds >= 250) {
+            lastProgressUpdate = now;
+            onProgress?.call(
+                receivedBytes, expectedTotalBytes > 0 ? expectedTotalBytes : 0);
+          }
+
+          if (now.difference(lastFlush).inMilliseconds >= 1500) {
+            lastFlush = now;
+            await sink.flush();
+          }
+        }
+
         onProgress?.call(
             receivedBytes, expectedTotalBytes > 0 ? expectedTotalBytes : 0);
-      }
 
-      await sink.flush();
-      await sink.close();
-      sink = null;
+        await sink.flush();
+        await sink.close();
+        sink = null;
 
-      final downloadedBytes = await tempFile.length();
-      if (expectedTotalBytes > 0 && downloadedBytes < expectedTotalBytes) {
-        // Incomplete stream, retry resumption from current byte
+        final downloadedBytes = await tempFile.length();
+        if (expectedTotalBytes > 0 && downloadedBytes < expectedTotalBytes) {
+          // Incomplete stream, retry resumption from current byte
+          if (attempts < maxAttempts && !cancelToken.isCancelled) {
+            await Future.delayed(Duration(seconds: 1 + attempts));
+            continue;
+          }
+          throw Exception(
+            'Incomplete download ($downloadedBytes / $expectedTotalBytes bytes).',
+          );
+        }
+
+        final finalFile = File(savePath);
+        if (await finalFile.exists()) {
+          await finalFile.delete();
+        }
+        await tempFile.rename(savePath);
+        _cancelTokens.remove(filename);
+        if (Platform.isAndroid) {
+          try {
+            await _channel.invokeMethod('releaseLocks');
+          } catch (_) {}
+        }
+        return savePath;
+      } on DioException catch (e) {
+        if (sink != null) {
+          try {
+            await sink.flush();
+            await sink.close();
+          } catch (_) {}
+        }
+        if (e.type == DioExceptionType.cancel || cancelToken.isCancelled) {
+          _cancelTokens.remove(filename);
+          if (Platform.isAndroid) {
+            try {
+              await _channel.invokeMethod('releaseLocks');
+            } catch (_) {}
+          }
+          return 'PAUSED';
+        }
         if (attempts < maxAttempts && !cancelToken.isCancelled) {
+          // Wait and retry with resumption
           await Future.delayed(Duration(seconds: 1 + attempts));
           continue;
         }
-        throw Exception(
-          'Incomplete download ($downloadedBytes / $expectedTotalBytes bytes).',
-        );
-      }
-
-      final finalFile = File(savePath);
-      if (await finalFile.exists()) {
-        await finalFile.delete();
-      }
-      await tempFile.rename(savePath);
-      _cancelTokens.remove(filename);
-      return savePath;
-    } on DioException catch (e) {
-      if (sink != null) {
-        try {
-          await sink.flush();
-          await sink.close();
-        } catch (_) {}
-      }
-      if (e.type == DioExceptionType.cancel || cancelToken.isCancelled) {
         _cancelTokens.remove(filename);
-        return 'PAUSED';
-      }
-      if (attempts < maxAttempts && !cancelToken.isCancelled) {
-        // Wait and retry with resumption
-        await Future.delayed(Duration(seconds: 1 + attempts));
-        continue;
-      }
-      _cancelTokens.remove(filename);
-      throw Exception('Download failed after $attempts attempts: ${e.message}');
-    } catch (e) {
-      if (sink != null) {
-        try {
-          await sink.flush();
-          await sink.close();
-        } catch (_) {}
-      }
-      if (cancelToken.isCancelled) {
+        if (Platform.isAndroid) {
+          try {
+            await _channel.invokeMethod('releaseLocks');
+          } catch (_) {}
+        }
+        throw Exception('Download failed after $attempts attempts: ${e.message}');
+      } catch (e) {
+        if (sink != null) {
+          try {
+            await sink.flush();
+            await sink.close();
+          } catch (_) {}
+        }
+        if (cancelToken.isCancelled) {
+          _cancelTokens.remove(filename);
+          if (Platform.isAndroid) {
+            try {
+              await _channel.invokeMethod('releaseLocks');
+            } catch (_) {}
+          }
+          return 'PAUSED';
+        }
+        if (attempts < maxAttempts) {
+          await Future.delayed(Duration(seconds: 1 + attempts));
+          continue;
+        }
         _cancelTokens.remove(filename);
-        return 'PAUSED';
+        if (Platform.isAndroid) {
+          try {
+            await _channel.invokeMethod('releaseLocks');
+          } catch (_) {}
+        }
+        rethrow;
       }
-      if (attempts < maxAttempts) {
-        await Future.delayed(Duration(seconds: 1 + attempts));
-        continue;
-      }
-      _cancelTokens.remove(filename);
-      rethrow;
+    }
+  } finally {
+    if (Platform.isAndroid) {
+      try {
+        await _channel.invokeMethod('releaseLocks');
+      } catch (_) {}
     }
   }
 

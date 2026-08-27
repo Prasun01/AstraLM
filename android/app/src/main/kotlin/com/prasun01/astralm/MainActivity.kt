@@ -259,6 +259,14 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+            "acquireLocks" -> {
+                acquireDownloadLocks()
+                result.success(true)
+            }
+            "releaseLocks" -> {
+                releaseDownloadLocksIfIdle()
+                result.success(true)
+            }
             "requestIgnoreBatteryOptimizations" -> {
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
