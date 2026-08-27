@@ -27,7 +27,7 @@ class ModelController extends GetxController {
 
   static const _customModelsKey = 'custom_url_models';
   static const _androidImportChannel =
-      MethodChannel('com.aichat.ai_chat/model_import');
+      MethodChannel('com.prasun01.astralm/model_import');
 
   Map<String, DownloadProgress> get activeDownloads =>
       _download.activeDownloads;

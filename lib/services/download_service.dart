@@ -95,7 +95,7 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
       reconcileActiveDownloads();
 
       // Permanent channel progress listener
-      const MethodChannel('com.aichat.ai_chat/model_import')
+      const MethodChannel('com.prasun01.astralm/model_import')
           .setMethodCallHandler((call) async {
         if (call.method == 'importProgress') {
           final data = Map<String, dynamic>.from(call.arguments as Map);
@@ -241,53 +241,32 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
     final downloadProgress = DownloadProgress(filename: filename);
     activeDownloads[filename] = downloadProgress;
 
-    if (Platform.isAndroid) {
-      try {
-        final modelsDirectory = await modelsDir;
-        final result = await platform_dl.startNativeDownload(
-          url: url,
-          filename: filename,
-          modelsDir: modelsDirectory,
-        );
-        if (result != null) {
-          final id = result['downloadId'] as int;
-          _nativeDownloadIds[filename] = id;
-          return 'NATIVE_BACKGROUND_STARTED';
-        }
-        throw Exception('Native download failed to start.');
-      } catch (e) {
-        activeDownloads.remove(filename);
-        rethrow;
-      }
-    } else {
-      // Fallback for iOS/Desktop using standard Dio download
-      final savePath = await modelPath(filename);
-      try {
-        final result = await platform_dl.downloadModel(
-          url: url,
-          savePath: savePath,
-          authToken: authToken,
-          onProgress: (received, total) {
-            downloadProgress.downloadedBytes.value = received;
-            downloadProgress.totalBytes.value = total;
-            final elapsed = DateTime.now()
-                .difference(downloadProgress.startedAt)
-                .inMilliseconds;
-            if (elapsed > 0) {
-              downloadProgress.bytesPerSecond.value =
-                  received / (elapsed / 1000);
-            }
-            if (total > 0) {
-              downloadProgress.progress.value = received / total;
-            }
-          },
-        );
-        activeDownloads.remove(filename);
-        return result;
-      } catch (e) {
-        activeDownloads.remove(filename);
-        rethrow;
-      }
+    final savePath = await modelPath(filename);
+    try {
+      final result = await platform_dl.downloadModel(
+        url: url,
+        savePath: savePath,
+        authToken: authToken,
+        onProgress: (received, total) {
+          downloadProgress.downloadedBytes.value = received;
+          downloadProgress.totalBytes.value = total;
+          final elapsed = DateTime.now()
+              .difference(downloadProgress.startedAt)
+              .inMilliseconds;
+          if (elapsed > 0) {
+            downloadProgress.bytesPerSecond.value =
+                received / (elapsed / 1000);
+          }
+          if (total > 0) {
+            downloadProgress.progress.value = received / total;
+          }
+        },
+      );
+      activeDownloads.remove(filename);
+      return result;
+    } catch (e) {
+      activeDownloads.remove(filename);
+      rethrow;
     }
   }
 
