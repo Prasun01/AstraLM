@@ -241,6 +241,24 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
     final downloadProgress = DownloadProgress(filename: filename);
     activeDownloads[filename] = downloadProgress;
 
+    if (Platform.isAndroid) {
+      try {
+        final modelsDirectory = await modelsDir;
+        final result = await platform_dl.startNativeDownload(
+          url: url,
+          filename: filename,
+          modelsDir: modelsDirectory,
+        );
+        if (result != null) {
+          final id = result['downloadId'] as int;
+          _nativeDownloadIds[filename] = id;
+          return 'NATIVE_BACKGROUND_STARTED';
+        }
+      } catch (e) {
+        print('[DownloadService] Native background download start failed, falling back: $e');
+      }
+    }
+
     final savePath = await modelPath(filename);
     try {
       final result = await platform_dl.downloadModel(

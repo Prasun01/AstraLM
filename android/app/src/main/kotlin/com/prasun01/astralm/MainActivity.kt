@@ -1,9 +1,13 @@
 package com.prasun01.astralm
 
 import android.app.DownloadManager
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.database.Cursor
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +15,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 class MainActivity : FlutterActivity() {
@@ -22,6 +27,7 @@ class MainActivity : FlutterActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private val trackedDownloads = ConcurrentHashMap<Long, TrackedDownload>()
     private var progressPollerRunnable: Runnable? = null
+    private var downloadCompleteReceiver: BroadcastReceiver? = null
 
     data class TrackedDownload(
         val downloadId: Long,
@@ -40,6 +46,49 @@ class MainActivity : FlutterActivity() {
                 handleMethodCall(call, result)
             }
         }
+
+        registerDownloadReceiver()
+    }
+
+    private fun registerDownloadReceiver() {
+        if (downloadCompleteReceiver != null) return
+        downloadCompleteReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == DownloadManager.ACTION_DOWNLOAD_COMPLETE) {
+                    val downloadId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+                    if (downloadId != -1L) {
+                        val tracked = trackedDownloads[downloadId]
+                        val filename = tracked?.filename ?: "model"
+                        broadcastProgress(
+                            filename = filename,
+                            copiedBytes = 100L,
+                            totalBytes = 100L,
+                            bytesPerSecond = 0.0,
+                            status = "Download complete"
+                        )
+                        trackedDownloads.remove(downloadId)
+                    }
+                }
+            }
+        }
+        val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(downloadCompleteReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(downloadCompleteReceiver, filter)
+        }
+    }
+
+    override fun onDestroy() {
+        downloadCompleteReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (e: Exception) {
+                // Ignore
+            }
+            downloadCompleteReceiver = null
+        }
+        super.onDestroy()
     }
 
     private fun handleMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -59,10 +108,21 @@ class MainActivity : FlutterActivity() {
                 }
 
                 try {
+                    // Pre-clean any partial or duplicate existing file so DownloadManager uses exact filename
+                    try {
+                        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                        val targetFile = File(downloadsDir, filename)
+                        if (targetFile.exists()) {
+                            targetFile.delete()
+                        }
+                    } catch (e: Exception) {
+                        // Ignore
+                    }
+
                     val uri = Uri.parse(url)
                     val request = DownloadManager.Request(uri).apply {
                         setTitle("AstraLM Model: $filename")
-                        setDescription("Downloading AI model weights...")
+                        setDescription("Downloading AI model in background...")
                         setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                         setAllowedOverMetered(true)
                         setAllowedOverRoaming(true)
