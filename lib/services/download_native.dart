@@ -169,7 +169,7 @@ Future<String> downloadModel({
 
     final headers = <String, dynamic>{
       'User-Agent':
-          'Mozilla/5.0 (Linux; Android 14; Mobile; arm64-v8a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36 AstraLM/1.0.8',
+          'Mozilla/5.0 (Linux; Android 14; Mobile; arm64-v8a) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36 AstraLM/1.0.9',
       'Accept': '*/*',
     };
     if (authToken != null && authToken.isNotEmpty) {

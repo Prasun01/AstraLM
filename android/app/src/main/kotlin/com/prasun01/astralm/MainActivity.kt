@@ -67,7 +67,7 @@ class MainActivity : FlutterActivity() {
                         setAllowedOverMetered(true)
                         setAllowedOverRoaming(true)
                         setMimeType("application/octet-stream")
-                        addRequestHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14) AstraLM/1.0.8")
+                        addRequestHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14) AstraLM/1.0.9")
                         setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
                     }
 
