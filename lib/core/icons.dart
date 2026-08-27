@@ -54,6 +54,8 @@ class AppIcons {
   static PhosphorIconData get upload => PhosphorIconsBold.arrowUp;
   static PhosphorIconData get linkUrl => PhosphorIconsBold.linkSimpleHorizontal;
   static PhosphorIconData get importFromStorage => PhosphorIconsBold.folderOpen;
+  static PhosphorIconData get onAir => PhosphorIconsBold.broadcast;
+  static PhosphorIconData get wifi => PhosphorIconsBold.wifiHigh;
   static PhosphorIconData get chevronRight => PhosphorIconsBold.caretRight;
   static PhosphorIconData get chevronDown => PhosphorIconsBold.caretDown;
   static PhosphorIconData get close => PhosphorIconsBold.x;

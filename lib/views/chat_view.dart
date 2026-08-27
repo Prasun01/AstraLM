@@ -3159,6 +3159,7 @@ class _AnimatedThinkingIndicatorState extends State<_AnimatedThinkingIndicator>
 
 PageRouteBuilder<T> _smoothTransitionRoute<T>(Widget page) {
   return PageRouteBuilder<T>(
+    opaque: false,
     pageBuilder: (context, animation, secondaryAnimation) => page,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       final curved = CurvedAnimation(
@@ -3184,6 +3185,7 @@ PageRouteBuilder<T> _smoothTransitionRoute<T>(Widget page) {
 
 PageRouteBuilder<T> _topFillTransitionRoute<T>(Widget page) {
   return PageRouteBuilder<T>(
+    opaque: false,
     pageBuilder: (context, animation, secondaryAnimation) => page,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       final curved = CurvedAnimation(
