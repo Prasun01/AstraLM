@@ -16,30 +16,30 @@
     /* ==========================================================================
        RIG.AI DESIGN SYSTEM & COLOR VARIABLES
        ========================================================================== */
-        :root {
-      --accent: #FF9F0A;
-      --accent-dark: #E08900;
-      --accent-glow: rgba(255, 159, 10, 0.45);
-      --accent-muted: rgba(255, 159, 10, 0.12);
+            :root {
+      --accent: #FFFFFF;
+      --accent-dark: #E2E8F0;
+      --accent-glow: rgba(255, 255, 255, 0.25);
+      --accent-muted: rgba(255, 255, 255, 0.08);
       
-      --red: #FF9F0A;
-      --red-dark: #E08900;
-      --red-glow: rgba(255, 159, 10, 0.45);
-      --red-muted: rgba(255, 159, 10, 0.12);
+      --hero-bg: #EDEBE6;
+      --hero-ink: #0A0A0A;
       
-      --ink: #0B0C10;
-      --ink-surface: #12141A;
-      --ink-card: #161922;
-      --ink-border: rgba(240, 237, 230, 0.12);
-      --ink-border-hover: rgba(255, 159, 10, 0.4);
+      --ink: #0A0A0A;
+      --ink-surface: #111111;
+      --ink-card: #161616;
+      --ink-border: rgba(255, 255, 255, 0.12);
+      --ink-border-hover: rgba(255, 255, 255, 0.35);
       
-      --paper: #F0EDE6;
-      --paper-80: rgba(240, 237, 230, 0.85);
-      --paper-50: rgba(240, 237, 230, 0.55);
-      --paper-25: rgba(240, 237, 230, 0.25);
-      --paper-10: rgba(240, 237, 230, 0.1);
+      --paper: #F5F5F3;
+      --paper-80: rgba(245, 245, 243, 0.85);
+      --paper-50: rgba(245, 245, 243, 0.55);
+      --paper-25: rgba(245, 245, 243, 0.25);
+      --paper-10: rgba(245, 245, 243, 0.08);
       
-      --green-live: #22C55E;
+      --silver: #94A3B8;
+      --graphite: #475569;
+      --green-live: #FFFFFF;
       
       --font-display: 'Space Grotesk', -apple-system, sans-serif;
       --font-mono: 'Chivo Mono', monospace;
@@ -54,7 +54,7 @@
 
     html {
       scroll-behavior: smooth;
-      background-color: var(--ink);
+      background-color: var(--hero-ink);
       color: var(--paper);
       font-family: var(--font-body);
       -webkit-font-smoothing: antialiased;
@@ -62,7 +62,7 @@
     }
 
     body {
-      background-color: var(--ink);
+      background-color: var(--hero-ink);
       color: var(--paper);
       overflow-x: hidden;
       line-height: 1.5;
@@ -152,8 +152,13 @@
     }
 
     .btn-red {
-      background: var(--red) !important;
-      color: var(--ink) !important;
+      background: #FFFFFF !important;
+      color: #0A0A0A !important;
+    }
+    .btn-red:hover {
+      background: #E2E8F0 !important;
+      color: #0A0A0A !important;
+      transform: translateY(-2px);
     }
 
     .btn-red:hover {
@@ -164,12 +169,12 @@
 
     .btn-outline-ink {
       background: transparent;
-      color: var(--ink);
+      color: var(--hero-ink);
       border: 2px solid rgba(10, 10, 10, 0.35);
     }
 
     .btn-outline-ink:hover {
-      border-color: var(--ink);
+      border-color: var(--hero-ink);
       background: rgba(10, 10, 10, 0.08);
     }
 
@@ -183,10 +188,10 @@
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--red);
+      color: #FFFFFF;
       padding: 0.35rem 0.85rem;
-      border: 1px solid rgba(237, 70, 45, 0.3);
-      background: var(--red-muted);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.06);
       margin-bottom: 1.25rem;
     }
 
@@ -195,8 +200,8 @@
        ========================================================================== */
     .hero-rig {
       position: relative;
-      background-color: var(--accent);
-      color: var(--ink);
+      background-color: var(--hero-bg);
+      color: var(--hero-ink);
       min-height: 85vh;
       display: flex;
       flex-direction: column;
@@ -238,7 +243,7 @@
       font-size: 1.3rem;
       font-weight: 900;
       letter-spacing: -0.04em;
-      color: var(--ink);
+      color: var(--hero-ink);
     }
 
     .site-nav-links {
@@ -260,7 +265,7 @@
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--ink);
+      color: var(--hero-ink);
       opacity: 0.85;
       transition: opacity 0.2s;
     }
@@ -340,7 +345,7 @@
     }
 
     .mobile-menu-overlay a:hover {
-      color: var(--red);
+      color: #FFFFFF;
     }
 
     /* Giant Faded Watermark in Hero */
@@ -353,7 +358,7 @@
       height: auto;
       opacity: 0.08;
       pointer-events: none;
-      color: var(--ink);
+      color: var(--hero-ink);
     }
 
     .hero-content {
@@ -378,7 +383,7 @@
       font-weight: 800;
       line-height: 0.98;
       letter-spacing: -0.04em;
-      color: var(--ink);
+      color: var(--hero-ink);
       margin-bottom: 1.5rem;
       max-width: 1100px;
     }
@@ -431,7 +436,7 @@
     }
 
     .hero-ticker-inner span.bullet {
-      color: var(--red);
+      color: #FFFFFF;
     }
 
     @keyframes marquee {
@@ -542,7 +547,7 @@
       font-size: 0.7rem;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--red);
+      color: #FFFFFF;
       margin-bottom: 1.25rem;
     }
 
@@ -683,7 +688,7 @@
       font-weight: 700;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--red);
+      color: #FFFFFF;
       margin-bottom: 1.25rem;
     }
 
@@ -746,7 +751,7 @@
     .bento-num {
       font-family: var(--font-mono);
       font-size: 0.75rem;
-      color: var(--red);
+      color: #FFFFFF;
       letter-spacing: 0.1em;
       margin-bottom: 0.85rem;
     }
@@ -855,8 +860,8 @@
       min-width: 480px;
     }
 
-    .term-red { color: var(--red); }
-    .term-green { color: var(--green-live); }
+    .term-red { color: #FFFFFF; }
+    .term-green { color: #FFFFFF; }
     .term-dim { color: var(--paper-25); }
 
     /* ==========================================================================
@@ -908,7 +913,7 @@
     .faq-question .num {
       font-family: var(--font-mono);
       font-size: 0.8rem;
-      color: var(--red);
+      color: #FFFFFF;
       margin-right: 1rem;
     }
 
@@ -1003,7 +1008,7 @@
     }
 
     .footer-col a:hover {
-      color: var(--red);
+      color: #FFFFFF;
     }
 
     .footer-bottom {
@@ -1252,13 +1257,13 @@
               <circle cx="150" cy="150" r="130" stroke="var(--paper-25)" stroke-width="0.75" />
               <circle cx="150" cy="150" r="95" stroke="var(--paper-25)" stroke-width="0.75" />
               <circle cx="150" cy="150" r="60" stroke="var(--paper-25)" stroke-width="0.75" />
-              <circle class="radar-pulse-ring" cx="150" cy="150" r="60" stroke="var(--red)" stroke-width="1.5" />
-              <line class="radar-sweep-line" x1="150" y1="150" x2="150" y2="20" stroke="var(--red)" stroke-width="1.5" opacity="0.4" />
+              <circle class="radar-pulse-ring" cx="150" cy="150" r="60" stroke="#FFFFFF" stroke-width="1.5" />
+              <line class="radar-sweep-line" x1="150" y1="150" x2="150" y2="20" stroke="#FFFFFF" stroke-width="1.5" opacity="0.4" />
               <line x1="150" y1="10" x2="150" y2="290" stroke="var(--paper-25)" stroke-width="0.5" stroke-dasharray="3 3" />
               <line x1="10" y1="150" x2="290" y2="150" stroke="var(--paper-25)" stroke-width="0.5" stroke-dasharray="3 3" />
-              <circle id="radar-pupil" cx="150" cy="150" r="16" fill="var(--red)" />
-              <circle cx="150" cy="150" r="28" stroke="var(--red)" stroke-width="1.5" opacity="0.6" />
-              <text x="150" y="285" text-anchor="middle" fill="var(--red)" font-family="'Chivo Mono', monospace" font-size="8" letter-spacing="2">SURVEILLANCE ACTIVE</text>
+              <circle id="radar-pupil" cx="150" cy="150" r="16" fill="#FFFFFF" />
+              <circle cx="150" cy="150" r="28" stroke="#FFFFFF" stroke-width="1.5" opacity="0.6" />
+              <text x="150" y="285" text-anchor="middle" fill="#FFFFFF" font-family="'Chivo Mono', monospace" font-size="8" letter-spacing="2">SURVEILLANCE ACTIVE</text>
             </svg>
           </div>
 
@@ -1349,24 +1354,24 @@
           <text x="90" y="126" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="7" letter-spacing="1" fill="var(--paper-25)">TEXT · CODE · FILES</text>
 
           <!-- Active Green Flow Line 1 -->
-          <line x1="150" y1="115" x2="228" y2="115" stroke="rgba(34,197,94,0.3)" stroke-width="2" />
+          <line x1="150" y1="115" x2="228" y2="115" stroke="rgba(255,255,255,0.3)" stroke-width="2" />
           <!-- Animated green packet 1 -->
-          <circle r="3.5" fill="#22C55E">
+          <circle r="3.5" fill="#FFFFFF">
             <animateMotion dur="1.8s" repeatCount="indefinite">
               <mpath href="#path-prompt-core" />
             </animateMotion>
           </circle>
 
           <!-- Core Engine Node -->
-          <rect x="228" y="75" width="160" height="80" fill="#0A0A0A" stroke="var(--green-live)" stroke-width="1.5" />
+          <rect x="228" y="75" width="160" height="80" fill="#0A0A0A" stroke="#FFFFFF" stroke-width="1.5" />
           <text x="308" y="105" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="14" font-weight="700" letter-spacing="2" fill="var(--paper)">ASTRALM</text>
           <text x="308" y="122" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="8" letter-spacing="1" fill="var(--green-live)">✓ LOCAL LLAMA.CPP</text>
           <text x="308" y="142" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="7" letter-spacing="1" fill="var(--paper-50)">ARM64 NEON · ADRENO GPU</text>
 
           <!-- Active Green Flow Line 2 -->
-          <line x1="388" y1="115" x2="458" y2="115" stroke="rgba(34,197,94,0.3)" stroke-width="2" />
+          <line x1="388" y1="115" x2="458" y2="115" stroke="rgba(255,255,255,0.3)" stroke-width="2" />
           <!-- Animated green packet 2 -->
-          <circle r="3.5" fill="#22C55E">
+          <circle r="3.5" fill="#FFFFFF">
             <animateMotion dur="1.8s" begin="0.9s" repeatCount="indefinite">
               <mpath href="#path-core-out" />
             </animateMotion>
@@ -1380,28 +1385,28 @@
           <!-- Cloud Blocked Top -->
           <rect x="248" y="5" width="120" height="30" fill="#0A0A0A" stroke="rgba(240,237,230,0.1)" stroke-width="1" />
           <text x="308" y="24" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="9" letter-spacing="1" fill="var(--paper-25)">CLOUD SERVER</text>
-          <line x1="308" y1="35" x2="308" y2="75" stroke="var(--red)" stroke-width="1" stroke-dasharray="2 3" />
+          <line x1="308" y1="35" x2="308" y2="75" stroke="#FFFFFF" stroke-width="1" stroke-dasharray="2 3" />
           <!-- Blocked Red Packet 1 -->
-          <circle r="3" fill="#FF9F0A">
+          <circle r="3" fill="#FFFFFF">
             <animateMotion dur="1.5s" repeatCount="indefinite">
               <mpath href="#path-cloud-in" />
             </animateMotion>
             <animate attributeName="opacity" values="1;1;0" keyTimes="0;0.7;1" dur="1.5s" repeatCount="indefinite" />
           </circle>
-          <text x="308" y="55" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="8" fill="var(--red)">✕ SEVERED</text>
+          <text x="308" y="55" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="8" fill="#FFFFFF">✕ SEVERED</text>
 
           <!-- Telemetry Blocked Bottom -->
           <rect x="248" y="195" width="120" height="30" fill="#0A0A0A" stroke="rgba(240,237,230,0.1)" stroke-width="1" />
           <text x="308" y="214" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="9" letter-spacing="1" fill="var(--paper-25)">TELEMETRY</text>
-          <line x1="308" y1="155" x2="308" y2="195" stroke="var(--red)" stroke-width="1" stroke-dasharray="2 3" />
+          <line x1="308" y1="155" x2="308" y2="195" stroke="#FFFFFF" stroke-width="1" stroke-dasharray="2 3" />
           <!-- Blocked Red Packet 2 -->
-          <circle r="3" fill="#FF9F0A">
+          <circle r="3" fill="#FFFFFF">
             <animateMotion dur="1.5s" begin="0.75s" repeatCount="indefinite">
               <mpath href="#path-telem-out" />
             </animateMotion>
             <animate attributeName="opacity" values="1;1;0" keyTimes="0;0.7;1" dur="1.5s" begin="0.75s" repeatCount="indefinite" />
           </circle>
-          <text x="308" y="180" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="8" fill="var(--red)">✕ BLOCKED</text>
+          <text x="308" y="180" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="8" fill="#FFFFFF">✕ BLOCKED</text>
         </svg>
       </div>
 
@@ -1564,7 +1569,7 @@
           <span class="term-dim">&gt; Loading model DeepSeek-R1-Distill-Qwen-1.5B (Q4_K_M)... </span><span class="term-green">OK (1.1 GB)</span><br>
           <span class="term-dim">&gt; Network: </span><span class="term-red">DISCONNECTED (0 KB/s)</span><span class="term-dim"> · Telemetry: </span><span class="term-red">OFF</span><br>
           <span class="term-dim">&gt; Ready for inference.</span><br><br>
-          <span class="term-red">λ prompt: </span>Write a fast Fibonacci in Rust.<br><span class="term-dim">&gt; Stream: </span><span id="stream-live-code" style="color: #38BDF8;"></span><span class="cursor-blink"></span><br>
+          <span class="term-red">λ prompt: </span>Write a fast Fibonacci in Rust.<br><span class="term-dim">&gt; Stream: </span><span id="stream-live-code" style="color: #FFFFFF;"></span><span class="cursor-blink"></span><br>
           <span class="term-green">✓ 28.4 Tokens/Sec · Sub-30ms first token latency</span>
         </div>
       </div>
@@ -1649,7 +1654,7 @@
   <section class="final-cta-section">
     <div class="container">
       
-      <div style="font-size: 3rem; margin-bottom: 1.5rem; color: var(--red);">⬡</div>
+      <div style="font-size: 3rem; margin-bottom: 1.5rem; color: #FFFFFF;">⬡</div>
       
       <h2 class="final-cta-title">
         Break free<br>
@@ -1709,7 +1714,7 @@
           <span>© 2026 ASTRALM OPEN SOURCE. ALL RIGHTS RESERVED.</span>
         </div>
         <div>
-          <span class="live-status-dot"></span>
+          <span class="live-status-dot" style="background: #FFFFFF;"></span>
           <span>ALL ENGINES LOCAL · OFFLINE READY</span>
         </div>
       </div>
