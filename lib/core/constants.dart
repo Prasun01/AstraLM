@@ -529,7 +529,21 @@ class AppConstants {
       'tags': 'vision,general,qwen,gguf',
     },
     {
-      'name': 'Kimi Moonlight 16B-A3B (Q3_K_S)',
+      'name': 'Kimi Moonlight 16B-A3B Fast (IQ2_XXS)',
+      'filename': 'moonlight-16b-a3b-instruct-iq2_xxs.gguf',
+      'url':
+          'https://huggingface.co/mmnga/Moonlight-16B-A3B-Instruct-gguf/resolve/main/Moonlight-16B-A3B-Instruct-IQ2_XXS.gguf?download=true',
+      'size': '5.50 GB',
+      'description':
+          'Moonshot AI (Kimi) — Optimized 5.5GB 16B-A3B MoE model. Much faster download & lower RAM pressure.',
+      'template': 'chatml',
+      'runtime': 'llama',
+      'quantization': 'IQ2_XXS',
+      'ram_required': '6.5 GB',
+      'tags': 'flagship,moe,kimi,fast,gguf',
+    },
+    {
+      'name': 'Kimi Moonlight 16B-A3B Flagship (Q3_K_S)',
       'filename': 'moonlight-16b-a3b-instruct-q3_k_s.gguf',
       'url':
           'https://huggingface.co/mmnga/Moonlight-16B-A3B-Instruct-gguf/resolve/main/Moonlight-16B-A3B-Instruct-Q3_K_S.gguf?download=true',

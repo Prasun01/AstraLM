@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -280,9 +282,17 @@ class ModelController extends GetxController {
     refreshDownloaded();
   }
 
+  static const _cachedCatalogKey = 'cached_remote_models_catalog_json';
+
   Future<void> _loadCatalogModels() async {
     try {
-      final jsonString = await rootBundle.loadString('assets/models.json');
+      final cachedJson = _hive.getSetting<String>(_cachedCatalogKey);
+      String jsonString = cachedJson ?? '';
+
+      if (jsonString.isEmpty) {
+        jsonString = await rootBundle.loadString('assets/models.json');
+      }
+
       final List<dynamic> list = jsonDecode(jsonString);
       final catalog = list
           .map((item) => AiModel.fromJson(Map<String, dynamic>.from(item)))
@@ -299,7 +309,53 @@ class ModelController extends GetxController {
         await refreshDownloaded();
       }
     } catch (e) {
-      Get.find<AppLogService>().error('Failed to load assets/models.json catalog', details: e);
+      Get.find<AppLogService>().error('Failed to load models catalog', details: e);
+    }
+
+    // Silent background OTA sync from GitHub repository
+    unawaited(_syncRemoteCatalog());
+  }
+
+  Future<void> _syncRemoteCatalog() async {
+    try {
+      final dio = Dio(BaseOptions(
+        connectTimeout: const Duration(seconds: 6),
+        receiveTimeout: const Duration(seconds: 6),
+        headers: {'User-Agent': 'AstraLM-OTA-Catalog/2.0'},
+      ));
+
+      const remoteUrl =
+          'https://raw.githubusercontent.com/Prasun01/AstraLM/main/assets/models.json';
+      final response = await dio.get<String>(remoteUrl);
+
+      if (response.statusCode == 200 && response.data != null && response.data!.isNotEmpty) {
+        final rawData = response.data!;
+        final List<dynamic> remoteList = jsonDecode(rawData);
+        if (remoteList.isNotEmpty) {
+          final remoteCatalog = remoteList
+              .map((item) => AiModel.fromJson(Map<String, dynamic>.from(item)))
+              .toList();
+
+          final cachedJson = _hive.getSetting<String>(_cachedCatalogKey);
+          if (cachedJson != rawData) {
+            await _hive.setSetting(_cachedCatalogKey, rawData);
+            final Map<String, AiModel> modelMap = {};
+            for (final m in remoteCatalog) {
+              modelMap[m.filename] = m;
+            }
+            for (final m in customModels) {
+              modelMap[m.filename] = m;
+            }
+            availableModels.value = modelMap.values.toList();
+            await refreshDownloaded();
+            Get.find<AppLogService>().info(
+              'Successfully updated OTA model catalog (${remoteCatalog.length} models from cloud)',
+            );
+          }
+        }
+      }
+    } catch (_) {
+      // Offline or network error: existing catalog works without disruption
     }
   }
 
