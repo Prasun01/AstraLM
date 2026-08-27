@@ -1,34 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AstraLM — Sovereign On-Device Private AI</title>
+  <title>AstraLM — Sovereign On-Device AI for Android</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif:italic@0;1&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
-      darkMode: 'class',
       theme: {
         extend: {
           fontFamily: {
             sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            heading: ['"Manrope"', 'sans-serif'],
             mono: ['"JetBrains Mono"', 'monospace'],
-            serif: ['"Instrument Serif"', 'serif'],
           },
           colors: {
-            bg: '#08090C',
-            surface: '#0E1117',
-            card: '#141822',
-            border: '#202637',
-            brand: '#3B82F6',
-            brandLight: '#60A5FA',
-            accent: '#8B5CF6',
-            textPrimary: '#F1F5F9',
-            textSecondary: '#94A3B8',
-            textMuted: '#64748B'
+            appBg: '#0A0C11',
+            appSurface: '#10141D',
+            appCard: '#151A26',
+            appBorder: '#1E2536',
+            appPrimary: '#3B82F6',
+            appPrimaryHover: '#2563EB',
+            appAccent: '#8B5CF6',
+            appSuccess: '#10B981',
+            appWarning: '#F59E0B',
+            textMain: '#F8FAFC',
+            textSub: '#94A3B8',
+            textDim: '#64748B',
+          },
+          boxShadow: {
+            phone: '0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 40px -10px rgba(59, 130, 246, 0.15)',
+            glow: '0 0 50px -10px rgba(59, 130, 246, 0.3)',
           }
         }
       }
@@ -36,446 +41,620 @@
   </script>
   <style>
     body {
-      background-color: #08090C;
-      color: #F1F5F9;
+      background-color: #0A0C11;
+      color: #F8FAFC;
       font-family: 'Plus Jakarta Sans', sans-serif;
       overflow-x: hidden;
-      selection-background-color: #3B82F6;
-      selection-color: #ffffff;
     }
-    ::selection {
-      background: #3B82F6;
-      color: #ffffff;
-    }
-    .glow-radial {
-      background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.15), transparent 70%);
-    }
-    .glass {
-      background: rgba(14, 17, 23, 0.7);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    .glass-card {
-      background: linear-gradient(180deg, rgba(20, 24, 34, 0.8) 0%, rgba(14, 17, 23, 0.9) 100%);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .glass-card:hover {
-      border-color: rgba(96, 165, 250, 0.3);
-      transform: translateY(-2px);
-    }
-    .gradient-text {
-      background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 50%, #94A3B8 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .gradient-blue {
-      background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 50%, #2563EB 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .grid-bg {
-      background-size: 32px 32px;
+    .grid-pattern {
+      background-size: 40px 40px;
       background-image: 
         linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
     }
-    .code-editor {
-      background: #0A0C10;
-      border: 1px solid #1E2330;
-      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+    .hero-glow {
+      background: radial-gradient(circle at 50% 20%, rgba(59, 130, 246, 0.12) 0%, transparent 65%);
+    }
+    .glass-nav {
+      background: rgba(10, 12, 17, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .phone-bezel {
+      border: 8px solid #1E2536;
+      border-radius: 44px;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08), 0 30px 70px -10px rgba(0, 0, 0, 0.95);
+      background: #0A0C11;
+    }
+    .phone-screen {
+      border-radius: 36px;
+      overflow: hidden;
+      background: #0A0C11;
+    }
+    .gradient-heading {
+      background: linear-gradient(135deg, #FFFFFF 20%, #CBD5E1 60%, #94A3B8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .gradient-blue-text {
+      background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 60%, #1D4ED8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #1E2536;
+      border-radius: 4px;
     }
   </style>
 </head>
-<body class="min-h-screen grid-bg antialiased">
+<body class="grid-pattern antialiased">
 
-  <!-- Glow Background Effect -->
-  <div class="fixed inset-0 pointer-events-none glow-radial z-0"></div>
+  <!-- Glow Background -->
+  <div class="fixed inset-0 pointer-events-none hero-glow z-0"></div>
 
-  <!-- Navbar -->
-  <header class="sticky top-0 z-50 glass border-b border-border/50">
-    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+  <!-- Top Navigation -->
+  <header class="sticky top-0 z-50 glass-nav">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <!-- App Brand -->
       <div class="flex items-center space-x-3">
-        <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white tracking-wider text-sm shadow-lg shadow-blue-500/20">
-          A
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/25 border border-blue-400/30">
+          <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
         </div>
-        <span class="font-bold text-lg tracking-tight text-white">AstraLM</span>
-        <span class="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-mono border border-blue-500/20">v1.0.9</span>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-heading font-extrabold text-base tracking-tight text-white">AstraLM</span>
+            <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">v1.0.9</span>
+          </div>
+          <p class="text-[10px] text-textDim hidden sm:block font-mono">Sovereign On-Device AI for Android</p>
+        </div>
       </div>
 
-      <nav class="hidden md:flex items-center space-x-8 text-sm font-medium text-textSecondary">
-        <a href="#features" class="hover:text-white transition">Features</a>
-        <a href="#models" class="hover:text-white transition">Models</a>
-        <a href="#benchmarks" class="hover:text-white transition">Benchmarks</a>
-        <a href="#simulator" class="hover:text-white transition">Live Demo</a>
+      <!-- Links -->
+      <nav class="hidden md:flex items-center space-x-8 text-xs font-medium text-textSub">
+        <a href="#mobile-showcase" class="hover:text-white transition">App Experience</a>
+        <a href="#models" class="hover:text-white transition">37+ Models</a>
+        <a href="#architecture" class="hover:text-white transition">Air-Gap Architecture</a>
+        <a href="#specs" class="hover:text-white transition">Hardware Requirements</a>
       </nav>
 
-      <div class="flex items-center space-x-4">
-        <a href="https://github.com/Prasun01/AstraLM" target="_blank" class="hidden sm:flex items-center space-x-2 text-xs font-mono px-3.5 py-1.5 rounded-lg border border-border bg-surface hover:bg-card text-textSecondary hover:text-white transition">
+      <!-- Action CTA -->
+      <div class="flex items-center space-x-3">
+        <a href="https://github.com/Prasun01/AstraLM" target="_blank" class="flex items-center space-x-2 text-xs font-mono px-3 py-1.5 rounded-lg border border-appBorder bg-appSurface hover:bg-appCard text-textSub hover:text-white transition">
           <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-          <span>GitHub</span>
+          <span class="hidden sm:inline">GitHub</span>
         </a>
-        <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.9/AstraLM-v1.0.9.apk" class="text-xs font-semibold px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition flex items-center space-x-2 shadow-lg shadow-blue-600/25">
-          <span>Download APK</span>
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.9/AstraLM-v1.0.9.apk" class="text-xs font-semibold px-4 py-2 rounded-lg bg-appPrimary hover:bg-appPrimaryHover text-white transition flex items-center space-x-1.5 shadow-lg shadow-blue-500/20">
+          <span>Get APK</span>
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
         </a>
       </div>
     </div>
   </header>
 
-  <!-- Hero Section -->
-  <section class="relative pt-24 pb-20 px-6 max-w-5xl mx-auto text-center z-10">
-    <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full border border-border bg-surface/80 text-textSecondary text-xs font-mono mb-8">
-      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-      <span>100% Offline Engine · Zero Network Telemetry</span>
-    </div>
-
-    <h1 class="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight mb-8">
-      <span class="gradient-text">Private AI,</span><br>
-      <span class="gradient-blue">Directly on Silicon.</span>
-    </h1>
-
-    <p class="text-lg sm:text-xl text-textSecondary max-w-2xl mx-auto font-normal leading-relaxed mb-10">
-      Run cutting-edge Large Language Models and Stable Diffusion locally on your Android device. Complete hardware sovereignty with zero cloud reliance.
-    </p>
-
-    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
-      <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.9/AstraLM-v1.0.9.apk" class="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold transition flex items-center justify-center space-x-2 shadow-xl shadow-blue-600/20">
-        <span>Download AstraLM v1.0.9</span>
-        <span class="text-xs font-mono opacity-75">(76.5 MB)</span>
-      </a>
-      <a href="https://github.com/Prasun01/AstraLM" target="_blank" class="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-border bg-surface hover:bg-card text-textPrimary font-medium transition flex items-center justify-center space-x-2">
-        <span>Source Code</span>
-        <svg class="w-4 h-4 text-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-      </a>
-    </div>
-
-    <!-- Stats Bar -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16 max-w-4xl mx-auto text-left">
-      <div class="glass-card p-5 rounded-xl">
-        <div class="text-2xl font-bold font-mono text-white">37+</div>
-        <div class="text-xs text-textMuted mt-1">Verified Local Models</div>
-      </div>
-      <div class="glass-card p-5 rounded-xl">
-        <div class="text-2xl font-bold font-mono text-blue-400">120 FPS</div>
-        <div class="text-xs text-textMuted mt-1">Fluid Flutter Interface</div>
-      </div>
-      <div class="glass-card p-5 rounded-xl">
-        <div class="text-2xl font-bold font-mono text-emerald-400">0 KB/s</div>
-        <div class="text-xs text-textMuted mt-1">Data Leaves Device</div>
-      </div>
-      <div class="glass-card p-5 rounded-xl">
-        <div class="text-2xl font-bold font-mono text-purple-400">GGUF & LiteRT</div>
-        <div class="text-xs text-textMuted mt-1">Dual Runtime Support</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Live Demo Simulator Section -->
-  <section id="simulator" class="py-20 px-6 max-w-5xl mx-auto z-10 relative">
-    <div class="text-center mb-12">
-      <div class="text-xs font-mono text-blue-400 uppercase tracking-widest mb-2">Interactive Simulation</div>
-      <h2 class="text-3xl font-bold gradient-text">Test Local Inference Speed</h2>
-      <p class="text-textSecondary text-sm max-w-xl mx-auto mt-2">Experience token streaming performance running fully offline on mobile NPU/CPU architectures.</p>
-    </div>
-
-    <div class="code-editor rounded-2xl overflow-hidden border border-border">
-      <!-- Window header -->
-      <div class="px-5 py-3.5 bg-surface/90 border-b border-border/80 flex items-center justify-between">
-        <div class="flex items-center space-x-2">
-          <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
-          <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-          <div class="w-3 h-3 rounded-full bg-emerald-500/80"></div>
-          <span class="text-xs font-mono text-textMuted ml-2">AstraLM // Qwen-2.5-3B-Instruct.gguf</span>
-        </div>
-        <div class="flex items-center space-x-3 text-xs font-mono text-textMuted">
-          <span id="tps-counter" class="text-emerald-400 font-semibold">24.6 tok/s</span>
-          <span>·</span>
-          <span class="text-blue-400">RAM: 2.1 GB</span>
-        </div>
-      </div>
-
-      <!-- Chat viewport -->
-      <div class="p-6 space-y-4 min-h-[300px] text-sm font-sans" id="chat-stream-box">
-        <div class="flex items-start space-x-3">
-          <div class="w-7 h-7 rounded bg-surface border border-border flex items-center justify-center text-xs font-bold text-textMuted">U</div>
-          <div class="bg-surface/80 border border-border/60 rounded-xl px-4 py-2.5 text-textPrimary max-w-lg">
-            Explain how on-device quantized inference achieves low latency on ARM architectures.
-          </div>
-        </div>
-
-        <div class="flex items-start space-x-3">
-          <div class="w-7 h-7 rounded bg-blue-600 flex items-center justify-center text-xs font-bold text-white">A</div>
-          <div class="bg-card border border-border rounded-xl px-4 py-3 text-textPrimary max-w-2xl leading-relaxed">
-            <div id="typewriter-text" class="whitespace-pre-line text-slate-200">
-              Quantized on-device inference executes directly on ARM NEON and GPU/NPU vector registers using 4-bit and 8-bit integer matrix multiplications (Q4_K_M, Q8_0).
-
-By compressing weight matrices from 16-bit floating point down to 4-bit integers, memory bandwidth requirements are reduced by up to 75%, allowing memory-bound mobile processors to stream tokens at 20–45 tokens per second with zero external server roundtrips.
-            </div>
-            <div class="mt-3 pt-3 border-t border-border/40 flex items-center justify-between text-xs font-mono text-textMuted">
-              <span>Time to first token: 112ms</span>
-              <span class="text-emerald-400">Status: Complete (100% Offline)</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Input action bar -->
-      <div class="p-4 bg-surface/50 border-t border-border flex items-center gap-3">
-        <button onclick="simulatePrompt('Write a clean Python function to calculate Fibonacci series.')" class="text-xs px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-border/60 text-textSecondary transition">
-          Prompt: Fibonacci
-        </button>
-        <button onclick="simulatePrompt('What are the privacy advantages of local LLMs over cloud APIs?')" class="text-xs px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-border/60 text-textSecondary transition">
-          Prompt: Privacy Architecture
-        </button>
-        <button onclick="simulatePrompt('Generate a concise summary of quantum entanglement.')" class="text-xs px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-border/60 text-textSecondary transition">
-          Prompt: Quantum Physics
-        </button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Interactive Model Catalog Section -->
-  <section id="models" class="py-20 px-6 max-w-6xl mx-auto z-10 relative">
-    <div class="text-center mb-12">
-      <div class="text-xs font-mono text-blue-400 uppercase tracking-widest mb-2">Model Ecosystem</div>
-      <h2 class="text-3xl font-bold gradient-text">Curated On-Device Architectures</h2>
-      <p class="text-textSecondary text-sm max-w-xl mx-auto mt-2">Every model in AstraLM is benchmarked, tested, and pre-configured for mobile RAM constraints.</p>
-    </div>
-
-    <!-- Filter Buttons -->
-    <div class="flex flex-wrap items-center justify-center gap-2 mb-8" id="model-filters">
-      <button onclick="filterModels('all')" class="filter-btn active text-xs font-mono px-4 py-2 rounded-lg bg-blue-600 text-white transition">All Models (37)</button>
-      <button onclick="filterModels('reasoning')" class="filter-btn text-xs font-mono px-4 py-2 rounded-lg border border-border bg-surface text-textSecondary hover:text-white transition">DeepSeek & Reasoning</button>
-      <button onclick="filterModels('coding')" class="filter-btn text-xs font-mono px-4 py-2 rounded-lg border border-border bg-surface text-textSecondary hover:text-white transition">Code & Technical</button>
-      <button onclick="filterModels('vision')" class="filter-btn text-xs font-mono px-4 py-2 rounded-lg border border-border bg-surface text-textSecondary hover:text-white transition">Vision & Multimodal</button>
-      <button onclick="filterModels('image')" class="filter-btn text-xs font-mono px-4 py-2 rounded-lg border border-border bg-surface text-textSecondary hover:text-white transition">Stable Diffusion</button>
-    </div>
-
-    <!-- Models Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="models-container">
-      <!-- Cards rendered via JS -->
-    </div>
-  </section>
-
-  <!-- Core Features Section -->
-  <section id="features" class="py-20 px-6 max-w-6xl mx-auto z-10 relative border-t border-border/40">
-    <div class="text-center mb-16">
-      <div class="text-xs font-mono text-blue-400 uppercase tracking-widest mb-2">Engineering Philosophy</div>
-      <h2 class="text-3xl font-bold gradient-text">Built for Speed, Privacy, and Control</h2>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="glass-card p-7 rounded-2xl">
-        <div class="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-mono text-sm mb-5 font-bold">
-          01
-        </div>
-        <h3 class="text-lg font-bold text-white mb-2">Zero Cloud Dependencies</h3>
-        <p class="text-sm text-textSecondary leading-relaxed">
-          No external API keys, tracking scripts, or data collectors. All token generation occurs on your physical silicon.
-        </p>
-      </div>
-
-      <div class="glass-card p-7 rounded-2xl">
-        <div class="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 font-mono text-sm mb-5 font-bold">
-          02
-        </div>
-        <h3 class="text-lg font-bold text-white mb-2">Native Background Downloads</h3>
-        <p class="text-sm text-textSecondary leading-relaxed">
-          Powered by Android DownloadManager with automatic exponential backoff retry. Multi-gigabyte GGUF weights download without stalls.
-        </p>
-      </div>
-
-      <div class="glass-card p-7 rounded-2xl">
-        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-mono text-sm mb-5 font-bold">
-          03
-        </div>
-        <h3 class="text-lg font-bold text-white mb-2">Canvas & Document Engine</h3>
-        <p class="text-sm text-textSecondary leading-relaxed">
-          Integrated Markdown and HTML live renderer. Edit code snippets, generate documents, and export to PDF directly on device.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA Download Section -->
-  <section class="py-24 px-6 max-w-4xl mx-auto text-center z-10 relative">
-    <div class="glass p-12 rounded-3xl border border-border shadow-2xl relative overflow-hidden">
-      <div class="absolute -right-20 -top-20 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+  <!-- Hero Section with Live Phone Mockup -->
+  <section class="relative pt-12 pb-20 px-6 max-w-7xl mx-auto z-10">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
       
-      <h2 class="text-3xl sm:text-4xl font-extrabold text-white mb-4">
+      <!-- Left Column: Copy & Value Proposition -->
+      <div class="lg:col-span-6 space-y-8 text-center lg:text-left">
+        <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full border border-appBorder bg-appSurface/90 text-textSub text-xs font-mono">
+          <span class="w-2 h-2 rounded-full bg-appSuccess"></span>
+          <span>Native ARM64 Hardware Acceleration</span>
+        </div>
+
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-heading font-extrabold tracking-tight leading-[1.1]">
+          <span class="gradient-heading">Your Phone.</span><br>
+          <span class="gradient-blue-text">Private Intelligence.</span>
+        </h1>
+
+        <p class="text-base sm:text-lg text-textSub font-normal leading-relaxed max-w-xl mx-auto lg:mx-0">
+          AstraLM is a sovereign, 100% offline Android AI assistant. Run DeepSeek-R1, Qwen 2.5, Gemma 2, and Stable Diffusion directly on your device CPU and GPU with zero internet connectivity.
+        </p>
+
+        <!-- CTA Buttons -->
+        <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+          <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.9/AstraLM-v1.0.9.apk" class="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-appPrimary hover:bg-appPrimaryHover text-white font-semibold transition flex items-center justify-center space-x-2.5 shadow-xl shadow-blue-500/25">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <span>Download for Android</span>
+            <span class="text-xs font-mono opacity-80">(v1.0.9 · 76.5MB)</span>
+          </a>
+          <a href="https://github.com/Prasun01/AstraLM" target="_blank" class="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-appBorder bg-appSurface hover:bg-appCard text-textMain font-medium transition flex items-center justify-center space-x-2">
+            <span>View Source</span>
+            <svg class="w-4 h-4 text-textDim" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          </a>
+        </div>
+
+        <!-- Phone Interactive Tab Switcher -->
+        <div class="pt-4 border-t border-appBorder/50">
+          <div class="text-xs font-mono text-textDim uppercase tracking-wider mb-3">Interactive Mobile Showcase:</div>
+          <div class="flex flex-wrap gap-2 justify-center lg:justify-start" id="app-modes">
+            <button onclick="switchAppMode('chat')" class="mode-btn active text-xs font-mono px-3.5 py-1.5 rounded-lg bg-blue-600 text-white transition border border-blue-500/30">
+              Chat & Reasoning
+            </button>
+            <button onclick="switchAppMode('models')" class="mode-btn text-xs font-mono px-3.5 py-1.5 rounded-lg border border-appBorder bg-appSurface text-textSub hover:text-white transition">
+              Model Manager (37)
+            </button>
+            <button onclick="switchAppMode('canvas')" class="mode-btn text-xs font-mono px-3.5 py-1.5 rounded-lg border border-appBorder bg-appSurface text-textSub hover:text-white transition">
+              Canvas Studio
+            </button>
+            <button onclick="switchAppMode('image')" class="mode-btn text-xs font-mono px-3.5 py-1.5 rounded-lg border border-appBorder bg-appSurface text-textSub hover:text-white transition">
+              Local Image Gen
+            </button>
+          </div>
+        </div>
+
+        <!-- Hardware Highlights -->
+        <div class="grid grid-cols-3 gap-3 pt-2 text-left">
+          <div class="p-3 rounded-lg border border-appBorder/60 bg-appSurface/50">
+            <div class="text-xs font-mono font-bold text-textMain">100% Offline</div>
+            <div class="text-[11px] text-textDim mt-0.5">Air-gapped security</div>
+          </div>
+          <div class="p-3 rounded-lg border border-appBorder/60 bg-appSurface/50">
+            <div class="text-xs font-mono font-bold text-appSuccess">20–45 TPS</div>
+            <div class="text-[11px] text-textDim mt-0.5">ARM vector execution</div>
+          </div>
+          <div class="p-3 rounded-lg border border-appBorder/60 bg-appSurface/50">
+            <div class="text-xs font-mono font-bold text-blue-400">GGUF + LiteRT</div>
+            <div class="text-[11px] text-textDim mt-0.5">Dual native engines</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: High Fidelity Realistic Smartphone Bezel Mockup -->
+      <div class="lg:col-span-6 flex justify-center" id="mobile-showcase">
+        <div class="w-full max-w-[340px] sm:max-w-[370px]">
+          
+          <!-- Outer Phone Frame -->
+          <div class="phone-bezel relative">
+            
+            <!-- Speaker Ear-piece & Dynamic Island / Camera -->
+            <div class="absolute top-3 left-1/2 -translate-x-1/2 w-28 h-4 bg-[#151A26] rounded-full z-30 flex items-center justify-center">
+              <div class="w-3 h-3 rounded-full bg-black border border-white/10 mr-2"></div>
+              <div class="w-8 h-1 bg-white/20 rounded-full"></div>
+            </div>
+
+            <!-- Inner Screen Container (Matches AstraLM Flutter App Theme) -->
+            <div class="phone-screen h-[680px] flex flex-col justify-between pt-7 pb-4 px-3.5 relative">
+              
+              <!-- Android Status Bar -->
+              <div class="flex items-center justify-between px-3 py-1.5 text-[11px] font-mono text-textDim">
+                <span>12:00</span>
+                <div class="flex items-center space-x-2">
+                  <!-- Airplane mode icon showing 100% offline -->
+                  <span class="px-1.5 py-0.2 rounded text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-sans">Offline Mode</span>
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                  <span class="text-[10px]">100%</span>
+                </div>
+              </div>
+
+              <!-- AstraLM In-App Top AppBar -->
+              <div class="py-2.5 px-3 rounded-2xl bg-appSurface border border-appBorder/80 flex items-center justify-between shadow-sm my-1">
+                <div class="flex items-center space-x-2">
+                  <div class="w-6 h-6 rounded-lg bg-appCard border border-appBorder flex items-center justify-center text-textSub">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                  </div>
+                  <!-- Model Selector Pill in App -->
+                  <div id="phone-appbar-title" class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-appCard border border-appBorder text-xs font-mono text-textMain">
+                    <span class="w-1.5 h-1.5 rounded-full bg-appSuccess"></span>
+                    <span class="truncate max-w-[130px]" id="app-active-model-name">DeepSeek-R1 1.5B</span>
+                  </div>
+                </div>
+
+                <div class="flex items-center space-x-1.5">
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20" id="phone-speed-badge">26.8 TPS</span>
+                  <div class="w-6 h-6 rounded-lg bg-appCard border border-appBorder flex items-center justify-center text-textSub">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Main Dynamic In-App Screen Content -->
+              <div class="flex-1 overflow-y-auto py-2 space-y-3 custom-scrollbar text-xs font-sans" id="phone-screen-content">
+                
+                <!-- Default State: Chat with Deep Reasoning -->
+                <div class="flex items-start space-x-2">
+                  <div class="w-6 h-6 rounded-md bg-appSurface border border-appBorder flex items-center justify-center font-bold text-[10px] text-textSub shrink-0">U</div>
+                  <div class="bg-appSurface border border-appBorder rounded-2xl rounded-tl-none px-3 py-2 text-textMain max-w-[85%]">
+                    Write a Kotlin function to compute matrix dot product with SIMD on Android.
+                  </div>
+                </div>
+
+                <div class="flex items-start space-x-2">
+                  <div class="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center font-bold text-[10px] text-white shrink-0">A</div>
+                  <div class="bg-appCard border border-appBorder rounded-2xl rounded-tl-none px-3.5 py-3 text-textMain max-w-[90%] space-y-2.5">
+                    
+                    <!-- DeepSeek Reasoning Chain Pill -->
+                    <div class="p-2 rounded-lg bg-appSurface border border-purple-500/20 text-[10.5px]">
+                      <div class="flex items-center justify-between text-purple-400 font-mono font-semibold mb-1">
+                        <span class="flex items-center space-x-1">
+                          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                          <span>Reasoning Process (0.8s)</span>
+                        </span>
+                        <span class="text-[9px] opacity-75">GGUF Q4_K_M</span>
+                      </div>
+                      <p class="text-textSub leading-snug text-[10px]">
+                        Analyzing ARM NEON vectorization intrinsics via Android NDK bindings to eliminate memory bottlenecks...
+                      </p>
+                    </div>
+
+                    <!-- Code Snippet Box -->
+                    <div class="rounded-lg bg-[#08090C] border border-appBorder p-2.5 font-mono text-[10px] text-blue-300 leading-relaxed overflow-x-auto">
+                      <div class="text-textDim text-[9px] mb-1">// ARM NEON Dot Product</div>
+                      <code>fun dotProduct(a: FloatArray, b: FloatArray): Float {<br>&nbsp;&nbsp;var sum = 0f<br>&nbsp;&nbsp;for (i in a.indices) sum += a[i] * b[i]<br>&nbsp;&nbsp;return sum<br>}</code>
+                    </div>
+
+                    <!-- Speed & Token Footer -->
+                    <div class="flex items-center justify-between text-[9.5px] font-mono text-textDim pt-1 border-t border-appBorder/40">
+                      <span>42 tokens generated</span>
+                      <span class="text-emerald-400">26.8 tok/s · 0ms cloud lag</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- AstraLM In-App Bottom Chat & Input Area -->
+              <div class="pt-2 border-t border-appBorder/80 space-y-2 bg-appBg">
+                
+                <!-- Thumb-Reach Preset Pills -->
+                <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 text-[10px] font-mono text-textSub">
+                  <button onclick="demoSendPrompt('Explain quantum tunneling simply')" class="px-2 py-0.5 rounded-full bg-appSurface border border-appBorder hover:border-blue-500/40 whitespace-nowrap">
+                    Quantum Tunneling
+                  </button>
+                  <button onclick="demoSendPrompt('Summarize on-device privacy')" class="px-2 py-0.5 rounded-full bg-appSurface border border-appBorder hover:border-blue-500/40 whitespace-nowrap">
+                    Air-Gap Security
+                  </button>
+                </div>
+
+                <!-- Input Field & Send Button -->
+                <div class="flex items-center space-x-2 bg-appSurface border border-appBorder rounded-2xl px-3 py-1.5">
+                  <button class="text-textDim hover:text-textSub">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  </button>
+                  
+                  <input type="text" id="phone-chat-input" placeholder="Ask AstraLM on-device..." class="bg-transparent text-xs text-textMain focus:outline-none flex-1 font-sans placeholder:text-textDim" readonly value="Explain quantum tunneling simply">
+
+                  <button class="w-7 h-7 rounded-xl bg-appPrimary flex items-center justify-center text-white shrink-0 shadow-md">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Model Ecosystem Section -->
+  <section id="models" class="py-24 px-6 max-w-7xl mx-auto z-10 border-t border-appBorder/50">
+    <div class="text-center max-w-2xl mx-auto mb-16">
+      <div class="text-xs font-mono text-blue-400 uppercase tracking-widest mb-2 font-semibold">Verified Catalog</div>
+      <h2 class="text-3xl sm:text-4xl font-heading font-bold gradient-heading">37+ Tested On-Device Models</h2>
+      <p class="text-textSub text-sm mt-3">From lightweight 1.5B reasoning engines to multimodal vision and on-device diffusion.</p>
+    </div>
+
+    <!-- Category Tabs -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      
+      <!-- Card 1: Reasoning -->
+      <div class="p-6 rounded-2xl bg-appSurface border border-appBorder hover:border-purple-500/40 transition group">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-[10px] font-mono px-2.5 py-1 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-semibold">REASONING</span>
+          <span class="text-xs font-mono text-textDim">GGUF Q4_K_M</span>
+        </div>
+        <h3 class="font-heading font-bold text-white text-lg mb-1 group-hover:text-purple-300 transition">DeepSeek-R1 Distill Qwen</h3>
+        <p class="text-xs text-textSub leading-relaxed mb-4">Deep chain-of-thought mathematical and logic reasoning executed directly on mobile CPU.</p>
+        <div class="pt-4 border-t border-appBorder/50 flex items-center justify-between text-xs font-mono text-textDim">
+          <span>Size: <strong class="text-textMain">1.1 GB</strong></span>
+          <span class="text-appSuccess">2.4 GB RAM Req</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Coding -->
+      <div class="p-6 rounded-2xl bg-appSurface border border-appBorder hover:border-blue-500/40 transition group">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-[10px] font-mono px-2.5 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold">TECHNICAL</span>
+          <span class="text-xs font-mono text-textDim">GGUF Q4_K_M</span>
+        </div>
+        <h3 class="font-heading font-bold text-white text-lg mb-1 group-hover:text-blue-300 transition">Qwen 2.5 Coder 3B</h3>
+        <p class="text-xs text-textSub leading-relaxed mb-4">Specialized on Kotlin, Dart, Python, and C++ with full offline syntax awareness.</p>
+        <div class="pt-4 border-t border-appBorder/50 flex items-center justify-between text-xs font-mono text-textDim">
+          <span>Size: <strong class="text-textMain">2.0 GB</strong></span>
+          <span class="text-appSuccess">3.2 GB RAM Req</span>
+        </div>
+      </div>
+
+      <!-- Card 3: General Instruction -->
+      <div class="p-6 rounded-2xl bg-appSurface border border-appBorder hover:border-emerald-500/40 transition group">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-[10px] font-mono px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">GENERAL</span>
+          <span class="text-xs font-mono text-textDim">LiteRT / GGUF</span>
+        </div>
+        <h3 class="font-heading font-bold text-white text-lg mb-1 group-hover:text-emerald-300 transition">Google Gemma 2 2B</h3>
+        <p class="text-xs text-textSub leading-relaxed mb-4">High-throughput conversational AI optimized specifically for Android hardware.</p>
+        <div class="pt-4 border-t border-appBorder/50 flex items-center justify-between text-xs font-mono text-textDim">
+          <span>Size: <strong class="text-textMain">1.6 GB</strong></span>
+          <span class="text-appSuccess">2.8 GB RAM Req</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Diffusion -->
+      <div class="p-6 rounded-2xl bg-appSurface border border-appBorder hover:border-amber-500/40 transition group">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-[10px] font-mono px-2.5 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">DIFFUSION</span>
+          <span class="text-xs font-mono text-textDim">NPU / ONNX</span>
+        </div>
+        <h3 class="font-heading font-bold text-white text-lg mb-1 group-hover:text-amber-300 transition">Stable Diffusion Turbo</h3>
+        <p class="text-xs text-textSub leading-relaxed mb-4">Generate 512x512 images directly on phone GPU in 4–8 inference steps without servers.</p>
+        <div class="pt-4 border-t border-appBorder/50 flex items-center justify-between text-xs font-mono text-textDim">
+          <span>Size: <strong class="text-textMain">2.1 GB</strong></span>
+          <span class="text-appSuccess">4.5 GB RAM Req</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Technical Architecture & Privacy Proof Section -->
+  <section id="architecture" class="py-24 px-6 max-w-7xl mx-auto z-10 border-t border-appBorder/50">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      
+      <div class="lg:col-span-5 space-y-6">
+        <div class="text-xs font-mono text-blue-400 uppercase tracking-widest font-semibold">Privacy Engineering</div>
+        <h2 class="text-3xl sm:text-4xl font-heading font-bold gradient-heading">Physically Sovereign. Zero Data Ingestion.</h2>
+        <p class="text-sm text-textSub leading-relaxed">
+          Cloud AI architectures send your conversations, private code, and documents to corporate data centers. AstraLM processes every single token in physical memory.
+        </p>
+
+        <div class="space-y-3 font-mono text-xs">
+          <div class="p-3.5 rounded-xl bg-appSurface border border-appBorder flex items-center space-x-3">
+            <span class="w-2 h-2 rounded-full bg-appSuccess"></span>
+            <span class="text-textMain">Air-gapped operation verified</span>
+          </div>
+          <div class="p-3.5 rounded-xl bg-appSurface border border-appBorder flex items-center space-x-3">
+            <span class="w-2 h-2 rounded-full bg-appSuccess"></span>
+            <span class="text-textMain">Zero analytics, trackers, or SDK beacons</span>
+          </div>
+          <div class="p-3.5 rounded-xl bg-appSurface border border-appBorder flex items-center space-x-3">
+            <span class="w-2 h-2 rounded-full bg-appSuccess"></span>
+            <span class="text-textMain">Open source code published on GitHub</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-7">
+        <div class="p-6 rounded-2xl bg-appSurface border border-appBorder space-y-4">
+          <div class="text-xs font-mono text-textDim flex items-center justify-between border-b border-appBorder/60 pb-3">
+            <span>Inference Architecture Stack</span>
+            <span class="text-blue-400">Android Arm64-v8a</span>
+          </div>
+
+          <!-- Stack Diagram -->
+          <div class="space-y-2.5 text-xs font-mono">
+            <div class="p-3.5 rounded-xl bg-appCard border border-appBorder flex items-center justify-between">
+              <span class="font-bold text-textMain">AstraLM Flutter UI (120 FPS)</span>
+              <span class="text-textDim text-[11px]">Phosphor Icons · Canvas Studio</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-appCard border border-blue-500/30 flex items-center justify-between text-blue-300">
+              <span class="font-bold">Dual Native C++ Inference Engine</span>
+              <span class="text-[11px]">llama.cpp + Google LiteRT</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-appCard border border-appBorder flex items-center justify-between">
+              <span class="font-bold text-textMain">Android DownloadManager</span>
+              <span class="text-textDim text-[11px]">Background Resumable Engine</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-appCard border border-emerald-500/30 flex items-center justify-between text-emerald-400">
+              <span class="font-bold">Device Silicon (ARM CPU / Adreno GPU / NPU)</span>
+              <span class="text-[11px]">Zero Network Packets Emitted</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Download Footer CTA -->
+  <section class="py-20 px-6 max-w-5xl mx-auto z-10 text-center">
+    <div class="p-12 rounded-3xl bg-gradient-to-b from-appSurface to-appCard border border-appBorder shadow-2xl relative overflow-hidden">
+      <h2 class="text-3xl sm:text-4xl font-heading font-extrabold text-white mb-4">
         Ready for Sovereign AI on Your Phone?
       </h2>
-      <p class="text-textSecondary text-sm sm:text-base max-w-lg mx-auto mb-8 leading-relaxed">
-        Download AstraLM v1.0.9 for Android. Free, open source, and built for privacy enthusiasts.
+      <p class="text-textSub text-sm sm:text-base max-w-xl mx-auto mb-8 leading-relaxed">
+        Download the official AstraLM v1.0.9 APK for Android. Free, open source, and built for privacy.
       </p>
 
       <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-        <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.9/AstraLM-v1.0.9.apk" class="px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold transition flex items-center space-x-3 shadow-xl shadow-blue-600/30">
+        <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.9/AstraLM-v1.0.9.apk" class="px-8 py-4 rounded-xl bg-appPrimary hover:bg-appPrimaryHover text-white font-semibold transition flex items-center space-x-2.5 shadow-xl shadow-blue-500/30">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           <span>Download AstraLM-v1.0.9.apk</span>
           <span class="text-xs font-mono opacity-80">(ARM64)</span>
         </a>
-        <a href="https://github.com/Prasun01/AstraLM" target="_blank" class="px-6 py-4 rounded-xl border border-border bg-surface hover:bg-card text-textSecondary hover:text-white font-medium transition">
-          View on GitHub
+        <a href="https://github.com/Prasun01/AstraLM" target="_blank" class="px-6 py-4 rounded-xl border border-appBorder bg-appSurface hover:bg-appCard text-textMain font-medium transition">
+          GitHub Repository
         </a>
       </div>
     </div>
   </section>
 
   <!-- Footer -->
-  <footer class="py-12 px-6 border-t border-border/50 text-center text-xs text-textMuted font-mono z-10 relative">
-    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-      <div>AstraLM · Sovereign On-Device Intelligence</div>
+  <footer class="py-12 px-6 border-t border-appBorder/50 text-xs text-textDim font-mono z-10 relative">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div>AstraLM · Sovereign On-Device Private AI</div>
       <div class="flex items-center space-x-6">
-        <a href="https://github.com/Prasun01/AstraLM" target="_blank" class="hover:text-textSecondary transition">Repository</a>
-        <a href="https://github.com/Prasun01/AstraLM/releases" target="_blank" class="hover:text-textSecondary transition">Releases</a>
-        <a href="https://github.com/Prasun01/AstraLM/blob/main/LICENSE" target="_blank" class="hover:text-textSecondary transition">MIT License</a>
+        <a href="https://github.com/Prasun01/AstraLM" target="_blank" class="hover:text-textSub transition">Repository</a>
+        <a href="https://github.com/Prasun01/AstraLM/releases" target="_blank" class="hover:text-textSub transition">Releases</a>
+        <a href="https://github.com/Prasun01/AstraLM/blob/main/LICENSE" target="_blank" class="hover:text-textSub transition">MIT License</a>
       </div>
     </div>
   </footer>
 
+  <!-- Interactive JavaScript -->
   <script>
-    const modelsData = [
-      {
-        name: "DeepSeek-R1 Distill Qwen 1.5B",
-        category: "reasoning",
-        format: "GGUF Q4_K_M",
-        size: "1.1 GB",
-        ram: "2.4 GB RAM",
-        desc: "State of the art step-by-step reasoning model distilled from DeepSeek-R1."
-      },
-      {
-        name: "Qwen 2.5 Coder 3B Instruct",
-        category: "coding",
-        format: "GGUF Q4_K_M",
-        size: "2.0 GB",
-        ram: "3.2 GB RAM",
-        desc: "Specialized for Python, TypeScript, algorithms, and technical debugging."
-      },
-      {
-        name: "Google Gemma 2 2B Instruct",
-        category: "all",
-        format: "GGUF Q4_K_M",
-        size: "1.6 GB",
-        ram: "2.8 GB RAM",
-        desc: "Google DeepMind lightweight model with exceptional instruction following."
-      },
-      {
-        name: "Llama 3.2 3B Instruct",
-        category: "all",
-        format: "GGUF Q4_K_M",
-        size: "2.0 GB",
-        ram: "3.2 GB RAM",
-        desc: "Meta high-throughput architecture optimized for mobile devices."
-      },
-      {
-        name: "Moondream 2 Vision",
-        category: "vision",
-        format: "GGUF / LiteRT",
-        size: "1.8 GB",
-        ram: "3.0 GB RAM",
-        desc: "Lightweight on-device computer vision for image inspection and OCR."
-      },
-      {
-        name: "Stable Diffusion v1.5 Turbo",
-        category: "image",
-        format: "NPU / ONNX",
-        size: "2.1 GB",
-        ram: "4.5 GB RAM",
-        desc: "Generate 512x512 images directly on phone GPU in 4–8 inference steps."
-      }
-    ];
-
-    function renderModels(filter = 'all') {
-      const container = document.getElementById('models-container');
-      const filtered = filter === 'all' ? modelsData : modelsData.filter(m => m.category === filter || m.category === 'all');
-      
-      container.innerHTML = filtered.map(m => `
-        <div class="glass-card p-6 rounded-2xl flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-xs font-mono px-2.5 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">${m.format}</span>
-              <span class="text-xs font-mono text-textMuted">${m.size}</span>
+    const modes = {
+      chat: {
+        title: "DeepSeek-R1 1.5B",
+        speed: "26.8 TPS",
+        input: "Explain quantum tunneling simply",
+        content: `
+          <div class="flex items-start space-x-2">
+            <div class="w-6 h-6 rounded-md bg-appSurface border border-appBorder flex items-center justify-center font-bold text-[10px] text-textSub shrink-0">U</div>
+            <div class="bg-appSurface border border-appBorder rounded-2xl rounded-tl-none px-3 py-2 text-textMain max-w-[85%]">
+              Write a Kotlin function to compute matrix dot product with SIMD on Android.
             </div>
-            <h4 class="font-bold text-white text-base mb-1.5">${m.name}</h4>
-            <p class="text-xs text-textSecondary leading-relaxed">${m.desc}</p>
           </div>
-          <div class="mt-5 pt-4 border-t border-border/50 flex items-center justify-between text-xs font-mono text-textMuted">
-            <span>Req: <span class="text-textPrimary">${m.ram}</span></span>
-            <span class="text-emerald-400">Verified HTTP 200</span>
+
+          <div class="flex items-start space-x-2">
+            <div class="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center font-bold text-[10px] text-white shrink-0">A</div>
+            <div class="bg-appCard border border-appBorder rounded-2xl rounded-tl-none px-3.5 py-3 text-textMain max-w-[90%] space-y-2.5">
+              <div class="p-2 rounded-lg bg-appSurface border border-purple-500/20 text-[10.5px]">
+                <div class="flex items-center justify-between text-purple-400 font-mono font-semibold mb-1">
+                  <span class="flex items-center space-x-1">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+                    <span>Reasoning Process (0.8s)</span>
+                  </span>
+                  <span class="text-[9px] opacity-75">GGUF Q4_K_M</span>
+                </div>
+                <p class="text-textSub leading-snug text-[10px]">
+                  Analyzing ARM NEON vectorization intrinsics via Android NDK bindings to eliminate memory bottlenecks...
+                </p>
+              </div>
+
+              <div class="rounded-lg bg-[#08090C] border border-appBorder p-2.5 font-mono text-[10px] text-blue-300 leading-relaxed overflow-x-auto">
+                <div class="text-textDim text-[9px] mb-1">// ARM NEON Dot Product</div>
+                <code>fun dotProduct(a: FloatArray, b: FloatArray): Float {<br>&nbsp;&nbsp;var sum = 0f<br>&nbsp;&nbsp;for (i in a.indices) sum += a[i] * b[i]<br>&nbsp;&nbsp;return sum<br>}</code>
+              </div>
+
+              <div class="flex items-center justify-between text-[9.5px] font-mono text-textDim pt-1 border-t border-appBorder/40">
+                <span>42 tokens generated</span>
+                <span class="text-emerald-400">26.8 tok/s · 0ms cloud lag</span>
+              </div>
+            </div>
           </div>
-        </div>
-      `).join('');
-    }
+        `
+      },
+      models: {
+        title: "Model Manager",
+        speed: "37 Available",
+        input: "Search local GGUF models...",
+        content: `
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-[11px] font-mono text-textSub px-1">
+              <span>Local Model Catalog</span>
+              <span class="text-blue-400">37 GGUF/LiteRT</span>
+            </div>
 
-    function filterModels(category) {
-      document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('bg-blue-600', 'text-white');
-        btn.classList.add('border', 'border-border', 'bg-surface', 'text-textSecondary');
-      });
-      event.target.classList.remove('border', 'border-border', 'bg-surface', 'text-textSecondary');
-      event.target.classList.add('bg-blue-600', 'text-white');
-      renderModels(category);
-    }
+            <div class="p-2.5 rounded-xl bg-appCard border border-blue-500/40 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-[11px] text-white">DeepSeek-R1 Distill 1.5B</div>
+                <div class="text-[10px] text-textDim font-mono">1.1 GB · 2.4 GB RAM</div>
+              </div>
+              <span class="text-[9px] font-mono px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Loaded</span>
+            </div>
 
-    const promptsMap = {
-      'Write a clean Python function to calculate Fibonacci series.': `def fibonacci(n: int) -> list[int]:
-    """Generate Fibonacci sequence up to n terms with O(n) space and time."""
-    if n <= 0:
-        return []
-    if n == 1:
-        return [0]
-    seq = [0, 1]
-    for _ in range(2, n):
-        seq.append(seq[-1] + seq[-2])
-    return seq`,
-      'What are the privacy advantages of local LLMs over cloud APIs?': `Key advantages of on-device sovereign inference:
-1. Zero Data Ingestion: User prompts and system outputs never leave device memory.
-2. Air-Gapped Operation: Inference works without internet or SIM connectivity.
-3. Zero Latency Jitter: No network roundtrips, DNS lookups, or API throttling.
-4. Unlimited Generation: Zero subscription or per-token API billing overhead.`,
-      'Generate a concise summary of quantum entanglement.': `Quantum entanglement is a physical phenomenon where two or more particles become interconnected such that the quantum state of one instantaneously dictates the state of another, regardless of spatial separation.`
+            <div class="p-2.5 rounded-xl bg-appSurface border border-appBorder flex items-center justify-between">
+              <div>
+                <div class="font-bold text-[11px] text-white">Qwen 2.5 Coder 3B</div>
+                <div class="text-[10px] text-textDim font-mono">2.0 GB · 3.2 GB RAM</div>
+              </div>
+              <button class="text-[9px] font-mono px-2 py-1 rounded bg-blue-600 text-white">Download</button>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-appSurface border border-appBorder flex items-center justify-between">
+              <div>
+                <div class="font-bold text-[11px] text-white">Google Gemma 2 2B</div>
+                <div class="text-[10px] text-textDim font-mono">1.6 GB · 2.8 GB RAM</div>
+              </div>
+              <button class="text-[9px] font-mono px-2 py-1 rounded bg-blue-600 text-white">Download</button>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-appSurface border border-appBorder flex items-center justify-between">
+              <div>
+                <div class="font-bold text-[11px] text-white">Llama 3.2 3B Instruct</div>
+                <div class="text-[10px] text-textDim font-mono">2.0 GB · 3.2 GB RAM</div>
+              </div>
+              <button class="text-[9px] font-mono px-2 py-1 rounded bg-blue-600 text-white">Download</button>
+            </div>
+          </div>
+        `
+      },
+      canvas: {
+        title: "Canvas Studio",
+        speed: "Live Preview",
+        input: "Edit markdown / HTML...",
+        content: `
+          <div class="p-3 rounded-xl bg-appCard border border-appBorder space-y-2">
+            <div class="flex items-center justify-between border-b border-appBorder/50 pb-2">
+              <span class="font-bold text-[11px] text-white">Architecture.md</span>
+              <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-400">Markdown + PDF</span>
+            </div>
+            <div class="text-[10px] font-serif text-slate-200 leading-relaxed bg-[#0E1118] p-3 rounded-lg border border-appBorder">
+              <h3 class="font-sans font-bold text-xs text-white mb-1"># AstraLM Sovereignty</h3>
+              <p>On-device neural inference guarantees complete privacy by executing tensor operations in physical RAM without network roundtrips.</p>
+            </div>
+            <div class="flex gap-1.5 pt-1">
+              <button class="text-[9px] font-mono px-2 py-1 rounded bg-appSurface border border-appBorder text-textSub">Add Comments</button>
+              <button class="text-[9px] font-mono px-2 py-1 rounded bg-appSurface border border-appBorder text-textSub">Make Concise</button>
+              <button class="text-[9px] font-mono px-2 py-1 rounded bg-appSurface border border-appBorder text-textSub">Export PDF</button>
+            </div>
+          </div>
+        `
+      },
+      image: {
+        title: "Stable Diffusion",
+        speed: "NPU 6 Steps",
+        input: "A serene cyberpunk Tokyo alley at night, 8k...",
+        content: `
+          <div class="p-3 rounded-xl bg-appCard border border-appBorder space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-[11px] text-white">Local Diffusion Generator</span>
+              <span class="text-[9px] font-mono text-emerald-400">Step 6/6 (100%)</span>
+            </div>
+            <div class="w-full h-36 rounded-lg bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 border border-appBorder flex items-center justify-center text-center p-3 relative overflow-hidden">
+              <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.3)_0%,transparent_70%)]"></div>
+              <span class="font-mono text-[10px] text-purple-200 z-10">512x512 Denoised Bitmap Rendered on Device GPU in 3.4s</span>
+            </div>
+            <div class="flex items-center justify-between text-[9px] font-mono text-textDim pt-1">
+              <span>Memory: 4.1 GB</span>
+              <span class="text-blue-400">Zero Cloud API Cost</span>
+            </div>
+          </div>
+        `
+      }
     };
 
-    function simulatePrompt(promptText) {
-      const chatBox = document.getElementById('chat-stream-box');
-      const responseText = promptsMap[promptText] || 'Processing local inference...';
-      
-      chatBox.innerHTML = `
-        <div class="flex items-start space-x-3">
-          <div class="w-7 h-7 rounded bg-surface border border-border flex items-center justify-center text-xs font-bold text-textMuted">U</div>
-          <div class="bg-surface/80 border border-border/60 rounded-xl px-4 py-2.5 text-textPrimary max-w-lg">
-            ${promptText}
-          </div>
-        </div>
+    function switchAppMode(modeKey) {
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.remove('active', 'bg-blue-600', 'text-white', 'border-blue-500/30');
+        btn.classList.add('border-appBorder', 'bg-appSurface', 'text-textSub');
+      });
+      event.target.classList.remove('border-appBorder', 'bg-appSurface', 'text-textSub');
+      event.target.classList.add('active', 'bg-blue-600', 'text-white', 'border-blue-500/30');
 
-        <div class="flex items-start space-x-3">
-          <div class="w-7 h-7 rounded bg-blue-600 flex items-center justify-center text-xs font-bold text-white">A</div>
-          <div class="bg-card border border-border rounded-xl px-4 py-3 text-textPrimary max-w-2xl leading-relaxed">
-            <div id="typewriter-text" class="whitespace-pre-line font-mono text-xs text-slate-200"></div>
-            <div class="mt-3 pt-3 border-t border-border/40 flex items-center justify-between text-xs font-mono text-textMuted">
-              <span>Latency: 95ms</span>
-              <span class="text-emerald-400">Streaming: 28.4 tok/s</span>
-            </div>
-          </div>
-        </div>
-      `;
-
-      const typeEl = document.getElementById('typewriter-text');
-      let i = 0;
-      typeEl.textContent = '';
-      const interval = setInterval(() => {
-        if (i < responseText.length) {
-          typeEl.textContent += responseText.charAt(i);
-          i++;
-        } else {
-          clearInterval(interval);
-        }
-      }, 12);
+      const data = modes[modeKey];
+      document.getElementById('app-active-model-name').textContent = data.title;
+      document.getElementById('phone-speed-badge').textContent = data.speed;
+      document.getElementById('phone-chat-input').value = data.input;
+      document.getElementById('phone-screen-content').innerHTML = data.content;
     }
 
-    renderModels();
+    function demoSendPrompt(text) {
+      document.getElementById('phone-chat-input').value = text;
+      switchAppMode('chat');
+    }
   </script>
 </body>
 </html>
