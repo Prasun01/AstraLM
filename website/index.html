@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>AstraLM — On-Device AI. No Cloud. No Limits.</title>
   
   <meta name="description" content="A complete on-device AI assistant that executes entirely on your phone hardware. No API calls. No usage caps. No cloud dependency.">
@@ -53,6 +53,7 @@
       color: var(--paper);
       font-family: var(--font-body);
       -webkit-font-smoothing: antialiased;
+      text-size-adjust: 100%;
     }
 
     body {
@@ -60,6 +61,7 @@
       color: var(--paper);
       overflow-x: hidden;
       line-height: 1.5;
+      width: 100%;
     }
 
     a {
@@ -67,7 +69,7 @@
       text-decoration: none;
     }
 
-    /* CRT Scanline & Grain Texture Overlays (Rig.ai exact signature) */
+    /* CRT Scanlines & Grain Texture */
     .scanlines {
       position: fixed;
       top: 0;
@@ -76,7 +78,7 @@
       height: 100vh;
       pointer-events: none;
       z-index: 9999;
-      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.22) 50%);
       background-size: 100% 4px;
       opacity: 0.35;
     }
@@ -97,7 +99,13 @@
       width: 100%;
       max-width: 1260px;
       margin: 0 auto;
-      padding: 0 2rem;
+      padding: 0 1.25rem;
+    }
+
+    @media (min-width: 768px) {
+      .container {
+        padding: 0 2rem;
+      }
     }
 
     /* Chamfered Rig Button Style */
@@ -116,26 +124,36 @@
       transition: all 0.2s ease;
       cursor: pointer;
       border: none;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 480px) {
+      .btn-chamfer {
+        width: 100%;
+        padding: 1rem 1.25rem;
+        font-size: 0.8rem;
+      }
     }
 
     .btn-dark {
-      background: var(--ink);
-      color: var(--paper);
+      background: var(--ink) !important;
+      color: var(--paper) !important;
     }
 
     .btn-dark:hover {
-      background: #1C1C1C;
-      color: var(--red);
+      background: #1C1C1C !important;
+      color: var(--red) !important;
     }
 
     .btn-red {
-      background: var(--red);
-      color: var(--ink);
+      background: var(--red) !important;
+      color: var(--ink) !important;
     }
 
     .btn-red:hover {
-      background: #FFFFFF;
-      color: var(--ink);
+      background: #FFFFFF !important;
+      color: var(--ink) !important;
       transform: translateY(-2px);
     }
 
@@ -148,17 +166,6 @@
     .btn-outline-ink:hover {
       border-color: var(--ink);
       background: rgba(10, 10, 10, 0.08);
-    }
-
-    .btn-outline-paper {
-      background: transparent;
-      color: var(--paper);
-      border: 1px solid var(--ink-border);
-    }
-
-    .btn-outline-paper:hover {
-      border-color: var(--paper);
-      background: rgba(240, 237, 230, 0.05);
     }
 
     /* Monospace Tech Badge */
@@ -178,36 +185,44 @@
       margin-bottom: 1.25rem;
     }
 
-    .section-divider {
-      width: 100%;
-      height: 1px;
-      background: var(--ink-border);
-    }
-
     /* ==========================================================================
-       HERO SECTION — ICONIC FULL RED VIEWPORT
+       HERO SECTION — FULLY RESPONSIVE VERMILLION HERO
        ========================================================================== */
     .hero-rig {
       position: relative;
       background-color: var(--red);
       color: var(--ink);
-      min-height: 90vh;
+      min-height: 85vh;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       overflow: hidden;
-      padding-top: 1.5rem;
+      padding-top: 1.25rem;
+    }
+
+    @media (min-width: 768px) {
+      .hero-rig {
+        min-height: 90vh;
+        padding-top: 1.5rem;
+      }
     }
 
     .site-nav {
       max-width: 1260px;
       margin: 0 auto;
-      padding: 0 2rem;
+      padding: 0 1.25rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
       width: 100%;
-      z-index: 10;
+      z-index: 100;
+      position: relative;
+    }
+
+    @media (min-width: 768px) {
+      .site-nav {
+        padding: 0 2rem;
+      }
     }
 
     .site-logo {
@@ -215,31 +230,27 @@
       align-items: center;
       gap: 0.6rem;
       font-family: var(--font-display);
-      font-size: 1.4rem;
+      font-size: 1.3rem;
       font-weight: 900;
       letter-spacing: -0.04em;
       color: var(--ink);
     }
 
     .site-nav-links {
-      display: flex;
+      display: none;
       align-items: center;
-      gap: 2rem;
+      gap: 1.5rem;
       list-style: none;
+    }
+
+    @media (min-width: 960px) {
+      .site-nav-links {
+        display: flex;
+      }
     }
 
     .site-nav-links a {
       font-family: var(--font-mono);
-      color: var(--ink);
-    }
-    .site-nav-links a.btn-dark, .site-nav-links .btn-chamfer {
-      color: #FFFFFF !important;
-      background: #0A0A0A !important;
-    }
-    .site-nav-links a.btn-dark:hover, .site-nav-links .btn-chamfer:hover {
-      color: #ED462D !important;
-      background: #1C1C1C !important;
-    }
       font-size: 0.78rem;
       font-weight: 700;
       letter-spacing: 0.08em;
@@ -253,14 +264,88 @@
       opacity: 1;
     }
 
+    .site-nav-links a.btn-chamfer {
+      color: #FFFFFF !important;
+      background: #0A0A0A !important;
+    }
+
+    .site-nav-links a.btn-chamfer:hover {
+      color: var(--red) !important;
+      background: #1C1C1C !important;
+    }
+
+    /* Mobile Hamburger Toggle */
+    .nav-toggle-btn {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      width: 36px;
+      height: 36px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      z-index: 101;
+    }
+
+    @media (min-width: 960px) {
+      .nav-toggle-btn {
+        display: none;
+      }
+    }
+
+    .nav-toggle-bar {
+      width: 24px;
+      height: 2px;
+      background: var(--ink);
+      transition: all 0.3s ease;
+      transform-origin: center;
+    }
+
+    /* Mobile Sliding Overlay */
+    .mobile-menu-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: var(--ink);
+      z-index: 99;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 2rem;
+      padding: 2rem;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .mobile-menu-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .mobile-menu-overlay a {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--paper);
+    }
+
+    .mobile-menu-overlay a:hover {
+      color: var(--red);
+    }
+
     /* Giant Faded Watermark in Hero */
     .hero-watermark {
       position: absolute;
-      right: -10%;
+      right: -5%;
       top: 50%;
       transform: translateY(-50%);
-      width: 750px;
-      height: 750px;
+      width: clamp(300px, 50vw, 750px);
+      height: auto;
       opacity: 0.08;
       pointer-events: none;
       color: var(--ink);
@@ -268,32 +353,39 @@
 
     .hero-content {
       max-width: 1260px;
-      margin: 4rem auto;
-      padding: 0 2rem;
+      margin: 3rem auto;
+      padding: 0 1.25rem;
       width: 100%;
       position: relative;
       z-index: 5;
     }
 
+    @media (min-width: 768px) {
+      .hero-content {
+        margin: 4rem auto;
+        padding: 0 2rem;
+      }
+    }
+
     .hero-title {
       font-family: var(--font-display);
-      font-size: clamp(3.2rem, 8vw, 6.4rem);
+      font-size: clamp(2.4rem, 7vw, 6.2rem);
       font-weight: 800;
-      line-height: 0.96;
+      line-height: 0.98;
       letter-spacing: -0.04em;
       color: var(--ink);
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
       max-width: 1100px;
     }
 
     .hero-sub {
       font-family: var(--font-body);
-      font-size: 1.25rem;
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
       font-weight: 500;
       max-width: 620px;
       line-height: 1.5;
       color: rgba(10, 10, 10, 0.85);
-      margin-bottom: 2.5rem;
+      margin-bottom: 2rem;
     }
 
     .hero-actions {
@@ -303,21 +395,28 @@
       flex-wrap: wrap;
     }
 
+    @media (max-width: 480px) {
+      .hero-actions {
+        flex-direction: column;
+        width: 100%;
+      }
+    }
+
     /* Monospace Infinite Ticker */
     .hero-ticker {
       background: var(--ink);
       color: var(--paper-50);
       padding: 0.85rem 0;
-      border-top: 1px solid var(--ink);
       overflow: hidden;
       white-space: nowrap;
       position: relative;
       z-index: 10;
+      width: 100%;
     }
 
     .hero-ticker-inner {
       display: inline-flex;
-      gap: 2rem;
+      gap: 1.5rem;
       animation: marquee 25s linear infinite;
       font-family: var(--font-mono);
       font-size: 0.72rem;
@@ -339,8 +438,14 @@
        SECTION 2: THE PROBLEM (SURVEILLANCE & SCARCITY)
        ========================================================================== */
     .problem-section {
-      padding: 7rem 0;
+      padding: 5rem 0;
       position: relative;
+    }
+
+    @media (min-width: 768px) {
+      .problem-section {
+        padding: 7rem 0;
+      }
     }
 
     .problem-outer {
@@ -350,12 +455,18 @@
     }
 
     .problem-top {
-      padding: 3rem;
+      padding: 2rem 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .problem-top {
+        padding: 3rem;
+      }
     }
 
     .problem-headline {
       font-family: var(--font-display);
-      font-size: clamp(2.4rem, 5vw, 4rem);
+      font-size: clamp(1.8rem, 4.5vw, 4rem);
       font-weight: 800;
       line-height: 1.05;
       letter-spacing: -0.03em;
@@ -368,14 +479,20 @@
       border-top: 1px solid var(--ink-border);
     }
 
-    @media (min-width: 900px) {
+    @media (min-width: 640px) and (max-width: 1024px) {
+      .problem-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (min-width: 1024px) {
       .problem-grid {
         grid-template-columns: 1.2fr 1fr 1fr;
       }
     }
 
     .problem-eye-col {
-      padding: 3rem;
+      padding: 2rem 1.5rem;
       border-bottom: 1px solid var(--ink-border);
       display: flex;
       align-items: center;
@@ -383,7 +500,13 @@
       background: radial-gradient(circle, rgba(237, 70, 45, 0.05) 0%, transparent 70%);
     }
 
-    @media (min-width: 900px) {
+    @media (min-width: 640px) and (max-width: 1024px) {
+      .problem-eye-col {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (min-width: 1024px) {
       .problem-eye-col {
         grid-row: span 2;
         border-bottom: none;
@@ -392,16 +515,18 @@
     }
 
     .problem-card {
-      padding: 2.5rem;
+      padding: 1.75rem 1.5rem;
       border-bottom: 1px solid var(--ink-border);
-      border-right: 1px solid var(--ink-border);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
     }
 
-    .problem-card:nth-child(2n+1) {
-      border-right: none;
+    @media (min-width: 640px) {
+      .problem-card {
+        border-right: 1px solid var(--ink-border);
+        padding: 2.25rem 2rem;
+      }
     }
 
     .problem-card-header {
@@ -413,7 +538,7 @@
       letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--red);
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
     }
 
     .problem-card-header .num {
@@ -422,38 +547,43 @@
 
     .problem-card h3 {
       font-family: var(--font-display);
-      font-size: 1.4rem;
+      font-size: 1.25rem;
       font-weight: 700;
       color: var(--paper);
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.6rem;
       letter-spacing: -0.02em;
     }
 
     .problem-card p {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: var(--paper-50);
       line-height: 1.6;
     }
 
-    /* Radar Surveillance SVG */
     .radar-svg {
       width: 100%;
-      max-width: 320px;
+      max-width: 260px;
       height: auto;
     }
 
     /* ==========================================================================
-       SECTION 3: INTRODUCING ASTRALM — EVERYTHING LOCAL ARCHITECTURE
+       SECTION 3: INTRODUCING ASTRALM — FLOW DIAGRAM
        ========================================================================== */
     .intro-section {
-      padding: 7rem 0;
+      padding: 5rem 0;
       text-align: center;
       position: relative;
     }
 
+    @media (min-width: 768px) {
+      .intro-section {
+        padding: 7rem 0;
+      }
+    }
+
     .intro-title {
       font-family: var(--font-display);
-      font-size: clamp(2.4rem, 5vw, 4.2rem);
+      font-size: clamp(1.8rem, 4.5vw, 4.2rem);
       font-weight: 800;
       line-height: 1.05;
       letter-spacing: -0.03em;
@@ -461,56 +591,81 @@
     }
 
     .intro-desc {
-      font-size: 1.15rem;
+      font-size: clamp(0.95rem, 2vw, 1.15rem);
       color: var(--paper-50);
       max-width: 580px;
-      margin: 0 auto 4rem auto;
+      margin: 0 auto 3rem auto;
+      padding: 0 1rem;
     }
 
     .diagram-wrap {
       border: 1px solid var(--ink-border);
       background: var(--ink-surface);
-      padding: 3rem 1.5rem;
+      padding: 2rem 1rem;
       max-width: 960px;
       margin: 0 auto;
-      position: relative;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media (min-width: 768px) {
+      .diagram-wrap {
+        padding: 3rem 1.5rem;
+      }
     }
 
     .svg-flow-diagram {
+      min-width: 560px;
       width: 100%;
       max-width: 800px;
       height: auto;
+      display: block;
+      margin: 0 auto;
     }
 
     /* ==========================================================================
        SECTION 4: WORK OFFLINE & 3-COLUMN PUNCH
        ========================================================================== */
     .offline-section {
-      padding: 7rem 0;
+      padding: 5rem 0;
       border-top: 1px solid var(--ink-border);
+    }
+
+    @media (min-width: 768px) {
+      .offline-section {
+        padding: 7rem 0;
+      }
     }
 
     .features-3col-grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 1.5rem;
-      margin-top: 4rem;
+      gap: 1.25rem;
+      margin-top: 3rem;
     }
 
-    @media (min-width: 800px) {
+    @media (min-width: 768px) {
       .features-3col-grid {
         grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-top: 4rem;
       }
     }
 
     .feature-box {
       border: 1px solid var(--ink-border);
       background: var(--ink-surface);
-      padding: 2.5rem;
+      padding: 2rem 1.5rem;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       transition: border-color 0.2s ease;
+    }
+
+    @media (min-width: 768px) {
+      .feature-box {
+        padding: 2.5rem;
+      }
     }
 
     .feature-box:hover {
@@ -529,7 +684,7 @@
 
     .feature-box h3 {
       font-family: var(--font-display);
-      font-size: 1.5rem;
+      font-size: 1.35rem;
       font-weight: 700;
       color: var(--paper);
       margin-bottom: 0.75rem;
@@ -537,7 +692,7 @@
     }
 
     .feature-box p {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: var(--paper-50);
       line-height: 1.6;
     }
@@ -546,27 +701,41 @@
        SECTION 5: CAPABILITIES 6-CARD BENTO GRID
        ========================================================================== */
     .capabilities-section {
-      padding: 7rem 0;
+      padding: 5rem 0;
       border-top: 1px solid var(--ink-border);
+    }
+
+    @media (min-width: 768px) {
+      .capabilities-section {
+        padding: 7rem 0;
+      }
     }
 
     .bento-6-grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 1.5rem;
-      margin-top: 4rem;
+      gap: 1.25rem;
+      margin-top: 3rem;
     }
 
-    @media (min-width: 768px) {
+    @media (min-width: 640px) and (max-width: 1024px) {
+      .bento-6-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1024px) {
       .bento-6-grid {
         grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-top: 4rem;
       }
     }
 
     .bento-card {
       border: 1px solid var(--ink-border);
       background: var(--ink-surface);
-      padding: 2rem;
+      padding: 1.75rem 1.5rem;
     }
 
     .bento-num {
@@ -574,15 +743,15 @@
       font-size: 0.75rem;
       color: var(--red);
       letter-spacing: 0.1em;
-      margin-bottom: 1rem;
+      margin-bottom: 0.85rem;
     }
 
     .bento-card h4 {
       font-family: var(--font-display);
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       font-weight: 700;
       color: var(--paper);
-      margin-bottom: 0.75rem;
+      margin-bottom: 0.6rem;
     }
 
     .bento-card p {
@@ -594,16 +763,19 @@
     /* 4 Big Metrics Row */
     .metrics-stats-bar {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 2rem;
-      margin-top: 5rem;
-      padding-top: 3rem;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 3.5rem;
+      padding-top: 2.5rem;
       border-top: 1px solid var(--ink-border);
     }
 
-    @media (min-width: 800px) {
+    @media (min-width: 768px) {
       .metrics-stats-bar {
         grid-template-columns: repeat(4, 1fr);
+        gap: 2rem;
+        margin-top: 5rem;
+        padding-top: 3rem;
       }
     }
 
@@ -612,7 +784,7 @@
     }
 
     .stat-label-dim {
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--paper-25);
@@ -620,7 +792,7 @@
     }
 
     .stat-number-giant {
-      font-size: 2.6rem;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
       font-weight: 800;
       color: var(--paper);
       line-height: 1;
@@ -636,19 +808,27 @@
        SECTION 6: TERMINAL / CLI CONTROLLER
        ========================================================================== */
     .terminal-section {
-      padding: 7rem 0;
+      padding: 5rem 0;
       border-top: 1px solid var(--ink-border);
       text-align: center;
     }
 
+    @media (min-width: 768px) {
+      .terminal-section {
+        padding: 7rem 0;
+      }
+    }
+
     .terminal-box-rig {
       max-width: 860px;
-      margin: 3.5rem auto 0 auto;
+      margin: 2.5rem auto 0 auto;
       border: 1px solid var(--ink-border);
       background: #0D0D0D;
       text-align: left;
       font-family: var(--font-mono);
       box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .terminal-head {
@@ -657,15 +837,17 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--paper-25);
+      min-width: 480px;
     }
 
     .terminal-content {
-      padding: 2rem;
-      font-size: 0.85rem;
+      padding: 1.5rem 1.25rem;
+      font-size: clamp(0.75rem, 1.8vw, 0.85rem);
       line-height: 1.8;
       color: var(--paper-80);
+      min-width: 480px;
     }
 
     .term-red { color: var(--red); }
@@ -676,13 +858,19 @@
        SECTION 7: FREQUENTLY ASKED QUESTIONS
        ========================================================================== */
     .faq-section {
-      padding: 7rem 0;
+      padding: 5rem 0;
       border-top: 1px solid var(--ink-border);
+    }
+
+    @media (min-width: 768px) {
+      .faq-section {
+        padding: 7rem 0;
+      }
     }
 
     .faq-list {
       max-width: 860px;
-      margin: 3.5rem auto 0 auto;
+      margin: 2.5rem auto 0 auto;
     }
 
     .faq-item {
@@ -694,55 +882,68 @@
     }
 
     .faq-question {
-      padding: 1.75rem 0;
+      padding: 1.25rem 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
       font-family: var(--font-display);
-      font-size: 1.15rem;
+      font-size: clamp(1rem, 2.5vw, 1.15rem);
       font-weight: 700;
       color: var(--paper);
+      user-select: none;
+    }
+
+    @media (min-width: 768px) {
+      .faq-question {
+        padding: 1.75rem 0;
+      }
     }
 
     .faq-question .num {
       font-family: var(--font-mono);
       font-size: 0.8rem;
       color: var(--red);
-      margin-right: 1.5rem;
+      margin-right: 1rem;
     }
 
     .faq-answer {
       max-height: 0;
       overflow: hidden;
       transition: max-height 0.3s ease;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: var(--paper-50);
       line-height: 1.65;
     }
 
     .faq-item.open .faq-answer {
       max-height: 300px;
-      padding-bottom: 1.75rem;
+      padding-bottom: 1.5rem;
     }
 
     /* ==========================================================================
        SECTION 8: GRAND FINAL BANNER
        ========================================================================== */
     .final-cta-section {
-      padding: 8rem 0;
+      padding: 6rem 0;
       border-top: 1px solid var(--ink-border);
       text-align: center;
       position: relative;
     }
 
+    @media (min-width: 768px) {
+      .final-cta-section {
+        padding: 8rem 0;
+      }
+    }
+
     .final-cta-title {
       font-family: var(--font-display);
-      font-size: clamp(3rem, 7vw, 5.5rem);
+      font-size: clamp(2.4rem, 6vw, 5.5rem);
       font-weight: 800;
       line-height: 1;
       letter-spacing: -0.04em;
-      margin-bottom: 2.5rem;
+      margin-bottom: 2rem;
     }
 
     /* ==========================================================================
@@ -750,19 +951,26 @@
        ========================================================================== */
     .site-footer {
       border-top: 1px solid var(--ink-border);
-      padding: 4rem 0 6rem 0;
+      padding: 3rem 0 5rem 0;
       background: var(--ink);
+    }
+
+    @media (min-width: 768px) {
+      .site-footer {
+        padding: 4rem 0 6rem 0;
+      }
     }
 
     .footer-grid {
       display: grid;
-      grid-template-columns: 2fr 1fr 1fr;
-      gap: 3rem;
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
     }
 
-    @media (max-width: 768px) {
+    @media (min-width: 640px) {
       .footer-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 3rem;
       }
     }
 
@@ -772,7 +980,7 @@
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--paper-25);
-      margin-bottom: 1.25rem;
+      margin-bottom: 1rem;
     }
 
     .footer-col ul {
@@ -794,16 +1002,26 @@
     }
 
     .footer-bottom {
-      margin-top: 4rem;
-      padding-top: 2rem;
+      margin-top: 3rem;
+      padding-top: 1.5rem;
       border-top: 1px solid var(--ink-border);
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      gap: 1rem;
       font-family: var(--font-mono);
       font-size: 0.72rem;
       color: var(--paper-25);
       letter-spacing: 0.08em;
+    }
+
+    @media (min-width: 640px) {
+      .footer-bottom {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 4rem;
+        padding-top: 2rem;
+      }
     }
 
     .live-status-dot {
@@ -827,17 +1045,35 @@
   <div class="scanlines"></div>
   <div class="noise"></div>
 
+  <!-- Mobile Nav Overlay -->
+  <div class="mobile-menu-overlay" id="mobile-menu">
+    <a href="#problem" class="mobile-nav-link">The Problem</a>
+    <a href="#approach" class="mobile-nav-link">Architecture</a>
+    <a href="#capabilities" class="mobile-nav-link">Capabilities</a>
+    <a href="#faq" class="mobile-nav-link">FAQ</a>
+    <a href="https://github.com/Prasun01/AstraLM" target="_blank" class="mobile-nav-link">GitHub ↗</a>
+    <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.10/AstraLM-v1.0.10.apk" class="btn-chamfer btn-red" style="margin-top: 1rem;">
+      Download APK (73 MB)
+    </a>
+  </div>
+
   <!-- ==========================================================================
-       HERO — ICONIC FULL VERMILLION RED VIEWPORT
+       HERO — FULLY RESPONSIVE VERMILLION HERO
        ========================================================================== -->
   <section class="hero-rig">
     
     <!-- Top Header -->
     <header class="site-nav">
       <a href="/" class="site-logo">
-        <span style="font-size: 1.8rem; line-height: 1;">⬡</span>
+        <span style="font-size: 1.6rem; line-height: 1;">⬡</span>
         <span>ASTR<span style="font-weight: 400;">ALM</span></span>
       </a>
+
+      <button class="nav-toggle-btn" id="nav-toggle" aria-label="Toggle navigation">
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </button>
 
       <ul class="site-nav-links">
         <li><a href="#problem">The Problem</a></li>
@@ -1006,7 +1242,7 @@
         A complete AI assistant running entirely on your phone's native hardware. No subscriptions. No cloud tether.
       </p>
 
-      <!-- Flow Architecture Diagram -->
+      <!-- Flow Architecture Diagram with Touch-Friendly Responsive Container -->
       <div class="diagram-wrap">
         <svg class="svg-flow-diagram" viewBox="0 0 600 240" fill="none" xmlns="http://www.w3.org/2000/svg">
           <!-- Machine Boundary -->
@@ -1070,7 +1306,7 @@
         Planes, subways, zero reception.
       </h2>
 
-      <p class="intro-desc" style="margin: 0; text-align: left;">
+      <p class="intro-desc" style="margin: 0; text-align: left; padding: 0;">
         No Wi-Fi? No problem. AstraLM executes 100% locally from your device's RAM with 0 KB/s outbound network traffic.
       </p>
 
@@ -1236,7 +1472,7 @@
         <div class="faq-item open">
           <div class="faq-question">
             <span><span class="num">01</span>What is AstraLM?</span>
-            <span>+</span>
+            <span class="toggle-icon">+</span>
           </div>
           <div class="faq-answer">
             AstraLM is an open-source on-device AI assistant for Android built with Flutter and native C++ inference engines (llama.cpp and Google LiteRT). It executes quantized models locally on your phone's processor with zero network dependence.
@@ -1246,7 +1482,7 @@
         <div class="faq-item">
           <div class="faq-question">
             <span><span class="num">02</span>Which models are supported locally?</span>
-            <span>+</span>
+            <span class="toggle-icon">+</span>
           </div>
           <div class="faq-answer">
             AstraLM supports curated GGUF models including DeepSeek-R1 Distill Qwen (1.5B), Qwen 2.5 Coder (1.5B/3B), Google Gemma 2 (2B), and SmolLM2 (1.7B), as well as custom GGUF files imported from your device storage.
@@ -1256,7 +1492,7 @@
         <div class="faq-item">
           <div class="faq-question">
             <span><span class="num">03</span>What are the hardware requirements?</span>
-            <span>+</span>
+            <span class="toggle-icon">+</span>
           </div>
           <div class="faq-answer">
             Any Android 8.0+ device with a 64-bit ARM processor (ARMv8 / ARM64). We recommend 6GB+ RAM for 1.5B-2B models and 8GB+ RAM for 3B models.
@@ -1266,7 +1502,7 @@
         <div class="faq-item">
           <div class="faq-question">
             <span><span class="num">04</span>Does AstraLM collect any data?</span>
-            <span>+</span>
+            <span class="toggle-icon">+</span>
           </div>
           <div class="faq-answer">
             Zero. AstraLM has zero telemetry, zero trackers, and zero analytics. All chat history, models, and tokens stay strictly in your local device storage.
@@ -1276,7 +1512,7 @@
         <div class="faq-item">
           <div class="faq-question">
             <span><span class="num">05</span>Is AstraLM free and open source?</span>
-            <span>+</span>
+            <span class="toggle-icon">+</span>
           </div>
           <div class="faq-answer">
             Yes! AstraLM is 100% free and open-source under the MIT license. You can inspect the code, build from source, or download the pre-built signed APK from GitHub.
@@ -1301,9 +1537,11 @@
         from big AI
       </h2>
 
-      <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.10/AstraLM-v1.0.10.apk" class="btn-chamfer btn-red" style="padding: 1.25rem 2.5rem; font-size: 1rem;">
-        Download AstraLM-v1.0.10.apk ↵
-      </a>
+      <div style="display: flex; justify-content: center; width: 100%;">
+        <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.10/AstraLM-v1.0.10.apk" class="btn-chamfer btn-red" style="padding: 1.25rem 2.5rem; font-size: 1rem; max-width: 420px; width: 100%;">
+          Download AstraLM-v1.0.10.apk ↵
+        </a>
+      </div>
       
       <div style="margin-top: 1.5rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--paper-25);">
         100% Free · Open Source · No API keys required
@@ -1360,14 +1598,34 @@
     </div>
   </footer>
 
-  <!-- FAQ Toggle JS -->
+  <!-- Responsive Mobile Menu & FAQ JS -->
   <script>
+    // FAQ Accordion
     document.querySelectorAll('.faq-question').forEach(item => {
       item.addEventListener('click', () => {
         const parent = item.parentElement;
         parent.classList.toggle('open');
       });
     });
+
+    // Mobile Hamburger Menu Toggle
+    const navToggle = document.getElementById('nav-toggle');
+    const mobileMenu = document.getElementById('mobile-menu');
+
+    if (navToggle && mobileMenu) {
+      navToggle.addEventListener('click', () => {
+        mobileMenu.classList.toggle('active');
+        const isActive = mobileMenu.classList.contains('active');
+        navToggle.setAttribute('aria-expanded', isActive);
+      });
+
+      document.querySelectorAll('.mobile-nav-link').forEach(link => {
+        link.addEventListener('click', () => {
+          mobileMenu.classList.remove('active');
+          navToggle.setAttribute('aria-expanded', 'false');
+        });
+      });
+    }
   </script>
 
 </body>
