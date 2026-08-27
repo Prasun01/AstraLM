@@ -16,21 +16,26 @@
     /* ==========================================================================
        RIG.AI DESIGN SYSTEM & COLOR VARIABLES
        ========================================================================== */
-    :root {
-      --red: #ED462D;
-      --red-dark: #C9341E;
-      --red-glow: rgba(237, 70, 45, 0.4);
-      --red-muted: rgba(237, 70, 45, 0.12);
+        :root {
+      --accent: #FF9F0A;
+      --accent-dark: #E08900;
+      --accent-glow: rgba(255, 159, 10, 0.45);
+      --accent-muted: rgba(255, 159, 10, 0.12);
       
-      --ink: #0A0A0A;
-      --ink-surface: #111111;
-      --ink-card: #141414;
+      --red: #FF9F0A;
+      --red-dark: #E08900;
+      --red-glow: rgba(255, 159, 10, 0.45);
+      --red-muted: rgba(255, 159, 10, 0.12);
+      
+      --ink: #0B0C10;
+      --ink-surface: #12141A;
+      --ink-card: #161922;
       --ink-border: rgba(240, 237, 230, 0.12);
-      --ink-border-hover: rgba(240, 237, 230, 0.28);
+      --ink-border-hover: rgba(255, 159, 10, 0.4);
       
       --paper: #F0EDE6;
-      --paper-80: rgba(240, 237, 230, 0.8);
-      --paper-50: rgba(240, 237, 230, 0.5);
+      --paper-80: rgba(240, 237, 230, 0.85);
+      --paper-50: rgba(240, 237, 230, 0.55);
       --paper-25: rgba(240, 237, 230, 0.25);
       --paper-10: rgba(240, 237, 230, 0.1);
       
@@ -190,7 +195,7 @@
        ========================================================================== */
     .hero-rig {
       position: relative;
-      background-color: var(--red);
+      background-color: var(--accent);
       color: var(--ink);
       min-height: 85vh;
       display: flex;
@@ -1377,7 +1382,7 @@
           <text x="308" y="24" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="9" letter-spacing="1" fill="var(--paper-25)">CLOUD SERVER</text>
           <line x1="308" y1="35" x2="308" y2="75" stroke="var(--red)" stroke-width="1" stroke-dasharray="2 3" />
           <!-- Blocked Red Packet 1 -->
-          <circle r="3" fill="#ED462D">
+          <circle r="3" fill="#FF9F0A">
             <animateMotion dur="1.5s" repeatCount="indefinite">
               <mpath href="#path-cloud-in" />
             </animateMotion>
@@ -1390,7 +1395,7 @@
           <text x="308" y="214" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="9" letter-spacing="1" fill="var(--paper-25)">TELEMETRY</text>
           <line x1="308" y1="155" x2="308" y2="195" stroke="var(--red)" stroke-width="1" stroke-dasharray="2 3" />
           <!-- Blocked Red Packet 2 -->
-          <circle r="3" fill="#ED462D">
+          <circle r="3" fill="#FF9F0A">
             <animateMotion dur="1.5s" begin="0.75s" repeatCount="indefinite">
               <mpath href="#path-telem-out" />
             </animateMotion>
