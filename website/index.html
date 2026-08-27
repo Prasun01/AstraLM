@@ -1143,8 +1143,8 @@
     <a href="#capabilities" class="mobile-nav-link">Capabilities</a>
     <a href="#faq" class="mobile-nav-link">FAQ</a>
     <a href="https://github.com/Prasun01/AstraLM" target="_blank" class="mobile-nav-link">GitHub ↗</a>
-    <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.10/AstraLM-v1.0.10.apk" class="btn-chamfer btn-red" style="margin-top: 1rem;">
-      Download APK (73 MB)
+    <a href="https://github.com/Prasun01/AstraLM/releases/latest" id="mobile-download-btn" class="btn-chamfer btn-red" style="margin-top: 1rem;">
+      Download APK
     </a>
   </div>
 
@@ -1173,7 +1173,7 @@
         <li><a href="#faq">FAQ</a></li>
         <li><a href="https://github.com/Prasun01/AstraLM" target="_blank">GitHub</a></li>
         <li>
-          <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.10/AstraLM-v1.0.10.apk" class="btn-chamfer btn-dark">
+          <a href="https://github.com/Prasun01/AstraLM/releases/latest" id="nav-download-btn" class="btn-chamfer btn-dark">
             Download APK
           </a>
         </li>
@@ -1199,7 +1199,7 @@
       </p>
 
       <div class="hero-actions">
-        <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.10/AstraLM-v1.0.10.apk" class="btn-chamfer btn-dark">
+        <a href="https://github.com/Prasun01/AstraLM/releases/latest" id="nav-download-btn" class="btn-chamfer btn-dark">
           Download APK (73 MB)
         </a>
         <a href="#approach" class="btn-chamfer btn-outline-ink">
@@ -1662,8 +1662,8 @@
       </h2>
 
       <div style="display: flex; justify-content: center; width: 100%;">
-        <a href="https://github.com/Prasun01/AstraLM/releases/download/v1.0.10/AstraLM-v1.0.10.apk" class="btn-chamfer btn-red" style="padding: 1.25rem 2.5rem; font-size: 1rem; max-width: 420px; width: 100%;">
-          Download AstraLM-v1.0.10.apk ↵
+        <a href="https://github.com/Prasun01/AstraLM/releases/latest" id="final-download-btn" class="btn-chamfer btn-red" style="padding: 1.25rem 2.5rem; font-size: 1rem; max-width: 420px; width: 100%;">
+          Download Latest APK ↵
         </a>
       </div>
       
@@ -1813,6 +1813,53 @@
       }
       setTimeout(streamCode, 1500);
     }
+
+  
+    // 4. Dynamic GitHub Releases Auto-Fetcher
+    // Automatically fetches the latest release tag and APK download URL on page load
+    async function fetchLatestRelease() {
+      try {
+        const response = await fetch('https://api.github.com/repos/Prasun01/AstraLM/releases/latest');
+        if (!response.ok) return;
+        const data = await response.json();
+        
+        const tagName = data.tag_name || 'v1.0.10';
+        let apkUrl = `https://github.com/Prasun01/AstraLM/releases/download/${tagName}/AstraLM-${tagName}.apk`;
+        let apkSizeMB = '';
+
+        if (data.assets && data.assets.length > 0) {
+          const apkAsset = data.assets.find(a => a.name.endsWith('.apk'));
+          if (apkAsset) {
+            apkUrl = apkAsset.browser_download_url;
+            apkSizeMB = ` (${(apkAsset.size / (1024 * 1024)).toFixed(0)} MB)`;
+          }
+        }
+
+        const heroBtn = document.getElementById('hero-download-btn');
+        if (heroBtn) {
+          heroBtn.href = apkUrl;
+          heroBtn.textContent = `Download APK ${tagName}${apkSizeMB}`;
+        }
+
+        const navBtn = document.getElementById('nav-download-btn');
+        if (navBtn) navBtn.href = apkUrl;
+
+        const mobileBtn = document.getElementById('mobile-download-btn');
+        if (mobileBtn) {
+          mobileBtn.href = apkUrl;
+          mobileBtn.textContent = `Download APK ${tagName}${apkSizeMB}`;
+        }
+
+        const finalBtn = document.getElementById('final-download-btn');
+        if (finalBtn) {
+          finalBtn.href = apkUrl;
+          finalBtn.textContent = `Download AstraLM-${tagName}.apk ↵`;
+        }
+      } catch (err) {
+        console.warn('GitHub API rate limited or offline, using default release paths:', err);
+      }
+    }
+    fetchLatestRelease();
 
   </script>
 
