@@ -532,10 +532,10 @@ class AppConstants {
       'name': 'Kimi Moonlight 16B-A3B (Q3_K_S)',
       'filename': 'moonlight-16b-a3b-instruct-q3_k_s.gguf',
       'url':
-          'https://huggingface.co/mmnga/Moonlight-16B-A3B-Instruct-gguf/resolve/main/Moonlight-16B-A3B-Instruct-Q3_K_S.gguf',
-      'size': '7.10 GB',
+          'https://huggingface.co/mmnga/Moonlight-16B-A3B-Instruct-gguf/resolve/main/Moonlight-16B-A3B-Instruct-Q3_K_S.gguf?download=true',
+      'size': '7.65 GB',
       'description':
-          'Moonshot AI (Kimi) — 3B active parameter Mixture-of-Experts (MoE) with exceptional quality',
+          'Moonshot AI (Kimi) — 3B active parameter Mixture-of-Experts (MoE) flagship model. Large download (~7.6 GB), Wi-Fi recommended.',
       'template': 'chatml',
       'runtime': 'llama',
       'quantization': 'Q3_K_S',

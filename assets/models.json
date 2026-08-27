@@ -551,8 +551,8 @@
   {
     "name": "Kimi Moonlight 16B-A3B (Q3_K_S)",
     "filename": "moonlight-16b-a3b-instruct-q3_k_s.gguf",
-    "url": "https://huggingface.co/mmnga/Moonlight-16B-A3B-Instruct-gguf/resolve/main/Moonlight-16B-A3B-Instruct-Q3_K_S.gguf",
-    "size": "7.10 GB",
+    "url": "https://huggingface.co/mmnga/Moonlight-16B-A3B-Instruct-gguf/resolve/main/Moonlight-16B-A3B-Instruct-Q3_K_S.gguf?download=true",
+    "size": "7.65 GB",
     "description": "Moonshot AI (Kimi) \u2014 3B active parameter Mixture-of-Experts (MoE) with exceptional quality",
     "template": "chatml",
     "runtime": "llama",
