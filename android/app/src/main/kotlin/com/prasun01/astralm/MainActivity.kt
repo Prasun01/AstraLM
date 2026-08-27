@@ -11,6 +11,9 @@ import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.net.wifi.WifiManager
+import android.os.PowerManager
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
@@ -28,6 +31,44 @@ class MainActivity : FlutterActivity() {
     private val trackedDownloads = ConcurrentHashMap<Long, TrackedDownload>()
     private var progressPollerRunnable: Runnable? = null
     private var downloadCompleteReceiver: BroadcastReceiver? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
+
+    private fun acquireDownloadLocks() {
+        try {
+            if (wakeLock == null) {
+                val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                wakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AstraLM:ModelDownloadWakeLock")
+                wakeLock?.setReferenceCounted(false)
+            }
+            if (wakeLock?.isHeld == false) {
+                wakeLock?.acquire(2 * 60 * 60 * 1000L) // 2 hours max
+            }
+
+            if (wifiLock == null) {
+                val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+                } else {
+                    WifiManager.WIFI_MODE_FULL_HIGH_PERF
+                }
+                wifiLock = wm?.createWifiLock(mode, "AstraLM:ModelDownloadWifiLock")
+                wifiLock?.setReferenceCounted(false)
+            }
+            if (wifiLock?.isHeld == false) {
+                wifiLock?.acquire()
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun releaseDownloadLocksIfIdle() {
+        if (trackedDownloads.isEmpty()) {
+            try {
+                if (wakeLock?.isHeld == true) wakeLock?.release()
+                if (wifiLock?.isHeld == true) wifiLock?.release()
+            } catch (_: Exception) {}
+        }
+    }
 
     data class TrackedDownload(
         val downloadId: Long,
@@ -103,6 +144,7 @@ class MainActivity : FlutterActivity() {
                         }
 
                         trackedDownloads.remove(downloadId)
+                        releaseDownloadLocksIfIdle()
                     }
                 }
             }
@@ -124,6 +166,10 @@ class MainActivity : FlutterActivity() {
             }
             downloadCompleteReceiver = null
         }
+        try {
+            if (wakeLock?.isHeld == true) wakeLock?.release()
+            if (wifiLock?.isHeld == true) wifiLock?.release()
+        } catch (_: Exception) {}
         super.onDestroy()
     }
 
@@ -201,6 +247,7 @@ class MainActivity : FlutterActivity() {
 
                     val downloadId = dm.enqueue(request)
                     trackedDownloads[downloadId] = TrackedDownload(downloadId, filename)
+                    acquireDownloadLocks()
                     startProgressPoller()
 
                     result.success(mapOf(
@@ -212,6 +259,23 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+            "requestIgnoreBatteryOptimizations" -> {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+                        if (pm != null && !pm.isIgnoringBatteryOptimizations(packageName)) {
+                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = Uri.parse("package:$packageName")
+                            }
+                            startActivity(intent)
+                        }
+                    }
+                    result.success(true)
+                } catch (e: Exception) {
+                    result.success(false)
+                }
+            }
+
             "cancelDownloadToDownloads", "cancelDownloadInApp" -> {
                 val downloadId = (call.argument<Number>("downloadId"))?.toLong()
                 if (downloadId != null) {
@@ -219,6 +283,7 @@ class MainActivity : FlutterActivity() {
                         dm.remove(downloadId)
                     } catch (_: Exception) {}
                     trackedDownloads.remove(downloadId)
+                    releaseDownloadLocksIfIdle()
                     result.success(true)
                 } else {
                     result.success(false)
@@ -377,6 +442,7 @@ class MainActivity : FlutterActivity() {
                     handler.postDelayed(this, 1000)
                 } else {
                     progressPollerRunnable = null
+                    releaseDownloadLocksIfIdle()
                 }
             }
         }
