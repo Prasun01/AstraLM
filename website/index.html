@@ -1037,9 +1037,90 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.3; }
     }
-  </style>
+  
+    /* ==========================================================================
+       RIG.AI SIGNATURE ANIMATIONS & MOTION SYSTEM
+       ========================================================================== */
+    
+    /* Scroll Reveal Animation */
+    .reveal-on-scroll {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: opacity, transform;
+    }
+
+    .reveal-on-scroll.is-visible {
+      opacity: 1 !important;
+      transform: translateY(0) !important;
+    }
+
+    /* In case of no-js or initial load */
+    @media (prefers-reduced-motion: reduce) {
+      .reveal-on-scroll {
+        opacity: 1 !important;
+        transform: none !important;
+      }
+    }
+
+    /* Stagger Delays */
+    .stagger-1 { transition-delay: 0.08s; }
+    .stagger-2 { transition-delay: 0.16s; }
+    .stagger-3 { transition-delay: 0.24s; }
+    .stagger-4 { transition-delay: 0.32s; }
+    .stagger-5 { transition-delay: 0.40s; }
+    .stagger-6 { transition-delay: 0.48s; }
+
+    /* Radar Eye Tracking & Pulse */
+    .radar-pulse-ring {
+      transform-origin: 150px 150px;
+      animation: radarPulse 3s infinite cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    @keyframes radarPulse {
+      0% { r: 60px; opacity: 0.8; }
+      100% { r: 135px; opacity: 0; }
+    }
+
+    .radar-sweep-line {
+      transform-origin: 150px 150px;
+      animation: radarSweep 6s infinite linear;
+    }
+
+    @keyframes radarSweep {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Terminal Token Live Stream */
+    .cursor-blink {
+      display: inline-block;
+      width: 8px;
+      height: 14px;
+      background: var(--green-live);
+      vertical-align: -2px;
+      animation: termBlink 0.9s infinite;
+    }
+
+    @keyframes termBlink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    /* Card Hover Specular Micro-Interaction */
+    .feature-box, .bento-card, .problem-card {
+      transition: border-color 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+    }
+
+    .feature-box:hover, .bento-card:hover, .problem-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+      border-color: rgba(240, 237, 230, 0.35) !important;
+    }
+
+</style>
 </head>
-<body>
+<body class="js-enabled">
 
   <!-- Retro Screen Overlays -->
   <div class="scanlines"></div>
@@ -1146,7 +1227,7 @@
   <section id="problem" class="problem-section">
     <div class="container">
       
-      <div class="problem-outer">
+      <div class="problem-outer reveal-on-scroll">
         
         <div class="problem-top">
           <div class="badge">
@@ -1167,16 +1248,18 @@
               <circle cx="150" cy="150" r="130" stroke="var(--paper-25)" stroke-width="0.75" />
               <circle cx="150" cy="150" r="95" stroke="var(--paper-25)" stroke-width="0.75" />
               <circle cx="150" cy="150" r="60" stroke="var(--paper-25)" stroke-width="0.75" />
+              <circle class="radar-pulse-ring" cx="150" cy="150" r="60" stroke="var(--red)" stroke-width="1.5" />
+              <line class="radar-sweep-line" x1="150" y1="150" x2="150" y2="20" stroke="var(--red)" stroke-width="1.5" opacity="0.4" />
               <line x1="150" y1="10" x2="150" y2="290" stroke="var(--paper-25)" stroke-width="0.5" stroke-dasharray="3 3" />
               <line x1="10" y1="150" x2="290" y2="150" stroke="var(--paper-25)" stroke-width="0.5" stroke-dasharray="3 3" />
-              <circle cx="150" cy="150" r="16" fill="var(--red)" />
+              <circle id="radar-pupil" cx="150" cy="150" r="16" fill="var(--red)" />
               <circle cx="150" cy="150" r="28" stroke="var(--red)" stroke-width="1.5" opacity="0.6" />
               <text x="150" y="285" text-anchor="middle" fill="var(--red)" font-family="'Chivo Mono', monospace" font-size="8" letter-spacing="2">SURVEILLANCE ACTIVE</text>
             </svg>
           </div>
 
           <!-- Card 001 -->
-          <div class="problem-card">
+          <div class="problem-card reveal-on-scroll">
             <div class="problem-card-header">
               <span>Data Extraction</span>
               <span class="num">001</span>
@@ -1186,7 +1269,7 @@
           </div>
 
           <!-- Card 002 -->
-          <div class="problem-card">
+          <div class="problem-card reveal-on-scroll">
             <div class="problem-card-header">
               <span>Artificial Scarcity</span>
               <span class="num">002</span>
@@ -1196,7 +1279,7 @@
           </div>
 
           <!-- Card 003 -->
-          <div class="problem-card">
+          <div class="problem-card reveal-on-scroll">
             <div class="problem-card-header">
               <span>Silent Downgrades</span>
               <span class="num">003</span>
@@ -1206,7 +1289,7 @@
           </div>
 
           <!-- Card 004 -->
-          <div class="problem-card">
+          <div class="problem-card reveal-on-scroll">
             <div class="problem-card-header">
               <span>Cloud Dependency</span>
               <span class="num">004</span>
@@ -1245,6 +1328,13 @@
       <!-- Flow Architecture Diagram with Touch-Friendly Responsive Container -->
       <div class="diagram-wrap">
         <svg class="svg-flow-diagram" viewBox="0 0 600 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <path id="path-prompt-core" d="M 150 115 L 228 115" />
+            <path id="path-core-out" d="M 388 115 L 458 115" />
+            <path id="path-cloud-in" d="M 308 35 L 308 75" />
+            <path id="path-telem-out" d="M 308 155 L 308 195" />
+          </defs>
+
           <!-- Machine Boundary -->
           <rect x="10" y="60" width="580" height="110" fill="none" stroke="rgba(240,237,230,0.15)" stroke-width="1" stroke-dasharray="4 4" />
           <text x="25" y="52" font-family="'Chivo Mono', monospace" font-size="9" letter-spacing="2" fill="var(--paper-50)">YOUR DEVICE (RAM ONLY)</text>
@@ -1254,9 +1344,14 @@
           <text x="90" y="112" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="10" letter-spacing="1" fill="var(--paper)">YOUR PROMPT</text>
           <text x="90" y="126" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="7" letter-spacing="1" fill="var(--paper-25)">TEXT · CODE · FILES</text>
 
-          <!-- Arrow 1 -->
-          <line x1="150" y1="115" x2="220" y2="115" stroke="var(--green-live)" stroke-width="1.5" />
-          <polygon points="220,111 228,115 220,119" fill="var(--green-live)" />
+          <!-- Active Green Flow Line 1 -->
+          <line x1="150" y1="115" x2="228" y2="115" stroke="rgba(34,197,94,0.3)" stroke-width="2" />
+          <!-- Animated green packet 1 -->
+          <circle r="3.5" fill="#22C55E">
+            <animateMotion dur="1.8s" repeatCount="indefinite">
+              <mpath href="#path-prompt-core" />
+            </animateMotion>
+          </circle>
 
           <!-- Core Engine Node -->
           <rect x="228" y="75" width="160" height="80" fill="#0A0A0A" stroke="var(--green-live)" stroke-width="1.5" />
@@ -1264,9 +1359,14 @@
           <text x="308" y="122" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="8" letter-spacing="1" fill="var(--green-live)">✓ LOCAL LLAMA.CPP</text>
           <text x="308" y="142" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="7" letter-spacing="1" fill="var(--paper-50)">ARM64 NEON · ADRENO GPU</text>
 
-          <!-- Arrow 2 -->
-          <line x1="388" y1="115" x2="450" y2="115" stroke="var(--green-live)" stroke-width="1.5" />
-          <polygon points="450,111 458,115 450,119" fill="var(--green-live)" />
+          <!-- Active Green Flow Line 2 -->
+          <line x1="388" y1="115" x2="458" y2="115" stroke="rgba(34,197,94,0.3)" stroke-width="2" />
+          <!-- Animated green packet 2 -->
+          <circle r="3.5" fill="#22C55E">
+            <animateMotion dur="1.8s" begin="0.9s" repeatCount="indefinite">
+              <mpath href="#path-core-out" />
+            </animateMotion>
+          </circle>
 
           <!-- Output Node -->
           <rect x="458" y="90" width="120" height="50" fill="#0A0A0A" stroke="rgba(240,237,230,0.2)" stroke-width="1" />
@@ -1277,12 +1377,26 @@
           <rect x="248" y="5" width="120" height="30" fill="#0A0A0A" stroke="rgba(240,237,230,0.1)" stroke-width="1" />
           <text x="308" y="24" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="9" letter-spacing="1" fill="var(--paper-25)">CLOUD SERVER</text>
           <line x1="308" y1="35" x2="308" y2="75" stroke="var(--red)" stroke-width="1" stroke-dasharray="2 3" />
+          <!-- Blocked Red Packet 1 -->
+          <circle r="3" fill="#ED462D">
+            <animateMotion dur="1.5s" repeatCount="indefinite">
+              <mpath href="#path-cloud-in" />
+            </animateMotion>
+            <animate attributeName="opacity" values="1;1;0" keyTimes="0;0.7;1" dur="1.5s" repeatCount="indefinite" />
+          </circle>
           <text x="308" y="55" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="8" fill="var(--red)">✕ SEVERED</text>
 
           <!-- Telemetry Blocked Bottom -->
           <rect x="248" y="195" width="120" height="30" fill="#0A0A0A" stroke="rgba(240,237,230,0.1)" stroke-width="1" />
           <text x="308" y="214" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="9" letter-spacing="1" fill="var(--paper-25)">TELEMETRY</text>
           <line x1="308" y1="155" x2="308" y2="195" stroke="var(--red)" stroke-width="1" stroke-dasharray="2 3" />
+          <!-- Blocked Red Packet 2 -->
+          <circle r="3" fill="#ED462D">
+            <animateMotion dur="1.5s" begin="0.75s" repeatCount="indefinite">
+              <mpath href="#path-telem-out" />
+            </animateMotion>
+            <animate attributeName="opacity" values="1;1;0" keyTimes="0;0.7;1" dur="1.5s" begin="0.75s" repeatCount="indefinite" />
+          </circle>
           <text x="308" y="180" text-anchor="middle" font-family="'Chivo Mono', monospace" font-size="8" fill="var(--red)">✕ BLOCKED</text>
         </svg>
       </div>
@@ -1311,7 +1425,7 @@
       </p>
 
       <div class="features-3col-grid">
-        <div class="feature-box">
+        <div class="feature-box reveal-on-scroll">
           <div>
             <div class="feature-tag">[ UNLIMITED ]</div>
             <h3>Remove the meter.</h3>
@@ -1319,7 +1433,7 @@
           </div>
         </div>
 
-        <div class="feature-box">
+        <div class="feature-box reveal-on-scroll">
           <div>
             <div class="feature-tag">[ PRIVACY ]</div>
             <h3>Sever the connection.</h3>
@@ -1327,7 +1441,7 @@
           </div>
         </div>
 
-        <div class="feature-box">
+        <div class="feature-box reveal-on-scroll">
           <div>
             <div class="feature-tag">[ LATENCY ]</div>
             <h3>Stop waiting.</h3>
@@ -1353,37 +1467,37 @@
       <h2 class="intro-title" style="text-align: left;">Your device, unleashed.</h2>
 
       <div class="bento-6-grid">
-        <div class="bento-card">
+        <div class="bento-card reveal-on-scroll">
           <div class="bento-num">[ 01 ]</div>
           <h4>DeepSeek-R1 Reasoning</h4>
           <p>Local mathematical proofs, logic solving, and deep code explanations with native GGUF weights.</p>
         </div>
 
-        <div class="bento-card">
+        <div class="bento-card reveal-on-scroll">
           <div class="bento-num">[ 02 ]</div>
           <h4>Qwen 2.5 Code Generation</h4>
           <p>Multi-file coding, refactoring, and bug fixing tailored for mobile developer workflows.</p>
         </div>
 
-        <div class="bento-card">
+        <div class="bento-card reveal-on-scroll">
           <div class="bento-num">[ 03 ]</div>
           <h4>Fullscreen Canvas</h4>
           <p>Live Markdown rendering and interactive in-app HTML browser preview with instant code editing.</p>
         </div>
 
-        <div class="bento-card">
+        <div class="bento-card reveal-on-scroll">
           <div class="bento-num">[ 04 ]</div>
           <h4>Encrypted BYOK Cloud</h4>
           <p>Optionally connect frontier models (Claude 3.5, GPT-4o, Gemini 2.0) with zero telemetry.</p>
         </div>
 
-        <div class="bento-card">
+        <div class="bento-card reveal-on-scroll">
           <div class="bento-num">[ 05 ]</div>
           <h4>Smart RAM Advisor</h4>
           <p>Automatic real-time memory telemetry preventing out-of-memory crashes on 6GB/8GB devices.</p>
         </div>
 
-        <div class="bento-card">
+        <div class="bento-card reveal-on-scroll">
           <div class="bento-num">[ 06 ]</div>
           <h4>ARM64 NEON + GPU</h4>
           <p>Direct C++ llama.cpp bindings with hardware acceleration for Qualcomm, MediaTek, and Tensor chips.</p>
@@ -1392,25 +1506,25 @@
 
       <!-- 4 Stats Bar -->
       <div class="metrics-stats-bar">
-        <div class="stat-unit">
+        <div class="stat-unit reveal-on-scroll">
           <div class="stat-label-dim">LATENCY</div>
           <div class="stat-number-giant">0ms</div>
           <div class="stat-sub-note">No network round-trip</div>
         </div>
 
-        <div class="stat-unit">
+        <div class="stat-unit reveal-on-scroll">
           <div class="stat-label-dim">PRIVACY</div>
           <div class="stat-number-giant">100%</div>
           <div class="stat-sub-note">Air-gapped by design</div>
         </div>
 
-        <div class="stat-unit">
+        <div class="stat-unit reveal-on-scroll">
           <div class="stat-label-dim">COST / TOKEN</div>
           <div class="stat-number-giant">$0</div>
           <div class="stat-sub-note">Your phone, your compute</div>
         </div>
 
-        <div class="stat-unit">
+        <div class="stat-unit reveal-on-scroll">
           <div class="stat-label-dim">UPTIME</div>
           <div class="stat-number-giant">Local</div>
           <div class="stat-sub-note">Zero cloud outages</div>
@@ -1433,7 +1547,7 @@
 
       <h2 class="intro-title">Built for control freaks.</h2>
 
-      <div class="terminal-box-rig">
+      <div class="terminal-box-rig reveal-on-scroll">
         <div class="terminal-head">
           <span>ASTRALM // LOCALHOST · OFFLINE</span>
           <span>ARM64 NEON</span>
@@ -1446,7 +1560,7 @@
           <span class="term-dim">&gt; Loading model DeepSeek-R1-Distill-Qwen-1.5B (Q4_K_M)... </span><span class="term-green">OK (1.1 GB)</span><br>
           <span class="term-dim">&gt; Network: </span><span class="term-red">DISCONNECTED (0 KB/s)</span><span class="term-dim"> · Telemetry: </span><span class="term-red">OFF</span><br>
           <span class="term-dim">&gt; Ready for inference.</span><br><br>
-          <span class="term-red">λ prompt: </span>Write a concurrent task worker in Go.<br>
+          <span class="term-red">λ prompt: </span>Write a fast Fibonacci in Rust.<br><span class="term-dim">&gt; Stream: </span><span id="stream-live-code" style="color: #38BDF8;"></span><span class="cursor-blink"></span><br>
           <span class="term-green">✓ 28.4 Tokens/Sec · Sub-30ms first token latency</span>
         </div>
       </div>
@@ -1469,7 +1583,7 @@
 
       <div class="faq-list">
         
-        <div class="faq-item open">
+        <div class="faq-item reveal-on-scroll open">
           <div class="faq-question">
             <span><span class="num">01</span>What is AstraLM?</span>
             <span class="toggle-icon">+</span>
@@ -1479,7 +1593,7 @@
           </div>
         </div>
 
-        <div class="faq-item">
+        <div class="faq-item reveal-on-scroll">
           <div class="faq-question">
             <span><span class="num">02</span>Which models are supported locally?</span>
             <span class="toggle-icon">+</span>
@@ -1489,7 +1603,7 @@
           </div>
         </div>
 
-        <div class="faq-item">
+        <div class="faq-item reveal-on-scroll">
           <div class="faq-question">
             <span><span class="num">03</span>What are the hardware requirements?</span>
             <span class="toggle-icon">+</span>
@@ -1499,7 +1613,7 @@
           </div>
         </div>
 
-        <div class="faq-item">
+        <div class="faq-item reveal-on-scroll">
           <div class="faq-question">
             <span><span class="num">04</span>Does AstraLM collect any data?</span>
             <span class="toggle-icon">+</span>
@@ -1509,7 +1623,7 @@
           </div>
         </div>
 
-        <div class="faq-item">
+        <div class="faq-item reveal-on-scroll">
           <div class="faq-question">
             <span><span class="num">05</span>Is AstraLM free and open source?</span>
             <span class="toggle-icon">+</span>
@@ -1626,6 +1740,70 @@
         });
       });
     }
+  
+    // 1. IntersectionObserver for Smooth Scroll Reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+        }
+      });
+    }, { threshold: 0.05, rootMargin: '0px 0px 150px 0px' });
+
+    // Auto reveal all elements if user scrolls or after small delay
+    setTimeout(() => {
+      document.querySelectorAll('.reveal-on-scroll').forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight + 200) {
+          el.classList.add('is-visible');
+        }
+      });
+    }, 100);
+
+    document.querySelectorAll('.reveal-on-scroll').forEach((el, index) => {
+      el.classList.add(`stagger-${(index % 6) + 1}`);
+      observer.observe(el);
+    });
+
+    // 2. Interactive Surveillance Radar Eye Tracking
+    const pupil = document.getElementById('radar-pupil');
+    if (pupil) {
+      window.addEventListener('mousemove', (e) => {
+        const rect = pupil.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const angle = Math.atan2(e.clientY - cy, e.clientX - cx);
+        const dist = Math.min(10, Math.hypot(e.clientX - cx, e.clientY - cy) / 25);
+        const ox = 150 + Math.cos(angle) * dist;
+        const oy = 150 + Math.sin(angle) * dist;
+        pupil.setAttribute('cx', ox.toFixed(1));
+        pupil.setAttribute('cy', oy.toFixed(1));
+      });
+    }
+
+    // 3. Terminal Live Token Stream Typewriter
+    const termContent = document.querySelector('.terminal-content');
+    if (termContent) {
+      const codeSnippet = 'fn fib(n: u64) -> u64 { match n { 0 => 0, 1 => 1, _ => fib(n-1) + fib(n-2) } }';
+      let charIdx = 0;
+      function streamCode() {
+        const streamTarget = document.getElementById('stream-live-code');
+        if (streamTarget) {
+          if (charIdx < codeSnippet.length) {
+            streamTarget.textContent = codeSnippet.substring(0, charIdx + 1);
+            charIdx++;
+            setTimeout(streamCode, 35);
+          } else {
+            setTimeout(() => {
+              charIdx = 0;
+              streamCode();
+            }, 4000);
+          }
+        }
+      }
+      setTimeout(streamCode, 1500);
+    }
+
   </script>
 
 </body>
