@@ -25,6 +25,7 @@ import 'services/document_export_service.dart';
 import 'services/crash_reporting_service.dart';
 import 'services/image_generation_notification_service.dart';
 import 'services/app_update_service.dart';
+import 'services/on_air_transfer_service.dart';
 import 'services/remote_config_service.dart';
 import 'core/constants.dart';
 
@@ -103,6 +104,7 @@ void main() {
     await imageNotifications.init();
     await imageNotifications.configureBackgroundService();
     Get.put(ServerController(), permanent: true);
+    Get.put(OnAirTransferService());
     Get.put(ModelController());
     Get.put(AppUpdateService());
 

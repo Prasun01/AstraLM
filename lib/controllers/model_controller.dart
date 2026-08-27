@@ -548,6 +548,20 @@ class ModelController extends GetxController {
     }
   }
 
+  Future<void> downloadModelFromUrlDirect(String url, String filename) async {
+    try {
+      await _download.downloadModel(
+        url: url,
+        filename: filename,
+      );
+      await refreshDownloaded();
+    } catch (e) {
+      Get.find<AppLogService>().error('Direct model download failed', details: e);
+      Get.snackbar('Download Failed', '$e',
+          snackPosition: SnackPosition.BOTTOM);
+    }
+  }
+
   Future<void> downloadModelToDownloads(AiModel model) async {
     if (model.url.trim().isEmpty) {
       Get.snackbar('Download Unavailable', 'This model has no download URL.',

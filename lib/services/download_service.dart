@@ -8,7 +8,7 @@ import '../controllers/model_controller.dart';
 import 'download_native.dart' if (dart.library.html) 'download_web.dart'
     as platform_dl;
 
-/// State for an individual download.
+/// State for an individual download with smoothed metrics.
 class DownloadProgress {
   final String filename;
   final RxDouble progress = 0.0.obs;
@@ -16,22 +16,57 @@ class DownloadProgress {
   final RxInt totalBytes = 0.obs;
   final RxDouble bytesPerSecond = 0.0.obs;
   final RxBool isPaused = false.obs;
+  final RxString statusMessage = 'Downloading...'.obs;
   final DateTime startedAt = DateTime.now();
 
+  int _lastBytes = 0;
+  DateTime _lastTime = DateTime.now();
+  double _smoothedSpeed = 0.0;
+
   DownloadProgress({required this.filename});
+
+  void updateProgress({required int downloaded, required int total, double? nativeSpeed, String? status}) {
+    downloadedBytes.value = downloaded;
+    if (total > 0) {
+      totalBytes.value = total;
+      progress.value = (downloaded / total).clamp(0.0, 1.0);
+    }
+    if (status != null && status.isNotEmpty) {
+      statusMessage.value = status;
+    }
+
+    if (nativeSpeed != null && nativeSpeed > 0) {
+      bytesPerSecond.value = nativeSpeed;
+      _smoothedSpeed = nativeSpeed;
+    } else {
+      final now = DateTime.now();
+      final elapsedSec = now.difference(_lastTime).inMilliseconds / 1000.0;
+      if (elapsedSec >= 0.5 && downloaded >= _lastBytes) {
+        final instantSpeed = (downloaded - _lastBytes) / elapsedSec;
+        _smoothedSpeed = _smoothedSpeed <= 0
+            ? instantSpeed
+            : (0.7 * _smoothedSpeed + 0.3 * instantSpeed);
+        bytesPerSecond.value = _smoothedSpeed;
+        _lastBytes = downloaded;
+        _lastTime = now;
+      }
+    }
+  }
 
   Duration? get eta {
     final speed = bytesPerSecond.value;
     final total = totalBytes.value;
-    if (speed <= 0 || total <= 0) return null;
-    final remaining = total - downloadedBytes.value;
+    final downloaded = downloadedBytes.value;
+    if (speed <= 1024 || total <= 0 || downloaded >= total) return null;
+    final remaining = total - downloaded;
     if (remaining <= 0) return Duration.zero;
-    return Duration(seconds: (remaining / speed).ceil());
+    final seconds = (remaining / speed).round();
+    if (seconds <= 0 || seconds > 86400 * 7) return null;
+    return Duration(seconds: seconds);
   }
 }
 
 /// Service for downloading GGUF model files with progress tracking.
-/// On web: downloads are not supported (models are too large for browser).
 class DownloadService extends GetxService with WidgetsBindingObserver {
   /// Currently active downloads.
   final activeDownloads = <String, DownloadProgress>{}.obs;
@@ -51,6 +86,11 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
       return internalPath;
     }
     if (!kIsWeb && Platform.isAndroid) {
+      // Check app's external files dir
+      final extFilesDir = '/storage/emulated/0/Android/data/com.prasun01.astralm/files/Download/$filename';
+      if (await File(extFilesDir).exists()) {
+        return extFilesDir;
+      }
       final dlPath1 = '/storage/emulated/0/Download/$filename';
       if (await File(dlPath1).exists()) {
         return dlPath1;
@@ -109,22 +149,22 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
           if (progress == null &&
               (status == 'Downloading...' ||
                   status == 'Downloading to phone...' ||
+                  status.startsWith('Starting') ||
                   status.startsWith('Importing'))) {
             progress = DownloadProgress(filename: filename);
             activeDownloads[filename] = progress;
           }
           if (progress != null) {
-            progress.downloadedBytes.value = downloaded;
-            progress.totalBytes.value = total;
-            progress.bytesPerSecond.value = speed;
-            if (total > 0) {
-              progress.progress.value = downloaded / total;
-            }
+            progress.updateProgress(
+              downloaded: downloaded,
+              total: total,
+              nativeSpeed: speed > 0 ? speed : null,
+              status: status,
+            );
 
             if (status == 'Download complete') {
               activeDownloads.remove(filename);
               _nativeDownloadIds.remove(filename);
-              // Trigger reload
               try {
                 Get.find<ModelController>().refreshDownloaded();
               } catch (_) {}
@@ -155,12 +195,12 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
                 if (status == 'Download complete' && isPhoneDownload) {
                   Get.snackbar(
                     'Saved to Downloads',
-                    'Import this file to use it in the app.',
+                    'Model downloaded and ready to use.',
                     snackPosition: SnackPosition.BOTTOM,
-                    duration: const Duration(seconds: 5),
+                    duration: const Duration(seconds: 4),
                   );
                 }
-                Future.delayed(const Duration(seconds: 3), () {
+                Future.delayed(const Duration(seconds: 2), () {
                   if (modelCtrl.importStatus.value == status) {
                     modelCtrl.isImporting.value = false;
                     modelCtrl.importFileName.value = '';
@@ -208,10 +248,11 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
 
         final progress =
             activeDownloads[filename] ?? DownloadProgress(filename: filename);
-        progress.downloadedBytes.value = downloaded;
-        progress.totalBytes.value = total;
-        progress.bytesPerSecond.value = 0;
-        progress.progress.value = total > 0 ? downloaded / total : 0;
+        progress.updateProgress(
+          downloaded: downloaded,
+          total: total,
+          status: status,
+        );
         progress.isPaused.value = status == 'Paused';
         if (!activeDownloads.containsKey(filename)) {
           activeDownloads[filename] = progress;
@@ -226,6 +267,11 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
         _nativeDownloadIds.remove(filename);
         activeDownloads.remove(filename);
       }
+
+      // Trigger refresh of downloaded models in case one finished in background
+      try {
+        Get.find<ModelController>().refreshDownloaded();
+      } catch (_) {}
     } catch (e) {
       print('[DownloadService] Failed to reconcile active downloads: $e');
     }
@@ -255,10 +301,11 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
           return 'NATIVE_BACKGROUND_STARTED';
         }
       } catch (e) {
-        print('[DownloadService] Native background download start failed, falling back: $e');
+        print('[DownloadService] Native background download start failed, falling back to resumable Dio: $e');
       }
     }
 
+    // Fallback: Resumable chunked in-app download
     final savePath = await modelPath(filename);
     try {
       final result = await platform_dl.downloadModel(
@@ -266,18 +313,10 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
         savePath: savePath,
         authToken: authToken,
         onProgress: (received, total) {
-          downloadProgress.downloadedBytes.value = received;
-          downloadProgress.totalBytes.value = total;
-          final elapsed = DateTime.now()
-              .difference(downloadProgress.startedAt)
-              .inMilliseconds;
-          if (elapsed > 0) {
-            downloadProgress.bytesPerSecond.value =
-                received / (elapsed / 1000);
-          }
-          if (total > 0) {
-            downloadProgress.progress.value = received / total;
-          }
+          downloadProgress.updateProgress(
+            downloaded: received,
+            total: total,
+          );
         },
       );
       activeDownloads.remove(filename);
@@ -297,7 +336,7 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
       _nativeDownloadIds.remove(filename);
     } else {
       platform_dl.pauseDownload(filename);
-      activeDownloads[filename]?.isPaused.value = true;
+      activeDownloads.remove(filename);
     }
   }
 
@@ -313,6 +352,7 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
   }
 
   static String formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     if (bytes < 1024 * 1024 * 1024) {
@@ -323,16 +363,22 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
 
   static String formatWholeMb(int bytes) {
     if (bytes <= 0) return '0 MB';
+    if (bytes >= 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+    }
     final mb = (bytes / (1024 * 1024)).round().clamp(1, 1 << 31);
     return '$mb MB';
   }
 
   static String formatSpeed(double bytesPerSecond) {
+    if (bytesPerSecond <= 0 || bytesPerSecond.isNaN || bytesPerSecond.isInfinite) {
+      return '0 KB/s';
+    }
     return '${formatBytes(bytesPerSecond.round())}/s';
   }
 
   static String formatDuration(Duration? duration) {
-    if (duration == null) return '--';
+    if (duration == null || duration.isNegative) return '--';
     if (duration.inHours > 0) {
       return '${duration.inHours}h ${duration.inMinutes.remainder(60)}m';
     }

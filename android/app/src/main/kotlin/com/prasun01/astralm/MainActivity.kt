@@ -33,7 +33,8 @@ class MainActivity : FlutterActivity() {
         val downloadId: Long,
         val filename: String,
         var lastBytes: Long = 0L,
-        var lastTimestamp: Long = System.currentTimeMillis()
+        var lastTimestamp: Long = System.currentTimeMillis(),
+        var smoothedSpeed: Double = 0.0
     )
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -57,15 +58,50 @@ class MainActivity : FlutterActivity() {
                 if (intent?.action == DownloadManager.ACTION_DOWNLOAD_COMPLETE) {
                     val downloadId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
                     if (downloadId != -1L) {
-                        val tracked = trackedDownloads[downloadId]
-                        val filename = tracked?.filename ?: "model"
-                        broadcastProgress(
-                            filename = filename,
-                            copiedBytes = 100L,
-                            totalBytes = 100L,
-                            bytesPerSecond = 0.0,
-                            status = "Download complete"
-                        )
+                        val dm = getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
+                        var filename = trackedDownloads[downloadId]?.filename
+                        var totalBytes = 0L
+
+                        if (dm != null) {
+                            try {
+                                val query = DownloadManager.Query().setFilterById(downloadId)
+                                val cursor: Cursor? = dm.query(query)
+                                cursor?.use { c ->
+                                    if (c.moveToFirst()) {
+                                        val titleIdx = c.getColumnIndex(DownloadManager.COLUMN_TITLE)
+                                        val totalIdx = c.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                                        val statusIdx = c.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                                        if (filename == null && titleIdx >= 0) {
+                                            filename = c.getString(titleIdx)?.removePrefix("AstraLM Model: ")?.trim()
+                                        }
+                                        if (totalIdx >= 0) {
+                                            totalBytes = c.getLong(totalIdx)
+                                        }
+                                        val status = if (statusIdx >= 0) c.getInt(statusIdx) else -1
+                                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                                            broadcastProgress(
+                                                filename = filename ?: "model",
+                                                copiedBytes = if (totalBytes > 0) totalBytes else 100L,
+                                                totalBytes = if (totalBytes > 0) totalBytes else 100L,
+                                                bytesPerSecond = 0.0,
+                                                status = "Download complete"
+                                            )
+                                        } else if (status == DownloadManager.STATUS_FAILED) {
+                                            broadcastProgress(
+                                                filename = filename ?: "model",
+                                                copiedBytes = 0L,
+                                                totalBytes = 0L,
+                                                bytesPerSecond = 0.0,
+                                                status = "Download failed"
+                                            )
+                                        }
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                // Ignore
+                            }
+                        }
+
                         trackedDownloads.remove(downloadId)
                     }
                 }
@@ -102,33 +138,65 @@ class MainActivity : FlutterActivity() {
             "downloadToDownloads", "downloadModelInApp" -> {
                 val url = call.argument<String>("url")
                 val filename = call.argument<String>("filename")
+                val modelsDir = call.argument<String>("modelsDir")
                 if (url.isNullOrBlank() || filename.isNullOrBlank()) {
                     result.error("INVALID_ARGS", "URL and filename are required", null)
                     return
                 }
 
                 try {
-                    // Pre-clean any partial or duplicate existing file so DownloadManager uses exact filename
-                    try {
-                        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                        val targetFile = File(downloadsDir, filename)
-                        if (targetFile.exists()) {
-                            targetFile.delete()
-                        }
-                    } catch (e: Exception) {
-                        // Ignore
-                    }
-
-                    val uri = Uri.parse(url)
+                    val uri = Uri.parse(url.trim())
                     val request = DownloadManager.Request(uri).apply {
                         setTitle("AstraLM Model: $filename")
-                        setDescription("Downloading AI model in background...")
-                        setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        setDescription("Downloading model for AstraLM...")
+                        try {
+                            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        } catch (e: Exception) {
+                            try {
+                                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+                            } catch (_: Exception) {}
+                        }
                         setAllowedOverMetered(true)
                         setAllowedOverRoaming(true)
                         setMimeType("application/octet-stream")
-                        addRequestHeader("User-Agent", "Mozilla/5.0 (Linux; Android 14) AstraLM/1.0.9")
-                        setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
+                        addRequestHeader("User-Agent", "Mozilla/5.0 (Linux; Android 16; Mobile) AstraLM/1.0.9")
+                        addRequestHeader("Accept", "*/*")
+
+                        var destinationSet = false
+                        if (!modelsDir.isNullOrBlank()) {
+                            try {
+                                val targetDir = File(modelsDir)
+                                if (!targetDir.exists()) targetDir.mkdirs()
+                                val destFile = File(targetDir, filename)
+                                if (destFile.exists()) destFile.delete()
+                                setDestinationUri(Uri.fromFile(destFile))
+                                destinationSet = true
+                            } catch (e: Exception) {
+                                // Fallback
+                            }
+                        }
+
+                        if (!destinationSet) {
+                            try {
+                                val extFilesDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                                if (extFilesDir != null) {
+                                    val destFile = File(extFilesDir, filename)
+                                    if (destFile.exists()) destFile.delete()
+                                    setDestinationUri(Uri.fromFile(destFile))
+                                    destinationSet = true
+                                }
+                            } catch (e: Exception) {
+                                // Fallback
+                            }
+                        }
+
+                        if (!destinationSet) {
+                            try {
+                                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
+                            } catch (e: Exception) {
+                                setDestinationInExternalFilesDir(applicationContext, Environment.DIRECTORY_DOWNLOADS, filename)
+                            }
+                        }
                     }
 
                     val downloadId = dm.enqueue(request)
@@ -140,14 +208,16 @@ class MainActivity : FlutterActivity() {
                         "filename" to filename
                     ))
                 } catch (e: Exception) {
-                    result.error("DOWNLOAD_START_FAILED", e.localizedMessage, null)
+                    result.error("DOWNLOAD_START_FAILED", e.localizedMessage ?: "Failed to enqueue download", null)
                 }
             }
 
             "cancelDownloadToDownloads", "cancelDownloadInApp" -> {
                 val downloadId = (call.argument<Number>("downloadId"))?.toLong()
                 if (downloadId != null) {
-                    dm.remove(downloadId)
+                    try {
+                        dm.remove(downloadId)
+                    } catch (_: Exception) {}
                     trackedDownloads.remove(downloadId)
                     result.success(true)
                 } else {
@@ -180,6 +250,11 @@ class MainActivity : FlutterActivity() {
                                     DownloadManager.STATUS_PENDING -> "Pending"
                                     else -> "Downloading..."
                                 }
+
+                                if (!trackedDownloads.containsKey(id)) {
+                                    trackedDownloads[id] = TrackedDownload(id, filename, downloaded)
+                                }
+
                                 activeList.add(mapOf(
                                     "downloadId" to id,
                                     "filename" to filename,
@@ -190,9 +265,25 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                     }
+
+                    if (trackedDownloads.isNotEmpty()) {
+                        startProgressPoller()
+                    }
+
                     result.success(activeList)
                 } catch (e: Exception) {
-                    result.error("QUERY_FAILED", e.localizedMessage, null)
+                    result.error("QUERY_FAILED", e.localizedMessage ?: "Failed to query downloads", null)
+                }
+            }
+
+            "restartApp" -> {
+                try {
+                    val intent = packageManager.getLaunchIntentForPackage(packageName)
+                    intent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                    Runtime.getRuntime().exit(0)
+                } catch (e: Exception) {
+                    result.error("RESTART_FAILED", e.localizedMessage, null)
                 }
             }
 
@@ -217,51 +308,65 @@ class MainActivity : FlutterActivity() {
                 }
 
                 val completedOrFailed = mutableListOf<Long>()
-                val query = DownloadManager.Query().setFilterById(*trackedDownloads.keys().toList().toLongArray())
-                val cursor: Cursor? = dm.query(query)
+                val filterIds = trackedDownloads.keys().toList().toLongArray()
+                if (filterIds.isEmpty()) {
+                    progressPollerRunnable = null
+                    return
+                }
 
-                cursor?.use { c ->
-                    val idIdx = c.getColumnIndex(DownloadManager.COLUMN_ID)
-                    val statusIdx = c.getColumnIndex(DownloadManager.COLUMN_STATUS)
-                    val bytesSoFarIdx = c.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
-                    val totalBytesIdx = c.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                try {
+                    val query = DownloadManager.Query().setFilterById(*filterIds)
+                    val cursor: Cursor? = dm.query(query)
 
-                    while (c.moveToNext()) {
-                        val id = c.getLong(idIdx)
-                        val tracked = trackedDownloads[id] ?: continue
-                        val status = c.getInt(statusIdx)
-                        val downloaded = if (bytesSoFarIdx >= 0) c.getLong(bytesSoFarIdx) else 0L
-                        val total = if (totalBytesIdx >= 0) c.getLong(totalBytesIdx) else 0L
+                    cursor?.use { c ->
+                        val idIdx = c.getColumnIndex(DownloadManager.COLUMN_ID)
+                        val statusIdx = c.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                        val bytesSoFarIdx = c.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                        val totalBytesIdx = c.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
 
-                        val now = System.currentTimeMillis()
-                        val elapsed = (now - tracked.lastTimestamp) / 1000.0
-                        val speed = if (elapsed > 0 && downloaded >= tracked.lastBytes) {
-                            (downloaded - tracked.lastBytes) / elapsed
-                        } else 0.0
+                        while (c.moveToNext()) {
+                            val id = c.getLong(idIdx)
+                            val tracked = trackedDownloads[id] ?: continue
+                            val status = c.getInt(statusIdx)
+                            val downloaded = if (bytesSoFarIdx >= 0) c.getLong(bytesSoFarIdx) else 0L
+                            val total = if (totalBytesIdx >= 0) c.getLong(totalBytesIdx) else 0L
 
-                        tracked.lastBytes = downloaded
-                        tracked.lastTimestamp = now
+                            val now = System.currentTimeMillis()
+                            val elapsed = (now - tracked.lastTimestamp) / 1000.0
+                            if (elapsed >= 0.5 && downloaded >= tracked.lastBytes) {
+                                val instantSpeed = (downloaded - tracked.lastBytes) / elapsed
+                                tracked.smoothedSpeed = if (tracked.smoothedSpeed <= 0.0) {
+                                    instantSpeed
+                                } else {
+                                    0.65 * tracked.smoothedSpeed + 0.35 * instantSpeed
+                                }
+                                tracked.lastBytes = downloaded
+                                tracked.lastTimestamp = now
+                            }
 
-                        val (statusText, isFinished) = when (status) {
-                            DownloadManager.STATUS_SUCCESSFUL -> Pair("Download complete", true)
-                            DownloadManager.STATUS_FAILED -> Pair("Download failed", true)
-                            DownloadManager.STATUS_PAUSED -> Pair("Paused", false)
-                            DownloadManager.STATUS_PENDING -> Pair("Starting download...", false)
-                            else -> Pair("Downloading to phone...", false)
-                        }
+                            val (statusText, isFinished) = when (status) {
+                                DownloadManager.STATUS_SUCCESSFUL -> Pair("Download complete", true)
+                                DownloadManager.STATUS_FAILED -> Pair("Download failed", true)
+                                DownloadManager.STATUS_PAUSED -> Pair("Paused", false)
+                                DownloadManager.STATUS_PENDING -> Pair("Starting download...", false)
+                                else -> Pair("Downloading...", false)
+                            }
 
-                        broadcastProgress(
-                            filename = tracked.filename,
-                            copiedBytes = downloaded,
-                            totalBytes = total,
-                            bytesPerSecond = speed,
-                            status = statusText
-                        )
+                            broadcastProgress(
+                                filename = tracked.filename,
+                                copiedBytes = downloaded,
+                                totalBytes = total,
+                                bytesPerSecond = tracked.smoothedSpeed,
+                                status = statusText
+                            )
 
-                        if (isFinished) {
-                            completedOrFailed.add(id)
+                            if (isFinished) {
+                                completedOrFailed.add(id)
+                            }
                         }
                     }
+                } catch (e: Exception) {
+                    // Ignore query hiccups
                 }
 
                 for (id in completedOrFailed) {
