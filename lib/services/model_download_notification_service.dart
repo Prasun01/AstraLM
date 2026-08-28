@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -44,6 +45,7 @@ class ModelDownloadNotificationService {
               AndroidFlutterLocalNotificationsPlugin>()
           ?.requestNotificationsPermission();
       await Permission.notification.request();
+      await Permission.ignoreBatteryOptimizations.request();
     } catch (_) {}
   }
 
@@ -63,6 +65,13 @@ class ModelDownloadNotificationService {
     if (!Platform.isAndroid) return;
     await init();
     final id = _getId(filename);
+
+    try {
+      final service = FlutterBackgroundService();
+      if (!await service.isRunning()) {
+        await service.startService();
+      }
+    } catch (_) {}
 
     final percent = totalBytes > 0
         ? ((downloadedBytes / totalBytes) * 100).clamp(0, 100).round()
@@ -131,6 +140,7 @@ class ModelDownloadNotificationService {
       );
     } catch (_) {}
     _modelNotificationIds.remove(filename);
+    _stopBackgroundServiceIfIdle();
   }
 
   Future<void> showError({
@@ -160,6 +170,7 @@ class ModelDownloadNotificationService {
       );
     } catch (_) {}
     _modelNotificationIds.remove(filename);
+    _stopBackgroundServiceIfIdle();
   }
 
   Future<void> cancel(String filename) async {
@@ -171,6 +182,7 @@ class ModelDownloadNotificationService {
       } catch (_) {}
       _modelNotificationIds.remove(filename);
     }
+    _stopBackgroundServiceIfIdle();
   }
 
   Future<void> cancelAll() async {
@@ -179,6 +191,15 @@ class ModelDownloadNotificationService {
       await _notifications.cancelAll();
     } catch (_) {}
     _modelNotificationIds.clear();
+    _stopBackgroundServiceIfIdle();
+  }
+
+  void _stopBackgroundServiceIfIdle() {
+    if (_modelNotificationIds.isEmpty && Platform.isAndroid) {
+      try {
+        FlutterBackgroundService().invoke('stopService');
+      } catch (_) {}
+    }
   }
 
   String _formatBytes(int bytes) {
