@@ -385,7 +385,7 @@ class _WelcomeGuideViewState extends State<WelcomeGuideView>
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 6),
                                 child: Text(
-                                  'Explore On My Own ➔',
+                                  'Explore On My Own',
                                   style: GoogleFonts.manrope(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,

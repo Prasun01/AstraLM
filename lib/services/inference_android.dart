@@ -97,10 +97,10 @@ class InferenceEngine {
         final gpuNum = _extractGpuModel(gpu.gpuName);
         if (gpuNum >= 700) {
           gpuLayers = 99;
-          print('[Inference] ✓ High-end GPU ($gpuNum) → full offload');
+          print('[Inference] High-end GPU ($gpuNum) -> full offload');
         } else if (gpuNum >= 650) {
           gpuLayers = gpu.recommendedGpuLayers;
-          print('[Inference] ✓ Upper-mid GPU ($gpuNum) → $gpuLayers layers');
+          print('[Inference] Upper-mid GPU ($gpuNum) -> $gpuLayers layers');
         } else {
           gpuLayers = 0;
           print(
@@ -141,7 +141,7 @@ class InferenceEngine {
     final accel = gpuLayers > 0
         ? 'GPU ($gpuLayers layers, $gpuNameStr)'
         : 'CPU ($threads threads)';
-    print('[Inference] ✓ Model loaded: $accel, ctx=$contextSize');
+    print('[Inference] Model loaded: $accel, ctx=$contextSize');
 
     return LoadResult(
       success: true,
@@ -438,7 +438,7 @@ class InferenceEngine {
         final clean = _sanitizeGemmaGarbage(token);
         if (clean.isEmpty) return;
         if (tokenCount == 0) {
-          print('[Inference] ✓ FIRST TOKEN received! Prefill done.');
+          print('[Inference] FIRST TOKEN received! Prefill done.');
           if (isReasoning &&
               !clean.trimLeft().startsWith('<think>') &&
               !clean.trimLeft().startsWith('<thought>') &&

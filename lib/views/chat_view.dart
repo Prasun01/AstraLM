@@ -2971,13 +2971,12 @@ class _AnimatedThinkingIndicatorState extends State<_AnimatedThinkingIndicator>
   ];
 
   static const List<String> _lateTexts = [
-    'bro, your cpu is slow 💀',
-    'Silicon is getting toasty 🔥',
-    'Sweating through these tokens…',
-    'Fighting for every single token…',
-    'Calculating the meaning of life…',
-    'Worth the wait, promise…',
-    'Almost done baking tokens…',
+    'Processing complex query...',
+    'Generating extended response...',
+    'Evaluating response coherence...',
+    'Synthesizing output tokens...',
+    'Finalizing reasoning steps...',
+    'Formatting structured response...',
   ];
 
   static const List<String> _imageTexts = [

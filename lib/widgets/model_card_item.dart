@@ -62,7 +62,7 @@ class _ModelCardItemState extends State<ModelCardItem> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Top Row: Name, Use-case & Primary Action ──
+            // ── Top Row: Name & Primary Action ──
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -73,7 +73,7 @@ class _ModelCardItemState extends State<ModelCardItem> {
                       Text(
                         model.name,
                         style: GoogleFonts.manrope(
-                          fontSize: 15.5,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: isDark ? Colors.white : const Color(0xFF0E1017),
                           letterSpacing: -0.2,
@@ -85,8 +85,6 @@ class _ModelCardItemState extends State<ModelCardItem> {
                           AstraBadge(
                             label: model.bestFor,
                             icon: PhosphorIconsBold.sparkle,
-                            isFilled: true,
-                            color: scheme.primary,
                           ),
                           const SizedBox(width: 6),
                           AstraBadge(
@@ -114,9 +112,9 @@ class _ModelCardItemState extends State<ModelCardItem> {
               ],
             ),
 
-            // ── Description ──
+            // ── Clean Plain-Text Description ──
             if (model.description.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
                 model.description,
                 style: GoogleFonts.inter(
@@ -131,13 +129,13 @@ class _ModelCardItemState extends State<ModelCardItem> {
               ),
             ],
 
-            // ── Active Download Progress (if downloading / paused) ──
+            // ── Active Download Progress ──
             if (isCurrentlyDownloading) ...[
               const SizedBox(height: 12),
               _buildDownloadProgress(context, controller, model, dp!),
             ],
 
-            // ── Model Loading Indicator ──
+            // ── Model Loading Progress ──
             if (isThisModelLoading) ...[
               const SizedBox(height: 12),
               _buildLoadingProgress(context, loadPercent),
@@ -164,7 +162,7 @@ class _ModelCardItemState extends State<ModelCardItem> {
                           _isAdvancedExpanded
                               ? PhosphorIconsBold.caretUp
                               : PhosphorIconsBold.caretDown,
-                          size: 13,
+                          size: 12,
                           color: isDark
                               ? const Color(0xFF8E95A8)
                               : const Color(0xFF6B7284),
@@ -190,27 +188,29 @@ class _ModelCardItemState extends State<ModelCardItem> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                      color: isDark
+                          ? const Color(0xFF1E2433)
+                          : const Color(0xFFE2E8F0),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF10B981),
+                          width: 5,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: scheme.primary,
                             shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          'Ready in Memory',
+                          'Active in Memory',
                           style: GoogleFonts.inter(
-                            fontSize: 11,
+                            fontSize: 10.5,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF10B981),
+                            color: isDark ? Colors.white : Colors.black,
                           ),
                         ),
                       ],
@@ -225,8 +225,8 @@ class _ModelCardItemState extends State<ModelCardItem> {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? const Color(0xFF0C0E14)
-                      : const Color(0xFFECEFF6),
+                      ? const Color(0xFF0A0C11)
+                      : const Color(0xFFEAEFF8),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Wrap(
@@ -236,7 +236,7 @@ class _ModelCardItemState extends State<ModelCardItem> {
                     _specItem('Quant', model.quantization, isDark),
                     _specItem('Runtime', model.runtime.toUpperCase(), isDark),
                     _specItem('RAM Req', model.ramRequired, isDark),
-                    _specItem('Format', model.filename.split('.').last.toUpperCase(), isDark),
+                    _specItem('File', model.filename, isDark),
                   ],
                 ),
               ),
@@ -300,18 +300,18 @@ class _ModelCardItemState extends State<ModelCardItem> {
               visualDensity: VisualDensity.compact,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
             child: Text(
               isThisImageModelLoading
-                  ? 'Loading...'
+                  ? 'Loading'
                   : isThisModelLoading
                       ? '$loadPercent%'
                       : isActive
                           ? 'Active'
                           : 'Load',
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
             ),
           ),
           const SizedBox(width: 4),
@@ -329,7 +329,7 @@ class _ModelCardItemState extends State<ModelCardItem> {
                   },
             icon: PhosphorIcon(
               isActive ? PhosphorIconsBold.stop : PhosphorIconsBold.trash,
-              size: 16,
+              size: 15,
               color: isActive ? scheme.primary : scheme.error,
             ),
             style: IconButton.styleFrom(
@@ -353,16 +353,16 @@ class _ModelCardItemState extends State<ModelCardItem> {
         visualDensity: VisualDensity.compact,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          PhosphorIcon(PhosphorIconsBold.arrowDown, size: 13),
+          PhosphorIcon(PhosphorIconsBold.arrowDown, size: 12),
           const SizedBox(width: 4),
           const Text('Get',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
         ],
       ),
     );
@@ -396,7 +396,7 @@ class _ModelCardItemState extends State<ModelCardItem> {
             color: isPaused
                 ? const Color(0xFFF59E0B)
                 : Theme.of(context).colorScheme.primary,
-            minHeight: 4,
+            minHeight: 3,
           ),
         ),
         const SizedBox(height: 8),
@@ -407,7 +407,7 @@ class _ModelCardItemState extends State<ModelCardItem> {
                   ? 'Paused (${percent.toStringAsFixed(1)}%)'
                   : '${percent.toStringAsFixed(1)}%',
               style: GoogleFonts.firaCode(
-                fontSize: 12.5,
+                fontSize: 12,
                 color: isPaused
                     ? const Color(0xFFF59E0B)
                     : Theme.of(context).colorScheme.primary,
@@ -421,7 +421,7 @@ class _ModelCardItemState extends State<ModelCardItem> {
                 decoration: BoxDecoration(
                   color:
                       Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(5),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   DownloadService.formatSpeed(dp.bytesPerSecond.value),
@@ -439,15 +439,15 @@ class _ModelCardItemState extends State<ModelCardItem> {
                   HapticFeedback.lightImpact();
                   controller.downloadModel(model);
                 },
-                icon: PhosphorIcon(PhosphorIconsBold.play, size: 13),
+                icon: PhosphorIcon(PhosphorIconsBold.play, size: 12),
                 label: const Text('Resume',
                     style:
-                        TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                        TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
                 style: FilledButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                  minimumSize: const Size(0, 30),
+                  minimumSize: const Size(0, 28),
                 ),
               ),
               const SizedBox(width: 4),
@@ -457,12 +457,12 @@ class _ModelCardItemState extends State<ModelCardItem> {
                   controller.pauseDownload(model.filename);
                   controller.deleteModel(model.filename);
                 },
-                icon: PhosphorIcon(PhosphorIconsBold.trash, size: 16),
+                icon: PhosphorIcon(PhosphorIconsBold.trash, size: 15),
                 tooltip: 'Delete download',
                 style: IconButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.all(4),
-                  minimumSize: const Size(28, 28),
+                  minimumSize: const Size(26, 26),
                   foregroundColor: Theme.of(context).colorScheme.error,
                 ),
               ),
@@ -472,12 +472,12 @@ class _ModelCardItemState extends State<ModelCardItem> {
                   HapticFeedback.lightImpact();
                   controller.pauseDownload(model.filename);
                 },
-                icon: PhosphorIcon(PhosphorIconsBold.x, size: 16),
+                icon: PhosphorIcon(PhosphorIconsBold.x, size: 15),
                 tooltip: 'Cancel download',
                 style: IconButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.all(4),
-                  minimumSize: const Size(28, 28),
+                  minimumSize: const Size(26, 26),
                   foregroundColor: Theme.of(context).colorScheme.error,
                 ),
               ),
@@ -521,15 +521,14 @@ class _ModelCardItemState extends State<ModelCardItem> {
       decoration: BoxDecoration(
         color: Theme.of(context)
             .colorScheme
-            .primary
-            .withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
+            .surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
           SizedBox(
-            width: 14,
-            height: 14,
+            width: 12,
+            height: 12,
             child: CircularProgressIndicator(
               strokeWidth: 2,
               color: Theme.of(context).colorScheme.primary,
@@ -537,9 +536,9 @@ class _ModelCardItemState extends State<ModelCardItem> {
           ),
           const SizedBox(width: 8),
           Text(
-            'Loading weights into memory ($loadPercent%)...',
+            'Loading model into memory ($loadPercent%)...',
             style: GoogleFonts.inter(
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: FontWeight.w600,
               color: Theme.of(context).colorScheme.primary,
             ),

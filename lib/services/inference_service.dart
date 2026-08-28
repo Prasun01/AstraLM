@@ -153,11 +153,11 @@ class InferenceService extends GetxService {
       );
 
       if (ramSafety.isTotalRamTooSmall) {
-        print('[Inference] ⚠️ Smart RAM Check: Device total RAM is very tight for this model: ${ramSafety.warningMessage}');
+        print('[Inference] Smart RAM Check: Device total RAM is very tight for this model: ${ramSafety.warningMessage}');
       } else if (ramSafety.isCriticallyLow) {
-        print('[Inference] ⚠️ Smart RAM Check: Available memory is low (${ramSafety.availableMbFormatted}MB vs ${ramSafety.requiredMbFormatted}MB required). Auto-tuning context size.');
+        print('[Inference] Smart RAM Check: Available memory is low (${ramSafety.availableMbFormatted}MB vs ${ramSafety.requiredMbFormatted}MB required). Auto-tuning context size.');
       } else {
-        print('[Inference] ✓ Smart RAM Check: Memory verified (${ramSafety.availableMbFormatted}MB available / ${ramSafety.requiredMbFormatted}MB required).');
+        print('[Inference] Smart RAM Check: Memory verified (${ramSafety.availableMbFormatted}MB available / ${ramSafety.requiredMbFormatted}MB required).');
       }
 
       // Dynamically tune and save optimal context size and token budget
@@ -170,7 +170,7 @@ class InferenceService extends GetxService {
       }
 
       print(
-          '[Inference] ⚡ Hardware Calibration: ${calibration.modelTier} | ctx=$finalContextSize | maxTokens=$finalMaxTokens | thinking=${calibration.isThinkingModel}');
+          '[Inference] Hardware Calibration: ${calibration.modelTier} | ctx=$finalContextSize | maxTokens=$finalMaxTokens | thinking=${calibration.isThinkingModel}');
 
       final lastLoadedContext =
           _hive.getSetting<int>('last_loaded_context_size') ?? 0;

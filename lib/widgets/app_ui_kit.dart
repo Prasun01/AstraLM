@@ -4,9 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'pressable_scale.dart';
 
-/// AstraLM Design System — Reusable Core UI Components
+/// AstraLM Design System — Minimalist, High-End Editorial UI Components
+/// Strictly Zero Emojis, Zero Colored Thin Outlines, Pure Tonal Depth
 
-/// Standard Card container with 16px radius, proper elevation & surface tone.
 class AstraCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -14,7 +14,6 @@ class AstraCard extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isHighlighted;
   final Color? backgroundColor;
-  final Color? borderColor;
 
   const AstraCard({
     super.key,
@@ -24,7 +23,6 @@ class AstraCard extends StatelessWidget {
     this.onTap,
     this.isHighlighted = false,
     this.backgroundColor,
-    this.borderColor,
   });
 
   @override
@@ -34,20 +32,20 @@ class AstraCard extends StatelessWidget {
 
     final bg = backgroundColor ??
         (isHighlighted
-            ? (isDark ? const Color(0xFF1E2433) : const Color(0xFFE8EEF9))
-            : (isDark ? const Color(0xFF10121A) : const Color(0xFFF6F8FC)));
-
-    final border = borderColor ??
-        (isHighlighted
-            ? scheme.primary.withValues(alpha: 0.35)
-            : (isDark ? const Color(0xFF1E222E) : const Color(0xFFE5E9F2)));
+            ? (isDark ? const Color(0xFF161924) : const Color(0xFFEAEFF8))
+            : (isDark ? const Color(0xFF0F1118) : const Color(0xFFF4F6FB)));
 
     Widget content = Container(
       padding: padding,
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: border, width: 1),
+        border: isHighlighted
+            ? Border.all(
+                color: isDark ? const Color(0xFF2A3045) : const Color(0xFFCBD5E1),
+                width: 1,
+              )
+            : null,
       ),
       child: child,
     );
@@ -72,7 +70,6 @@ class AstraCard extends StatelessWidget {
   }
 }
 
-/// Category and Section Headers with consistent typography hierarchy.
 class AstraSectionHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -84,7 +81,7 @@ class AstraSectionHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.trailing,
-    this.padding = const EdgeInsets.only(top: 16, bottom: 10, left: 4, right: 4),
+    this.padding = const EdgeInsets.only(top: 16, bottom: 10, left: 2, right: 2),
   });
 
   @override
@@ -104,7 +101,7 @@ class AstraSectionHeader extends StatelessWidget {
                 Text(
                   title,
                   style: GoogleFonts.manrope(
-                    fontSize: 16,
+                    fontSize: 15.5,
                     fontWeight: FontWeight.w700,
                     color: isDark ? Colors.white : const Color(0xFF0E1017),
                     letterSpacing: -0.2,
@@ -115,7 +112,7 @@ class AstraSectionHeader extends StatelessWidget {
                   Text(
                     subtitle!,
                     style: GoogleFonts.inter(
-                      fontSize: 12.5,
+                      fontSize: 12,
                       color: isDark
                           ? const Color(0xFF8E95A8)
                           : const Color(0xFF6B7284),
@@ -132,13 +129,11 @@ class AstraSectionHeader extends StatelessWidget {
   }
 }
 
-/// Clean pill badge for tags, hardware status, and model attributes.
 class AstraBadge extends StatelessWidget {
   final String label;
   final PhosphorIconData? icon;
   final Color? color;
   final Color? textColor;
-  final bool isFilled;
 
   const AstraBadge({
     super.key,
@@ -146,31 +141,21 @@ class AstraBadge extends StatelessWidget {
     this.icon,
     this.color,
     this.textColor,
-    this.isFilled = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scheme = Theme.of(context).colorScheme;
 
-    final primaryColor = color ?? scheme.primary;
-    final bg = isFilled
-        ? primaryColor.withValues(alpha: isDark ? 0.20 : 0.12)
-        : (isDark ? const Color(0xFF181B26) : const Color(0xFFEDF1F7));
+    final bg = color ?? (isDark ? const Color(0xFF181B26) : const Color(0xFFE8EDF5));
     final fg = textColor ??
-        (isFilled
-            ? primaryColor
-            : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155)));
+        (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155));
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(8),
-        border: isFilled
-            ? Border.all(color: primaryColor.withValues(alpha: 0.3), width: 0.8)
-            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -193,7 +178,6 @@ class AstraBadge extends StatelessWidget {
   }
 }
 
-/// Universal Empty State Widget.
 class AstraEmptyState extends StatelessWidget {
   final PhosphorIconData icon;
   final String title;
@@ -227,13 +211,13 @@ class AstraEmptyState extends StatelessWidget {
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: isDark
-                    ? const Color(0xFF161924)
+                    ? const Color(0xFF141722)
                     : scheme.primary.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: PhosphorIcon(
                 icon,
-                size: 36,
+                size: 32,
                 color: isDark
                     ? const Color(0xFF8E95A8)
                     : scheme.primary,
@@ -244,7 +228,7 @@ class AstraEmptyState extends StatelessWidget {
               title,
               textAlign: TextAlign.center,
               style: GoogleFonts.manrope(
-                fontSize: 17,
+                fontSize: 16.5,
                 fontWeight: FontWeight.w700,
                 color: isDark ? Colors.white : const Color(0xFF0E1017),
               ),
@@ -254,7 +238,7 @@ class AstraEmptyState extends StatelessWidget {
               description,
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                fontSize: 13.5,
+                fontSize: 13,
                 color: isDark
                     ? const Color(0xFF8E95A8)
                     : const Color(0xFF6B7284),
@@ -269,103 +253,24 @@ class AstraEmptyState extends StatelessWidget {
                   onAction!();
                 },
                 icon: actionIcon != null
-                    ? PhosphorIcon(actionIcon!, size: 16)
+                    ? PhosphorIcon(actionIcon!, size: 15)
                     : const SizedBox.shrink(),
                 label: Text(
                   actionLabel!,
                   style: GoogleFonts.inter(
-                    fontSize: 13.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 style: FilledButton.styleFrom(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Universal Error State Widget.
-class AstraErrorState extends StatelessWidget {
-  final String title;
-  final String message;
-  final VoidCallback onRetry;
-
-  const AstraErrorState({
-    super.key,
-    this.title = 'Something went wrong',
-    required this.message,
-    required this.onRetry,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scheme = Theme.of(context).colorScheme;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: scheme.error.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: PhosphorIcon(
-                PhosphorIconsBold.warning,
-                size: 32,
-                color: scheme.error,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.manrope(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : const Color(0xFF0E1017),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: isDark
-                    ? const Color(0xFF8E95A8)
-                    : const Color(0xFF6B7284),
-              ),
-            ),
-            const SizedBox(height: 18),
-            OutlinedButton.icon(
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                onRetry();
-              },
-              icon: PhosphorIcon(PhosphorIconsBold.arrowsCounterClockwise,
-                  size: 15),
-              label: const Text('Try Again'),
-              style: OutlinedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
           ],
         ),
       ),

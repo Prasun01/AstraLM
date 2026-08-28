@@ -301,19 +301,19 @@ class InferenceSettingsSubView extends GetView<SettingsController> {
                       child: Row(
                         children: [
                           _developerPresetChip(
-                            '⚡ Default',
+                            'Default',
                             () => controller.setGlobalSystemPrompt(AppConstants.systemPrompt),
                             isDark,
                           ),
                           const SizedBox(width: 8),
                           _developerPresetChip(
-                            '💻 Senior Dev',
+                            'Senior Dev',
                             () => controller.setGlobalSystemPrompt(SettingsController.developerPromptSeniorDev),
                             isDark,
                           ),
                           const SizedBox(width: 8),
                           _developerPresetChip(
-                            '✂️ Concise',
+                            'Concise',
                             () => controller.setGlobalSystemPrompt(SettingsController.developerPromptConcise),
                             isDark,
                           ),
