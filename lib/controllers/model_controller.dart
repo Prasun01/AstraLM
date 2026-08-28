@@ -260,6 +260,13 @@ class ModelController extends GetxController {
   List<AiModel> get installedModels =>
       availableModels.where((m) => isDownloaded(m.filename)).toList();
 
+  List<AiModel> get downloadingModels {
+    final activeKeys = _download.activeDownloads.keys.toSet();
+    return availableModels
+        .where((m) => activeKeys.contains(m.filename) && !isDownloaded(m.filename))
+        .toList();
+  }
+
   int get totalInstalledBytes {
     int total = 0;
     for (final m in installedModels) {

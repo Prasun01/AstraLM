@@ -24,11 +24,15 @@ class ModelView extends GetView<ModelController> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF0A0C10) : const Color(0xFFFAFBFD);
+
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0A0C10) : const Color(0xFFFAFBFD),
+      backgroundColor: bgColor,
       appBar: AppBar(
-        title: Text('Models',
-            style: GoogleFonts.bricolageGrotesque(fontWeight: FontWeight.w700, fontSize: 24)),
+        title: Text(
+          'Models',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 22),
+        ),
         actions: [
           Obx(() {
             if (controller.modelScope.value == 'online') {
@@ -38,12 +42,12 @@ class ModelView extends GetView<ModelController> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: Icon(AppIcons.linkUrl),
+                  icon: PhosphorIcon(PhosphorIconsBold.link, size: 20),
                   tooltip: 'Add Model URL',
                   onPressed: () => _showAddUrlDialog(context),
                 ),
                 IconButton(
-                  icon: Icon(AppIcons.importFromStorage),
+                  icon: PhosphorIcon(PhosphorIconsBold.folderOpen, size: 20),
                   tooltip: 'Import from Storage',
                   onPressed: () => controller.importModelFromStorage(),
                 ),
@@ -52,37 +56,84 @@ class ModelView extends GetView<ModelController> {
           }),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          if (controller.modelScope.value != 'online') {
-            await controller.refreshDownloaded();
-          }
-        },
-        color: Theme.of(context).colorScheme.primary,
-        child: Obx(() {
-          final scope = controller.modelScope.value;
-          final isInstalled = scope == 'installed';
-          final isDiscover = scope == 'discover' || scope == 'local';
-          final isCloud = scope == 'online' || scope == 'cloud';
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: () async {
+              if (controller.modelScope.value != 'online') {
+                await controller.refreshDownloaded();
+              }
+            },
+            color: Theme.of(context).colorScheme.primary,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              children: [
+                _buildScopeToggle(context),
+                const SizedBox(height: 14),
+                _buildActiveModelBanner(context),
+                const SizedBox(height: 16),
 
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            children: [
-              _buildScopeToggle(context),
-              const SizedBox(height: 14),
-              _buildActiveModelBanner(context),
-              const SizedBox(height: 16),
+                Obx(() {
+                  final scope = controller.modelScope.value;
+                  final isInstalled = scope == 'installed';
+                  final isDiscover = scope == 'discover' || scope == 'local';
 
-              if (isInstalled) ...[
-                _buildInstalledSection(context),
-              ] else if (isDiscover) ...[
-                _buildDiscoverSection(context),
-              ] else ...[
-                _buildOnlineProviders(context),
+                  if (isInstalled) {
+                    return _buildInstalledSection(context);
+                  } else if (isDiscover) {
+                    return _buildDiscoverSection(context);
+                  } else {
+                    return _buildOnlineProviders(context);
+                  }
+                }),
               ],
-            ],
-          );
-        }),
+            ),
+          ),
+
+          // ── Top Subtle Gradient Fade ──
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 14,
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      bgColor,
+                      bgColor.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ── Bottom Subtle Gradient Fade ──
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 24,
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      bgColor,
+                      bgColor.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -314,10 +365,27 @@ class ModelView extends GetView<ModelController> {
         ),
         const SizedBox(height: 16),
 
-        // Models List or Empty State
-        if (installed.isEmpty)
+        // Section 1: Downloading & Paused Models
+        if (controller.downloadingModels.isNotEmpty) ...[
+          Text(
+            'DOWNLOADING (${controller.downloadingModels.length})',
+            style: GoogleFonts.manrope(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+              color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074),
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...controller.downloadingModels
+              .map((model) => _buildModelCard(context, model)),
+          const SizedBox(height: 16),
+        ],
+
+        // Section 2: Installed Models or Empty State
+        if (installed.isEmpty && controller.downloadingModels.isEmpty)
           _buildEmptyInstalledState(context)
-        else ...[
+        else if (installed.isNotEmpty) ...[
           Text(
             'READY TO RUN (${installed.length})',
             style: GoogleFonts.manrope(

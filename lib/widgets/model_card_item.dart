@@ -79,14 +79,15 @@ class _ModelCardItemState extends State<ModelCardItem> {
                           letterSpacing: -0.2,
                         ),
                       ),
-                      const SizedBox(height: 5),
-                      Row(
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
                         children: [
                           AstraBadge(
                             label: model.bestFor,
                             icon: PhosphorIconsBold.sparkle,
                           ),
-                          const SizedBox(width: 6),
                           AstraBadge(
                             label: model.size,
                             icon: PhosphorIconsBold.hardDrives,
