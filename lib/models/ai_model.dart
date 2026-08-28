@@ -50,6 +50,18 @@ class AiModel {
             _inferTags(
                 name, filename, description, runtime ?? runtimeFromFilename(filename, template: template));
 
+  String get bestFor {
+    final lower = '$name $filename $description ${tags.join(" ")}'.toLowerCase();
+    if (isVision || hasVisionMarker(lower)) return 'Image & Visual Understanding';
+    if (lower.contains('coder') || lower.contains('coding') || lower.contains('deepseek-coder')) return 'Code, Math & Logic';
+    if (lower.contains('r1') || lower.contains('reasoning') || lower.contains('think')) return 'Deep Reasoning & Step-by-Step Logic';
+    if (lower.contains('moonlight') || lower.contains('16b') || lower.contains('mixtral')) return 'Complex Reasoning & Research';
+    if (lower.contains('image') || runtime == runtimeSd || filename.endsWith('.safetensors')) return 'AI Image Generation';
+    if (lower.contains('0.5b') || lower.contains('tiny') || lower.contains('smollm')) return 'Instant Responses (Ultra-Fast)';
+    if (lower.contains('1.5b') || lower.contains('gemma-2-2b') || lower.contains('llama-3.2-1b')) return 'Everyday Chat & Quick Answers';
+    return 'Everyday Chat & Writing';
+  }
+
   factory AiModel.fromMap(Map<dynamic, dynamic> map) {
     final filename = map['filename']?.toString() ?? '';
     final template = map['template']?.toString() ?? 'chatml';
@@ -98,126 +110,60 @@ class AiModel {
         'quantization': quantization,
         'ram_required': ramRequired,
         'tags': tags.join(','),
-        if (isVision) 'vision': 'true',
-        if (isImported) 'imported': 'true',
-        if (isCustom) 'custom': 'true',
+        'vision': isVision.toString(),
+        'imported': isImported.toString(),
+        'custom': isCustom.toString(),
       };
 
   static String runtimeFromFilename(String filename, {String? template}) {
     final lower = filename.toLowerCase();
-    if (lower.endsWith('.litertlm')) return runtimeLiteRt;
-    if (lower.endsWith('.safetensors') || template == runtimeSd) {
+    if (lower.endsWith('.safetensors') || template == 'sd') {
       return runtimeSd;
+    }
+    if (lower.endsWith('.litertlm')) {
+      return runtimeLiteRt;
     }
     return runtimeLlama;
   }
 
   static String _inferQuantization(String filename, String runtime) {
-    final lower = filename.toLowerCase();
-    if (lower.contains('q4_k_m') || lower.contains('q4_k')) return 'Q4_K_M';
-    if (lower.contains('q4_0')) return 'Q4_0';
-    if (lower.contains('q5_k_m') || lower.contains('q5_k')) return 'Q5_K_M';
-    if (lower.contains('q3_k_s') || lower.contains('q3_k')) return 'Q3_K_S';
-    if (lower.contains('q8_0') || lower.contains('q8') || lower.contains('int8')) {
-      return 'int8';
-    }
-    if (lower.contains('fp16') || lower.endsWith('.safetensors')) return 'FP16';
+    if (runtime == runtimeSd) return 'fp16';
     if (runtime == runtimeLiteRt) return 'int8';
-    return 'Q4_K_M';
+    final lower = filename.toLowerCase();
+    final match = RegExp(
+      r'(iq[1-4]_[a-z0-9_]+|q[1-8]_[k0-9_]+|q[1-8]_[a-z0-9_]+|fp16|f16|int8|int4)',
+      caseSensitive: false,
+    ).firstMatch(lower);
+    return match?.group(0)?.toUpperCase() ?? 'Q4_K_M';
   }
 
-  static String _inferRamRequired(String sizeStr, String runtime) {
+  static String _inferRamRequired(String size, String runtime) {
     final match = RegExp(r'([\d.]+)\s*(GB|MB)', caseSensitive: false)
-        .firstMatch(sizeStr);
-    if (match == null) return '2.0 GB';
-    final value = double.tryParse(match.group(1) ?? '') ?? 1.5;
+        .firstMatch(size);
+    if (match == null) return '4.0 GB';
+    final value = double.tryParse(match.group(1) ?? '') ?? 2.0;
     final unit = (match.group(2) ?? '').toUpperCase();
-    final double sizeGb = unit == 'MB' ? value / 1024.0 : value;
-
-    if (runtime == runtimeSd) {
-      return '${(sizeGb + 2.0).toStringAsFixed(1)} GB';
-    }
-    final req = (sizeGb * 1.35 + 0.6).clamp(0.8, 16.0);
-    return '${req.toStringAsFixed(1)} GB';
+    final sizeInGb = unit == 'GB' ? value : value / 1024.0;
+    final ram = (sizeInGb * 1.35 + 0.8).clamp(1.5, 32.0);
+    return '${ram.toStringAsFixed(1)} GB';
   }
 
   static List<String> _inferTags(
       String name, String filename, String description, String runtime) {
     final text = '$name $filename $description'.toLowerCase();
-    final tagSet = <String>{};
-    if (runtime == runtimeLiteRt) tagSet.add('litert');
-    if (runtime == runtimeLlama) tagSet.add('gguf');
-    if (runtime == runtimeSd) tagSet.add('image');
-
-    if (text.contains('reason') ||
-        text.contains('r1') ||
-        text.contains('think') ||
-        text.contains('distill') ||
-        text.contains('math') ||
-        text.contains('phi-3.5')) {
-      tagSet.add('reasoning');
+    final tags = <String>[];
+    if (runtime == runtimeSd) tags.add('image');
+    if (runtime == runtimeLiteRt) tags.add('litert');
+    if (runtime == runtimeLlama) tags.add('gguf');
+    if (text.contains('coder') || text.contains('coding')) tags.add('coding');
+    if (text.contains('vision') || text.contains('vl')) tags.add('vision');
+    if (text.contains('fast') || text.contains('tiny') || text.contains('0.5b')) {
+      tags.add('fast');
     }
-    if (text.contains('code') ||
-        text.contains('coding') ||
-        text.contains('qwen')) {
-      tagSet.add('coding');
+    if (text.contains('r1') || text.contains('reasoning') || text.contains('think')) {
+      tags.add('reasoning');
     }
-    if (text.contains('vision') ||
-        text.contains('vl') ||
-        hasVisionMarker(text)) {
-      tagSet.add('vision');
-    }
-    if (text.contains('uncensored') ||
-        text.contains('abliterated') ||
-        text.contains('dolphin')) {
-      tagSet.add('uncensored');
-    }
-    if (text.contains('tiny') ||
-        text.contains('0.5b') ||
-        text.contains('360m') ||
-        text.contains('instant') ||
-        text.contains('featherweight')) {
-      tagSet.add('tiny');
-      tagSet.add('fast');
-    }
-    if (text.contains('flagship') || text.contains('7b') || text.contains('9b') || text.contains('16b')) {
-      tagSet.add('flagship');
-    }
-    if (tagSet.isEmpty || (!tagSet.contains('reasoning') && !tagSet.contains('uncensored') && !tagSet.contains('image'))) {
-      tagSet.add('general');
-    }
-    return tagSet.toList();
-  }
-
-  AiModel copyWith({
-    String? name,
-    String? filename,
-    String? url,
-    String? size,
-    String? description,
-    String? template,
-    String? runtime,
-    String? quantization,
-    String? ramRequired,
-    List<String>? tags,
-    bool? isVision,
-    bool? isImported,
-    bool? isCustom,
-  }) {
-    return AiModel(
-      name: name ?? this.name,
-      filename: filename ?? this.filename,
-      url: url ?? this.url,
-      size: size ?? this.size,
-      description: description ?? this.description,
-      template: template ?? this.template,
-      runtime: runtime ?? this.runtime,
-      quantization: quantization ?? this.quantization,
-      ramRequired: ramRequired ?? this.ramRequired,
-      tags: tags ?? this.tags,
-      isVision: isVision ?? this.isVision,
-      isImported: isImported ?? this.isImported,
-      isCustom: isCustom ?? this.isCustom,
-    );
+    if (tags.isEmpty) tags.add('general');
+    return tags;
   }
 }

@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import '../controllers/model_controller.dart';
+import 'model_download_notification_service.dart';
 
 import 'download_native.dart' if (dart.library.html) 'download_web.dart'
     as platform_dl;
@@ -25,7 +28,12 @@ class DownloadProgress {
 
   DownloadProgress({required this.filename});
 
-  void updateProgress({required int downloaded, required int total, double? nativeSpeed, String? status}) {
+  void updateProgress({
+    required int downloaded,
+    required int total,
+    double? nativeSpeed,
+    String? status,
+  }) {
     downloadedBytes.value = downloaded;
     if (total > 0) {
       totalBytes.value = total;
@@ -41,11 +49,11 @@ class DownloadProgress {
     } else {
       final now = DateTime.now();
       final elapsedSec = now.difference(_lastTime).inMilliseconds / 1000.0;
-      if (elapsedSec >= 0.5 && downloaded >= _lastBytes) {
+      if (elapsedSec >= 0.25 && downloaded >= _lastBytes) {
         final instantSpeed = (downloaded - _lastBytes) / elapsedSec;
         _smoothedSpeed = _smoothedSpeed <= 0
             ? instantSpeed
-            : (0.7 * _smoothedSpeed + 0.3 * instantSpeed);
+            : (0.75 * _smoothedSpeed + 0.25 * instantSpeed);
         bytesPerSecond.value = _smoothedSpeed;
         _lastBytes = downloaded;
         _lastTime = now;
@@ -66,15 +74,13 @@ class DownloadProgress {
   }
 }
 
-/// Service for downloading GGUF model files with progress tracking.
+/// Service for downloading GGUF model files with parallel streaming and persistence.
 class DownloadService extends GetxService with WidgetsBindingObserver {
-  /// Currently active downloads.
   final activeDownloads = <String, DownloadProgress>{}.obs;
-  final _nativeDownloadIds = <String, int>{};
+  final ModelDownloadNotificationService _notifService =
+      ModelDownloadNotificationService();
 
   bool get isDownloadingAny => activeDownloads.isNotEmpty;
-
-  /// Whether the platform supports downloading models.
   bool get supportsDownload => !kIsWeb;
 
   Future<String> get modelsDir async => await platform_dl.getModelsDir();
@@ -86,8 +92,8 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
       return internalPath;
     }
     if (!kIsWeb && Platform.isAndroid) {
-      // Check app's external files dir
-      final extFilesDir = '/storage/emulated/0/Android/data/com.prasun01.astralm/files/Download/$filename';
+      final extFilesDir =
+          '/storage/emulated/0/Android/data/com.prasun01.astralm/files/Download/$filename';
       if (await File(extFilesDir).exists()) {
         return extFilesDir;
       }
@@ -127,92 +133,11 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
   @override
   void onInit() {
     super.onInit();
+    _notifService.init();
 
     if (!kIsWeb && Platform.isAndroid) {
       WidgetsBinding.instance.addObserver(this);
-
-      // Initial reconciliation on startup
       reconcileActiveDownloads();
-
-      // Permanent channel progress listener
-      const MethodChannel('com.prasun01.astralm/model_import')
-          .setMethodCallHandler((call) async {
-        if (call.method == 'importProgress') {
-          final data = Map<String, dynamic>.from(call.arguments as Map);
-          final filename = data['filename'] as String;
-          final downloaded = (data['copiedBytes'] as num).toInt();
-          final total = (data['totalBytes'] as num).toInt();
-          final speed = (data['bytesPerSecond'] as num).toDouble();
-          final status = data['status'] as String;
-
-          var progress = activeDownloads[filename];
-          if (progress == null &&
-              (status == 'Downloading...' ||
-                  status == 'Downloading to phone...' ||
-                  status.startsWith('Starting') ||
-                  status.startsWith('Importing'))) {
-            progress = DownloadProgress(filename: filename);
-            activeDownloads[filename] = progress;
-          }
-          if (progress != null) {
-            progress.updateProgress(
-              downloaded: downloaded,
-              total: total,
-              nativeSpeed: speed > 0 ? speed : null,
-              status: status,
-            );
-
-            if (status == 'Download complete') {
-              activeDownloads.remove(filename);
-              _nativeDownloadIds.remove(filename);
-              try {
-                Get.find<ModelController>().refreshDownloaded();
-              } catch (_) {}
-            } else if (status.startsWith('Download failed') ||
-                status == 'Download cancelled') {
-              activeDownloads.remove(filename);
-              _nativeDownloadIds.remove(filename);
-            }
-          }
-
-          // Also update ModelController import state in real-time if it is currently importing
-          try {
-            final modelCtrl = Get.find<ModelController>();
-            if (modelCtrl.isImporting.value) {
-              final isPhoneDownload =
-                  modelCtrl.importStatus.value.contains('phone') ||
-                      modelCtrl.importStatus.value.contains('Starting');
-
-              modelCtrl.importFileName.value = filename;
-              modelCtrl.importStatus.value = status;
-              modelCtrl.importCopiedBytes.value = downloaded;
-              modelCtrl.importTotalBytes.value = total;
-              modelCtrl.importBytesPerSecond.value = speed;
-
-              if (status == 'Download complete' ||
-                  status.startsWith('Download failed') ||
-                  status == 'Download cancelled') {
-                if (status == 'Download complete' && isPhoneDownload) {
-                  Get.snackbar(
-                    'Saved to Downloads',
-                    'Model downloaded and ready to use.',
-                    snackPosition: SnackPosition.BOTTOM,
-                    duration: const Duration(seconds: 4),
-                  );
-                }
-                Future.delayed(const Duration(seconds: 2), () {
-                  if (modelCtrl.importStatus.value == status) {
-                    modelCtrl.isImporting.value = false;
-                    modelCtrl.importFileName.value = '';
-                    modelCtrl.importStatus.value = '';
-                  }
-                });
-              }
-            }
-          } catch (_) {}
-        }
-        return null;
-      });
     }
   }
 
@@ -231,108 +156,188 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
     }
   }
 
+  /// Scans for unfinished downloads (.part.meta) and restores their progress state
   Future<void> reconcileActiveDownloads() async {
-    if (kIsWeb || !Platform.isAndroid) return;
+    if (kIsWeb) return;
     try {
-      final list = await platform_dl.getActiveNativeDownloads();
-      final recoveredFilenames = <String>{};
-      for (final item in list) {
-        final id = item['downloadId'] as int;
-        final filename = item['filename'] as String;
-        final downloaded = item['downloaded'] as int;
-        final total = item['total'] as int;
-        final status = item['status'] as String;
-        recoveredFilenames.add(filename);
+      final dirPath = await modelsDir;
+      final dir = Directory(dirPath);
+      if (!await dir.exists()) return;
 
-        _nativeDownloadIds[filename] = id;
+      for (final entity in dir.listSync()) {
+        if (entity is File && entity.path.endsWith('.part.meta')) {
+          try {
+            final content = await entity.readAsString();
+            final meta = jsonDecode(content) as Map<String, dynamic>;
+            final savePath = meta['savePath'] as String? ?? '';
+            final filename = savePath.split('/').last;
+            final totalBytes = meta['totalBytes'] as int? ?? 0;
+            final chunks = (meta['chunks'] as List<dynamic>?) ?? [];
 
-        final progress =
-            activeDownloads[filename] ?? DownloadProgress(filename: filename);
-        progress.updateProgress(
-          downloaded: downloaded,
-          total: total,
-          status: status,
-        );
-        progress.isPaused.value = status == 'Paused';
-        if (!activeDownloads.containsKey(filename)) {
-          activeDownloads[filename] = progress;
+            int downloadedBytes = 0;
+            for (final c in chunks) {
+              downloadedBytes += (c['downloadedBytes'] as int? ?? 0);
+            }
+
+            if (filename.isNotEmpty && !activeDownloads.containsKey(filename)) {
+              final progress = DownloadProgress(filename: filename);
+              progress.isPaused.value = true;
+              progress.statusMessage.value = 'Paused (Tap to resume)';
+              progress.updateProgress(
+                downloaded: downloadedBytes,
+                total: totalBytes,
+              );
+              activeDownloads[filename] = progress;
+            }
+          } catch (_) {}
         }
       }
-
-      // Remove UI entries whose native DownloadManager jobs no longer exist.
-      final staleFilenames = _nativeDownloadIds.keys
-          .where((filename) => !recoveredFilenames.contains(filename))
-          .toList();
-      for (final filename in staleFilenames) {
-        _nativeDownloadIds.remove(filename);
-        activeDownloads.remove(filename);
-      }
-
-      // Trigger refresh of downloaded models in case one finished in background
-      try {
-        Get.find<ModelController>().refreshDownloaded();
-      } catch (_) {}
-    } catch (e) {
-      print('[DownloadService] Failed to reconcile active downloads: $e');
-    }
+    } catch (_) {}
   }
 
+  /// High-speed parallel chunked download with foreground notification & verification
   Future<String> downloadModel({
     required String url,
     required String filename,
     String? authToken,
+    String? modelDisplayName,
   }) async {
     if (kIsWeb) return 'ERROR: Downloading models is not supported on web.';
 
+    final displayName = modelDisplayName ?? filename;
     final downloadProgress = DownloadProgress(filename: filename);
     activeDownloads[filename] = downloadProgress;
 
+    await _notifService.ensurePermission();
+
     final savePath = await modelPath(filename);
+    var lastNotifUpdate = DateTime.now();
+
     try {
       final result = await platform_dl.downloadModel(
         url: url,
         savePath: savePath,
         authToken: authToken,
-        onProgress: (received, total) {
+        onProgress: (received, total, speed) {
           downloadProgress.updateProgress(
             downloaded: received,
             total: total,
+            nativeSpeed: speed,
           );
+
+          final now = DateTime.now();
+          if (now.difference(lastNotifUpdate).inMilliseconds >= 800) {
+            lastNotifUpdate = now;
+            _notifService.showProgress(
+              filename: filename,
+              modelName: displayName,
+              downloadedBytes: received,
+              totalBytes: total,
+              bytesPerSecond: speed,
+              eta: downloadProgress.eta,
+            );
+          }
         },
       );
+
+      if (result == 'PAUSED') {
+        downloadProgress.isPaused.value = true;
+        downloadProgress.statusMessage.value = 'Paused';
+        await _notifService.cancel(filename);
+        return 'PAUSED';
+      }
+
       activeDownloads.remove(filename);
+      await _notifService.showComplete(
+        filename: filename,
+        modelName: displayName,
+        totalBytes: downloadProgress.totalBytes.value,
+      );
+
       try {
         Get.find<ModelController>().refreshDownloaded();
       } catch (_) {}
+
       return result;
     } catch (e) {
       activeDownloads.remove(filename);
+      final humanError = _humanizeError(e);
+      await _notifService.showError(
+        filename: filename,
+        modelName: displayName,
+        error: humanError,
+      );
+
+      Get.snackbar(
+        'Download Interrupted',
+        humanError,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: const Color(0xFF1E1014),
+        colorText: const Color(0xFFFFB4AB),
+        duration: const Duration(seconds: 4),
+        margin: const EdgeInsets.all(16),
+      );
+
       rethrow;
     }
   }
 
   void pauseDownload(String filename) {
-    final nativeId = _nativeDownloadIds[filename];
-    if (nativeId != null && Platform.isAndroid) {
-      platform_dl.cancelNativeDownload(
-          downloadId: nativeId, filename: filename);
-      activeDownloads.remove(filename);
-      _nativeDownloadIds.remove(filename);
-    } else {
-      platform_dl.pauseDownload(filename);
-      activeDownloads.remove(filename);
+    platform_dl.pauseDownload(filename);
+    final progress = activeDownloads[filename];
+    if (progress != null) {
+      progress.isPaused.value = true;
+      progress.statusMessage.value = 'Paused';
     }
+    _notifService.cancel(filename);
   }
 
   Future<void> deleteModel(String filename) async {
     if (kIsWeb) return;
-    final nativeId = _nativeDownloadIds[filename];
-    if (nativeId != null && Platform.isAndroid) {
-      await platform_dl.cancelNativeDownload(
-          downloadId: nativeId, filename: filename);
-      _nativeDownloadIds.remove(filename);
-    }
+    pauseDownload(filename);
+    activeDownloads.remove(filename);
     await platform_dl.deleteModel(await modelPath(filename));
+    await _notifService.cancel(filename);
+  }
+
+  String _humanizeError(dynamic error) {
+    final str = error.toString().toLowerCase();
+    if (str.contains('no space') || str.contains('enospc') || str.contains('storage')) {
+      return 'Not enough device storage. Please free up space and resume.';
+    }
+    if (str.contains('html or json error') || str.contains('rate limit')) {
+      return 'The download server is busy or rate-limited. Retrying shortly...';
+    }
+    if (str.contains('socket') || str.contains('network') || str.contains('handshake') || str.contains('connection')) {
+      return 'Network connection dropped. Download progress is saved.';
+    }
+    if (str.contains('timeout')) {
+      return 'Connection timed out. Resuming from saved progress...';
+    }
+    return 'Download interrupted. Progress saved—tap to resume.';
+  }
+
+  static String formatSpeed(double bytesPerSec) {
+    if (bytesPerSec <= 0) return '0 B/s';
+    if (bytesPerSec < 1024) return '${bytesPerSec.toStringAsFixed(0)} B/s';
+    if (bytesPerSec < 1024 * 1024) {
+      return '${(bytesPerSec / 1024).toStringAsFixed(1)} KB/s';
+    }
+    return '${(bytesPerSec / (1024 * 1024)).toStringAsFixed(1)} MB/s';
+  }
+
+  static String formatDuration(Duration? duration) {
+    if (duration == null) return '--:--';
+    final seconds = duration.inSeconds;
+    if (seconds < 60) return '${seconds}s';
+    final minutes = seconds ~/ 60;
+    final remSec = seconds % 60;
+    if (minutes < 60) {
+      return '$minutes:${remSec.toString().padLeft(2, '0')}';
+    }
+    final hours = minutes ~/ 60;
+    final remMin = minutes % 60;
+    return '${hours}h ${remMin}m';
   }
 
   static String formatBytes(int bytes) {
@@ -352,23 +357,5 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
     }
     final mb = (bytes / (1024 * 1024)).round().clamp(1, 1 << 31);
     return '$mb MB';
-  }
-
-  static String formatSpeed(double bytesPerSecond) {
-    if (bytesPerSecond <= 0 || bytesPerSecond.isNaN || bytesPerSecond.isInfinite) {
-      return '0 KB/s';
-    }
-    return '${formatBytes(bytesPerSecond.round())}/s';
-  }
-
-  static String formatDuration(Duration? duration) {
-    if (duration == null || duration.isNegative) return '--';
-    if (duration.inHours > 0) {
-      return '${duration.inHours}h ${duration.inMinutes.remainder(60)}m';
-    }
-    if (duration.inMinutes > 0) {
-      return '${duration.inMinutes}m ${duration.inSeconds.remainder(60)}s';
-    }
-    return '${duration.inSeconds}s';
   }
 }

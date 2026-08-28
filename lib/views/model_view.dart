@@ -57,32 +57,30 @@ class ModelView extends GetView<ModelController> {
           }
         },
         color: Theme.of(context).colorScheme.primary,
-        child: _buildVerticalFadingEdge(
-          child: Obx(() {
-            final scope = controller.modelScope.value;
-            final isInstalled = scope == 'installed';
-            final isDiscover = scope == 'discover' || scope == 'local';
-            final isCloud = scope == 'online' || scope == 'cloud';
+        child: Obx(() {
+          final scope = controller.modelScope.value;
+          final isInstalled = scope == 'installed';
+          final isDiscover = scope == 'discover' || scope == 'local';
+          final isCloud = scope == 'online' || scope == 'cloud';
 
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              children: [
-                _buildScopeToggle(context),
-                const SizedBox(height: 14),
-                _buildActiveModelBanner(context),
-                const SizedBox(height: 16),
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            children: [
+              _buildScopeToggle(context),
+              const SizedBox(height: 14),
+              _buildActiveModelBanner(context),
+              const SizedBox(height: 16),
 
-                if (isInstalled) ...[
-                  _buildInstalledSection(context),
-                ] else if (isDiscover) ...[
-                  _buildDiscoverSection(context),
-                ] else ...[
-                  _buildOnlineProviders(context),
-                ],
+              if (isInstalled) ...[
+                _buildInstalledSection(context),
+              ] else if (isDiscover) ...[
+                _buildDiscoverSection(context),
+              ] else ...[
+                _buildOnlineProviders(context),
               ],
-            );
-          }),
-        ),
+            ],
+          );
+        }),
       ),
     );
   }
@@ -3134,15 +3132,17 @@ class ModelView extends GetView<ModelController> {
           .clamp(0.0, 100.0)
           .toStringAsFixed(0);
 
-      return Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        color: isActive
-            ? Theme.of(context).colorScheme.secondaryContainer
-            : Theme.of(context).colorScheme.surfaceContainerLow,
+      return RepaintBoundary(
+        key: ValueKey('model_card_${model.filename}'),
+        child: Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          color: isActive
+              ? Theme.of(context).colorScheme.secondaryContainer
+              : Theme.of(context).colorScheme.surfaceContainerLow,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () => _showModelDetailSheet(context, model),
@@ -3314,6 +3314,7 @@ class ModelView extends GetView<ModelController> {
             ],
           ),
         ),
+      ),
       ),
       );
     });
