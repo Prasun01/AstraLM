@@ -1032,7 +1032,12 @@ Widget _monoListTile(
     mainAxisSize: MainAxisSize.min,
     children: [
       PressableScale(
-        onTap: onTap,
+        onTap: onTap == null
+            ? null
+            : () {
+                HapticFeedback.lightImpact();
+                onTap();
+              },
         pressedScale: 0.98,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),

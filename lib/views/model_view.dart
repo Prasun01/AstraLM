@@ -15,6 +15,8 @@ import '../services/inference_service.dart';
 import '../services/local_image_service.dart';
 import '../widgets/pressable_scale.dart';
 import '../widgets/provider_logo.dart';
+import '../widgets/app_ui_kit.dart';
+import '../widgets/model_card_item.dart';
 
 class ModelView extends GetView<ModelController> {
   const ModelView({super.key});
@@ -333,85 +335,14 @@ class ModelView extends GetView<ModelController> {
   }
 
   Widget _buildEmptyInstalledState(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF10121A) : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Center(
-        child: Column(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1A1D28) : const Color(0xFFECEFF6),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: PhosphorIcon(
-                  PhosphorIconsBold.hardDrives,
-                  size: 24,
-                  color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'No Models Installed Yet',
-              style: GoogleFonts.manrope(
-                fontSize: 15.5,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : const Color(0xFF0E1017),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Download models from our curated catalog or import custom GGUF/LiteRT models to chat offline.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 12.5,
-                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B),
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 18),
-            PressableScale(
-              onTap: () => controller.modelScope.value = 'discover',
-              pressedScale: 0.95,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white : Colors.black,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    PhosphorIcon(
-                      PhosphorIconsBold.compass,
-                      size: 16,
-                      color: isDark ? Colors.black : Colors.white,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Browse Discover Catalog',
-                      style: GoogleFonts.manrope(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.black : Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return AstraEmptyState(
+      icon: PhosphorIconsBold.hardDrives,
+      title: 'No models installed yet',
+      description:
+          'Download your first local AI model from our curated catalog or import custom GGUF/LiteRT files to chat offline with complete privacy.',
+      actionIcon: PhosphorIconsBold.compass,
+      actionLabel: 'Discover Models',
+      onAction: () => controller.modelScope.value = 'discover',
     );
   }
 
@@ -3109,215 +3040,11 @@ class ModelView extends GetView<ModelController> {
   }
 
   Widget _buildModelCard(BuildContext context, AiModel model) {
-    return Obx(() {
-      final isDownloaded = controller.isDownloaded(model.filename);
-      final inference = Get.find<InferenceService>();
-      final localImage = Get.find<LocalImageService>();
-      final isActive = inference.loadedModelName.value == model.filename ||
-          localImage.loadedModelName.value == model.filename;
-      final isCurrentlyDownloading =
-          controller.isDownloadingModel(model.filename);
-      final isAnyModelLoading =
-          inference.isLoadingModel.value || localImage.isLoadingModel.value;
-      final isThisTextModelLoading = inference.isLoadingModel.value &&
-          inference.loadingModelName.value == model.filename;
-      final isThisImageModelLoading = localImage.isLoadingModel.value &&
-          localImage.loadedModelName.value == model.filename;
-      final isThisModelLoading =
-          isThisTextModelLoading || isThisImageModelLoading;
-      final disableActions = controller.isImporting.value ||
-          isAnyModelLoading ||
-          isCurrentlyDownloading;
-      final loadPercent = (inference.modelLoadProgress.value * 100)
-          .clamp(0.0, 100.0)
-          .toStringAsFixed(0);
-
-      return RepaintBoundary(
-        key: ValueKey('model_card_${model.filename}'),
-        child: Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          color: isActive
-              ? Theme.of(context).colorScheme.secondaryContainer
-              : Theme.of(context).colorScheme.surfaceContainerLow,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => _showModelDetailSheet(context, model),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          model.name,
-                          style:
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    color: isActive
-                                        ? Theme.of(context)
-                                            .colorScheme
-                                            .onSecondaryContainer
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .onSurface,
-                                  ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                        children: [
-                          _buildHardwareFitBadge(context, model),
-                          const SizedBox(width: 6),
-                          Expanded(child: _buildModelBadges(context, model)),
-                        ],
-                      ),
-                        const SizedBox(height: 8),
-                        Text(
-                          model.description,
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            height: 1.4,
-                            color: isActive
-                                ? Theme.of(context)
-                                    .colorScheme
-                                    .onSecondaryContainer
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          controller.modelSizeLabel(model),
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: isActive
-                                ? Theme.of(context)
-                                    .colorScheme
-                                    .onSecondaryContainer
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  if (!isCurrentlyDownloading)
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        if (isDownloaded) ...[
-                          FilledButton.tonal(
-                            onPressed: isActive || disableActions
-                                ? null
-                                : () async {
-                                    await Get.find<SettingsController>()
-                                        .setInferenceMode('local');
-                                    await controller.loadModel(model.filename);
-                                  },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: isActive
-                                  ? null
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .surfaceContainerHighest,
-                              foregroundColor: isActive
-                                  ? Theme.of(context)
-                                      .colorScheme
-                                      .onSecondaryContainer
-                                  : Theme.of(context).colorScheme.primary,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              isThisImageModelLoading
-                                  ? 'Loading...'
-                                  : isThisTextModelLoading
-                                      ? '$loadPercent%'
-                                      : isActive
-                                          ? 'Active'
-                                          : 'Load',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: isActive ? 'Unload model' : 'Delete model',
-                            onPressed: disableActions
-                                ? null
-                                : isActive
-                                    ? () => controller.unloadModel()
-                                    : () => _confirmDeleteModel(
-                                        context, model.filename),
-                            icon: Icon(
-                              isActive
-                                  ? PhosphorIconsBold.stop
-                                  : PhosphorIconsBold.trash,
-                              size: 20,
-                              color: isActive
-                                  ? Theme.of(context)
-                                      .colorScheme
-                                      .onSecondaryContainer
-                                  : Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                        ] else ...[
-                          FilledButton(
-                            onPressed: disableActions
-                                ? null
-                                : () => _confirmDownload(context, model),
-                            style: FilledButton.styleFrom(
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.primary,
-                              foregroundColor:
-                                  Theme.of(context).colorScheme.onPrimary,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: const Text('Get',
-                                style: TextStyle(fontWeight: FontWeight.w600)),
-                          ),
-                        ],
-                      ],
-                    ),
-                ],
-              ),
-              if (isCurrentlyDownloading) ...[
-                const SizedBox(height: 16),
-                _buildInlineDownloadProgress(context, model),
-              ],
-              if (isThisModelLoading) ...[
-                const SizedBox(height: 16),
-                _buildModelLoadingProgress(context, model),
-              ],
-            ],
-          ),
-        ),
-      ),
-      ),
-      );
-    });
+    return ModelCardItem(
+      key: ValueKey('model_card_${model.filename}'),
+      model: model,
+      onDetailsTap: () => _showModelDetailSheet(context, model),
+    );
   }
 
   void _showModelDetailSheet(BuildContext context, AiModel model) {

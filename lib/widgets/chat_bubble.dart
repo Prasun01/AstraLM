@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import '../controllers/chat_controller.dart';
 import '../models/chat_message.dart';
 import '../utils/thought_parser.dart';
@@ -11,7 +14,6 @@ import 'code_block_widget.dart';
 import 'image_viewer.dart';
 import 'pressable_scale.dart';
 import 'thought_disclosure.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class ChatBubble extends StatelessWidget {
   final ChatMessage message;
@@ -249,7 +251,88 @@ class ChatBubble extends StatelessWidget {
                 ),
               ),
             ),
+          // Action Toolbar & Token Speed
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (message.tokensPerSec != null && message.tokensPerSec! > 0) ...[
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF141722)
+                          : const Color(0xFFEFF2F8),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${message.tokensPerSec!.toStringAsFixed(1)} t/s',
+                      style: GoogleFonts.firaCode(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? const Color(0xFF8E95A8)
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                _bubbleActionIcon(
+                  icon: PhosphorIconsBold.copy,
+                  tooltip: 'Copy response',
+                  isDark: isDark,
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Clipboard.setData(ClipboardData(text: answerContent));
+                    Get.snackbar(
+                      'Copied',
+                      'Response copied to clipboard',
+                      snackPosition: SnackPosition.BOTTOM,
+                      duration: const Duration(seconds: 2),
+                      margin: const EdgeInsets.all(12),
+                    );
+                  },
+                ),
+                const SizedBox(width: 4),
+                _bubbleActionIcon(
+                  icon: PhosphorIconsBold.shareNetwork,
+                  tooltip: 'Share response',
+                  isDark: isDark,
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Share.share(answerContent);
+                  },
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _bubbleActionIcon({
+    required PhosphorIconData icon,
+    required String tooltip,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: PressableScale(
+        pressedScale: 0.90,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: PhosphorIcon(
+            icon,
+            size: 15,
+            color: isDark ? const Color(0xFF6B7284) : const Color(0xFF94A3B8),
+          ),
+        ),
       ),
     );
   }

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/task_controller.dart';
 import '../models/task_model.dart';
+import '../widgets/app_ui_kit.dart';
 
 class TaskView extends GetView<TaskController> {
   const TaskView({super.key});
@@ -41,18 +42,16 @@ class TaskView extends GetView<TaskController> {
   }
 
   Widget _buildTaskList(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     if (controller.tasks.isEmpty) {
-      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Container(width: 60, height: 60,
-          decoration: BoxDecoration(color: scheme.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(18)),
-          child: Icon(PhosphorIconsBold.lightning, size: 30, color: scheme.primary)),
-        const SizedBox(height: 16),
-        Text('No Tasks Yet', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w600, color: scheme.onSurface)),
-        const SizedBox(height: 6),
-        Text('Create a task and the AI will plan\nand execute it autonomously', textAlign: TextAlign.center,
-          style: GoogleFonts.inter(fontSize: 15, color: scheme.onSurfaceVariant)),
-      ]));
+      return AstraEmptyState(
+        icon: PhosphorIconsBold.lightning,
+        title: 'No autonomous tasks yet',
+        description:
+            'Create an autonomous goal and AstraLM will plan, research, and execute each step automatically.',
+        actionIcon: PhosphorIconsBold.plus,
+        actionLabel: 'Create Task',
+        onAction: () => _showCreateDialog(context),
+      );
     }
 
     return ListView.builder(

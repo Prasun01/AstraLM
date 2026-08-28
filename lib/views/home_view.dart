@@ -98,7 +98,10 @@ class HomeView extends GetView<HomeController> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 4, vertical: 6),
                       child: InkWell(
-                        onTap: () => controller.changeTab(i),
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          controller.changeTab(i);
+                        },
                         borderRadius: BorderRadius.circular(18),
                         child: Center(
                           child: AnimatedContainer(
