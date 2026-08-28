@@ -3639,64 +3639,81 @@ class ModelView extends GetView<ModelController> {
                     ? 'Paused (${percent.toStringAsFixed(1)}%)'
                     : '${percent.toStringAsFixed(1)}%',
                 style: GoogleFonts.firaCode(
-                  fontSize: 13,
+                  fontSize: 12.5,
                   color: isPaused
                       ? const Color(0xFFF59E0B)
                       : Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               if (!isPaused)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: Theme.of(context)
                         .colorScheme
                         .surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(5),
                   ),
                   child: Text(
                     DownloadService.formatSpeed(dp.bytesPerSecond.value),
                     style: GoogleFonts.firaCode(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               const Spacer(),
-              if (isPaused)
-                FilledButton.tonalIcon(
+              if (isPaused) ...[
+                FilledButton.icon(
                   onPressed: () => controller.downloadModel(model),
-                  icon: PhosphorIcon(PhosphorIconsBold.play, size: 14),
-                  label: const Text('Resume'),
+                  icon: PhosphorIcon(PhosphorIconsBold.play, size: 13),
+                  label: const Text('Resume',
+                      style: TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
                   style: FilledButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                    minimumSize: const Size(0, 30),
                   ),
                 ),
-              if (isPaused) const SizedBox(width: 6),
-              TextButton.icon(
-                onPressed: () {
-                  controller.pauseDownload(model.filename);
-                  if (isPaused) {
+                const SizedBox(width: 4),
+                IconButton(
+                  onPressed: () {
+                    controller.pauseDownload(model.filename);
                     controller.deleteModel(model.filename);
-                  }
-                },
-                icon: Icon(PhosphorIconsBold.x, size: 16),
-                label: Text(isPaused ? 'Delete' : 'Cancel'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
-                  visualDensity: VisualDensity.compact,
+                  },
+                  icon: Icon(PhosphorIconsBold.trash, size: 16),
+                  tooltip: 'Delete download',
+                  style: IconButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.all(4),
+                    minimumSize: const Size(28, 28),
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
                 ),
-              ),
+              ] else ...[
+                IconButton(
+                  onPressed: () => controller.pauseDownload(model.filename),
+                  icon: Icon(PhosphorIconsBold.x, size: 16),
+                  tooltip: 'Cancel download',
+                  style: IconButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.all(4),
+                    minimumSize: const Size(28, 28),
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 4),
           Wrap(
-            spacing: 14,
+            spacing: 12,
             runSpacing: 4,
             children: [
               Text(
