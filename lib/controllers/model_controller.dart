@@ -1550,7 +1550,11 @@ class ModelController extends GetxController {
       if (!await dir.exists()) return;
       await for (final entity in dir.list()) {
         if (entity is File && entity.path.toLowerCase().endsWith('.part')) {
-          await entity.delete();
+          final metaFile = File('${entity.path}.meta');
+          // Preserve resumable downloads with metadata; only purge stale orphans
+          if (!await metaFile.exists()) {
+            await entity.delete();
+          }
         }
       }
     } catch (_) {}

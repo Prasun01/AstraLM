@@ -98,7 +98,12 @@ class ChunkedDownloader {
             ));
 
   CancelToken getCancelToken(String filename) {
-    return _cancelTokens.putIfAbsent(filename, () => CancelToken());
+    var token = _cancelTokens[filename];
+    if (token == null || token.isCancelled) {
+      token = CancelToken();
+      _cancelTokens[filename] = token;
+    }
+    return token;
   }
 
   void cancelDownload(String filename) {
@@ -109,7 +114,6 @@ class ChunkedDownloader {
     _cancelTokens.remove(filename);
   }
 
-  /// Probes remote server to determine file size and byte range support
   Future<Map<String, dynamic>> probeRemoteFile(String url,
       {String? authToken}) async {
     final headers = <String, dynamic>{};
@@ -120,62 +124,83 @@ class ChunkedDownloader {
     try {
       final headResp = await _dio.head(
         url,
-        options: Options(headers: headers, followRedirects: true),
+        options: Options(
+          headers: headers,
+          followRedirects: true,
+          maxRedirects: 10,
+          validateStatus: (status) =>
+              status != null && (status >= 200 && status < 400),
+        ),
       );
 
+      final contentLength =
+          int.tryParse(headResp.headers.value('content-length') ?? '') ?? 0;
       final acceptRanges =
-          headResp.headers.value('accept-ranges')?.toLowerCase();
-      final lenStr = headResp.headers.value(Headers.contentLengthHeader);
-      final size = int.tryParse(lenStr ?? '') ?? 0;
+          headResp.headers.value('accept-ranges')?.toLowerCase() ?? '';
+      final supportsRange = acceptRanges.contains('bytes');
 
-      if (size > 0) {
+      if (contentLength > 0) {
         return {
-          'size': size,
-          'supportsRange': acceptRanges == 'bytes' || size > 0,
+          'size': contentLength,
+          'supportsRange': supportsRange,
         };
       }
     } catch (_) {}
 
-    // Fallback: Range probe with Range: bytes=0-0
     try {
+      final rangeHeaders = Map<String, dynamic>.from(headers);
+      rangeHeaders['Range'] = 'bytes=0-0';
       final rangeResp = await _dio.get(
         url,
         options: Options(
-          headers: {...headers, 'Range': 'bytes=0-0'},
+          headers: rangeHeaders,
           followRedirects: true,
+          maxRedirects: 10,
+          validateStatus: (status) =>
+              status == 200 || status == 206,
         ),
       );
 
-      final isPartial = rangeResp.statusCode == 206;
-      final contentRange = rangeResp.headers.value('content-range');
-      if (contentRange != null && contentRange.contains('/')) {
-        final totalStr = contentRange.split('/').last.trim();
-        final size = int.tryParse(totalStr) ?? 0;
-        if (size > 0) {
-          return {'size': size, 'supportsRange': isPartial};
+      if (rangeResp.statusCode == 206) {
+        final contentRange = rangeResp.headers.value('content-range');
+        if (contentRange != null && contentRange.contains('/')) {
+          final totalStr = contentRange.split('/').last.trim();
+          final total = int.tryParse(totalStr) ?? 0;
+          if (total > 0) {
+            return {
+              'size': total,
+              'supportsRange': true,
+            };
+          }
         }
       }
 
-      final lenStr = rangeResp.headers.value(Headers.contentLengthHeader);
-      final size = int.tryParse(lenStr ?? '') ?? 0;
-      return {'size': size, 'supportsRange': isPartial};
-    } catch (_) {}
-
-    return {'size': 0, 'supportsRange': false};
+      final contentLength =
+          int.tryParse(rangeResp.headers.value('content-length') ?? '') ?? 0;
+      return {
+        'size': contentLength,
+        'supportsRange': false,
+      };
+    } catch (_) {
+      return {
+        'size': 0,
+        'supportsRange': false,
+      };
+    }
   }
 
-  /// Downloads file using parallel byte ranges with resume & metadata persistence
-  Future<String> download({
+  Future<String> startDownload({
     required String url,
     required String savePath,
     String? authToken,
     int concurrency = defaultConcurrency,
-    void Function(int received, int total, double bytesPerSecond)? onProgress,
+    void Function(int received, int total, double speedBytesPerSec)? onProgress,
   }) async {
     final filename = savePath.split('/').last;
-    final cancelToken = getCancelToken(filename);
-    final tempPath = '$savePath.part';
     final metaPath = '$savePath.part.meta';
+    final tempPath = '$savePath.part';
+
+    final cancelToken = getCancelToken(filename);
 
     if (Platform.isAndroid) {
       try {
@@ -184,7 +209,6 @@ class ChunkedDownloader {
     }
 
     try {
-      // 1. Check existing metadata or probe server
       DownloadMetadata? metadata;
       final metaFile = File(metaPath);
       final tempFile = File(tempPath);
@@ -205,7 +229,6 @@ class ChunkedDownloader {
         final supportsRange = probe['supportsRange'] as bool;
 
         if (totalBytes <= 0) {
-          // Single connection direct stream fallback
           return await _singleStreamDownload(
             url: url,
             savePath: savePath,
@@ -215,7 +238,6 @@ class ChunkedDownloader {
           );
         }
 
-        // Initialize multi-part chunks
         final actualConcurrency =
             (supportsRange && totalBytes >= minChunkSizeForParallel)
                 ? concurrency.clamp(2, 6)
@@ -241,14 +263,12 @@ class ChunkedDownloader {
           chunks: chunks,
         );
 
-        // Pre-allocate target temp file
         final raf = await tempFile.open(mode: FileMode.write);
         await raf.truncate(totalBytes);
         await raf.close();
         await _saveMetadata(metaFile, metadata);
       }
 
-      // 2. Execute parallel chunk workers
       final totalBytes = metadata.totalBytes;
       var lastReportTime = DateTime.now();
       var lastReportBytes = metadata.totalDownloaded;
@@ -269,10 +289,8 @@ class ChunkedDownloader {
         }
       }
 
-      // Initial callback
       onProgress?.call(metadata.totalDownloaded, totalBytes, 0);
 
-      // Run chunk workers concurrently
       final incompleteChunks =
           metadata.chunks.where((c) => !c.isCompleted).toList();
 
@@ -295,7 +313,6 @@ class ChunkedDownloader {
         return 'PAUSED';
       }
 
-      // 3. Final verification of downloaded file
       final finalDownloaded = await tempFile.length();
       if (totalBytes > 0 && finalDownloaded < totalBytes) {
         throw Exception(
@@ -303,10 +320,8 @@ class ChunkedDownloader {
         );
       }
 
-      // 4. Verify GGUF / LiteRT File Magic Header Integrity
       await _verifyFileHeaderIntegrity(tempFile);
 
-      // 5. Atomic Rename to final file and cleanup metadata
       final finalFile = File(savePath);
       if (await finalFile.exists()) {
         await finalFile.delete();
@@ -319,11 +334,6 @@ class ChunkedDownloader {
 
       onProgress?.call(totalBytes, totalBytes, 0);
       return savePath;
-    } catch (e) {
-      if (cancelToken.isCancelled) {
-        return 'PAUSED';
-      }
-      rethrow;
     } finally {
       if (Platform.isAndroid) {
         try {
@@ -369,7 +379,7 @@ class ChunkedDownloader {
 
       RandomAccessFile? raf;
       try {
-        raf = await tempFile.open(mode: FileMode.append);
+        raf = await tempFile.open(mode: FileMode.write);
         await raf.setPosition(requestStart);
 
         final response = await _dio.get<ResponseBody>(
@@ -449,28 +459,25 @@ class ChunkedDownloader {
           await Future.delayed(Duration(seconds: 1 + attempt));
           continue;
         }
-        rethrow;
+        throw Exception('Chunk ${chunk.index} unexpected error: $e');
       }
     }
   }
 
-  Future<void> _saveMetadata(File metaFile, DownloadMetadata metadata) async {
-    try {
-      final json = jsonEncode(metadata.toJson());
-      await metaFile.writeAsString(json, flush: true);
-    } catch (_) {}
-  }
-
-  /// Single connection streaming fallback for servers that reject HTTP Range headers
   Future<String> _singleStreamDownload({
     required String url,
     required String savePath,
     String? authToken,
     required CancelToken cancelToken,
-    void Function(int received, int total, double bytesPerSecond)? onProgress,
+    void Function(int received, int total, double speedBytesPerSec)? onProgress,
   }) async {
     final tempPath = '$savePath.part';
     final tempFile = File(tempPath);
+
+    int existingBytes = 0;
+    if (await tempFile.exists()) {
+      existingBytes = await tempFile.length();
+    }
 
     final headers = <String, dynamic>{
       'User-Agent':
@@ -479,6 +486,9 @@ class ChunkedDownloader {
     };
     if (authToken != null && authToken.isNotEmpty) {
       headers['Authorization'] = 'Bearer $authToken';
+    }
+    if (existingBytes > 0) {
+      headers['Range'] = 'bytes=$existingBytes-';
     }
 
     final response = await _dio.get<ResponseBody>(
@@ -490,46 +500,62 @@ class ChunkedDownloader {
         followRedirects: true,
         maxRedirects: 10,
         validateStatus: (status) =>
-            status != null && (status >= 200 && status < 400),
+            status == 200 || status == 206,
       ),
     );
 
-    final streamLength = int.tryParse(
-          response.headers.value(Headers.contentLengthHeader) ?? '',
-        ) ??
-        0;
+    int totalBytes = -1;
+    final isPartial = response.statusCode == 206;
 
-    final sink = tempFile.openWrite(mode: FileMode.write);
-    var received = 0;
+    if (isPartial) {
+      final contentRange = response.headers.value('content-range');
+      if (contentRange != null && contentRange.contains('/')) {
+        totalBytes =
+            int.tryParse(contentRange.split('/').last.trim()) ?? -1;
+      }
+    } else {
+      totalBytes =
+          int.tryParse(response.headers.value('content-length') ?? '') ?? -1;
+      existingBytes = 0;
+    }
+
+    final raf = await tempFile.open(
+        mode: isPartial ? FileMode.write : FileMode.write);
+    if (isPartial) {
+      await raf.setPosition(existingBytes);
+    }
+
+    int receivedBytes = existingBytes;
     var lastReportTime = DateTime.now();
-    var lastReportBytes = 0;
+    var lastReportBytes = receivedBytes;
     var smoothedSpeed = 0.0;
 
     try {
-      await for (final chunk in response.data!.stream) {
+      await for (final data in response.data!.stream) {
         if (cancelToken.isCancelled) {
-          await sink.flush();
-          await sink.close();
+          await raf.flush();
+          await raf.close();
           return 'PAUSED';
         }
-        sink.add(chunk);
-        received += chunk.length;
+
+        await raf.writeFrom(data);
+        receivedBytes += data.length;
 
         final now = DateTime.now();
         final elapsed = now.difference(lastReportTime).inMilliseconds / 1000.0;
         if (elapsed >= 0.25) {
-          final instantSpeed = (received - lastReportBytes) / elapsed;
+          final instantSpeed = (receivedBytes - lastReportBytes) / elapsed;
           smoothedSpeed = smoothedSpeed <= 0
               ? instantSpeed
               : (0.75 * smoothedSpeed + 0.25 * instantSpeed);
           lastReportTime = now;
-          lastReportBytes = received;
-          onProgress?.call(received, streamLength, smoothedSpeed);
+          lastReportBytes = receivedBytes;
+          onProgress?.call(receivedBytes, totalBytes, smoothedSpeed);
         }
       }
 
-      await sink.flush();
-      await sink.close();
+      await raf.flush();
+      await raf.close();
 
       await _verifyFileHeaderIntegrity(tempFile);
 
@@ -538,45 +564,45 @@ class ChunkedDownloader {
         await finalFile.delete();
       }
       await tempFile.rename(savePath);
+
+      onProgress?.call(totalBytes, totalBytes, 0);
       return savePath;
     } catch (e) {
-      await sink.flush();
-      await sink.close();
+      try {
+        await raf.close();
+      } catch (_) {}
       rethrow;
     }
   }
 
-  /// Strictly validates GGUF magic header (0x47 0x47 0x55 0x46 = 'GGUF') or LiteRT FlatBuffers
   Future<void> _verifyFileHeaderIntegrity(File file) async {
-    if (!await file.exists() || await file.length() < 16) {
-      throw Exception('Downloaded file is empty or corrupted (size < 16 bytes).');
+    if (!await file.exists()) {
+      throw Exception('Downloaded file does not exist.');
+    }
+    final len = await file.length();
+    if (len < 16) {
+      throw Exception('Downloaded file is too small ($len bytes).');
     }
 
     final raf = await file.open(mode: FileMode.read);
-    try {
-      final header = await raf.read(8);
-      if (header.length < 4) {
-        throw Exception('Downloaded file header is truncated.');
-      }
+    final headerBytes = await raf.read(8);
+    await raf.close();
 
-      // Check GGUF magic: ASCII 'GGUF' -> [0x47, 0x47, 0x55, 0x46]
-      final isGguf = header[0] == 0x47 &&
-          header[1] == 0x47 &&
-          header[2] == 0x55 &&
-          header[3] == 0x46;
-
-      // Check HTML error page indicator: '<!DO', '<htm', '{"er'
-      final isHtmlOrJsonError =
-          (header[0] == 0x3C && header[1] == 0x21) || // '<!'
-          (header[0] == 0x3C && header[1] == 0x68) || // '<h'
-          (header[0] == 0x7B && header[1] == 0x22);   // '{"'
-
-      if (isHtmlOrJsonError) {
-        throw Exception(
-            'Server returned an HTML or JSON error response instead of model weights. Check the download link or authentication.');
-      }
-    } finally {
-      await raf.close();
+    final headerStr = String.fromCharCodes(headerBytes);
+    if (headerStr.startsWith('<!DOC') ||
+        headerStr.startsWith('<html') ||
+        headerStr.startsWith('{"err') ||
+        headerStr.startsWith('{"mes')) {
+      throw Exception(
+        'Server returned an HTML/JSON error page instead of binary model data.',
+      );
     }
+  }
+
+  Future<void> _saveMetadata(File metaFile, DownloadMetadata metadata) async {
+    try {
+      final jsonStr = jsonEncode(metadata.toJson());
+      await metaFile.writeAsString(jsonStr, flush: true);
+    } catch (_) {}
   }
 }

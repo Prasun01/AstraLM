@@ -205,7 +205,12 @@ class DownloadService extends GetxService with WidgetsBindingObserver {
     if (kIsWeb) return 'ERROR: Downloading models is not supported on web.';
 
     final displayName = modelDisplayName ?? filename;
-    final downloadProgress = DownloadProgress(filename: filename);
+    final downloadProgress = activeDownloads.putIfAbsent(
+      filename,
+      () => DownloadProgress(filename: filename),
+    );
+    downloadProgress.isPaused.value = false;
+    downloadProgress.statusMessage.value = 'Downloading...';
     activeDownloads[filename] = downloadProgress;
 
     await _notifService.ensurePermission();

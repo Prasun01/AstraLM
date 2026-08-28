@@ -3606,6 +3606,7 @@ class ModelView extends GetView<ModelController> {
   Widget _buildInlineDownloadProgress(BuildContext context, AiModel model) {
     final dp = controller.getDownloadProgress(model.filename)!;
     return Obx(() {
+      final isPaused = dp.isPaused.value;
       final percent = dp.progress.value * 100;
       final totalLabel = dp.totalBytes.value > 0
           ? DownloadService.formatWholeMb(dp.totalBytes.value)
@@ -3624,7 +3625,9 @@ class ModelView extends GetView<ModelController> {
               value: dp.progress.value > 0 ? dp.progress.value : null,
               backgroundColor:
                   Theme.of(context).colorScheme.surfaceContainerHighest,
-              color: Theme.of(context).colorScheme.primary,
+              color: isPaused
+                  ? const Color(0xFFF59E0B)
+                  : Theme.of(context).colorScheme.primary,
               minHeight: 3,
             ),
           ),
@@ -3632,38 +3635,61 @@ class ModelView extends GetView<ModelController> {
           Row(
             children: [
               Text(
-                '${percent.toStringAsFixed(1)}%',
+                isPaused
+                    ? 'Paused (${percent.toStringAsFixed(1)}%)'
+                    : '${percent.toStringAsFixed(1)}%',
                 style: GoogleFonts.firaCode(
                   fontSize: 13,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: isPaused
+                      ? const Color(0xFFF59E0B)
+                      : Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  DownloadService.formatSpeed(dp.bytesPerSecond.value),
-                  style: GoogleFonts.firaCode(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
+              if (!isPaused)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    DownloadService.formatSpeed(dp.bytesPerSecond.value),
+                    style: GoogleFonts.firaCode(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
               const Spacer(),
+              if (isPaused)
+                FilledButton.tonalIcon(
+                  onPressed: () => controller.downloadModel(model),
+                  icon: PhosphorIcon(PhosphorIconsBold.play, size: 14),
+                  label: const Text('Resume'),
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  ),
+                ),
+              if (isPaused) const SizedBox(width: 6),
               TextButton.icon(
-                onPressed: () => controller.pauseDownload(model.filename),
+                onPressed: () {
+                  controller.pauseDownload(model.filename);
+                  if (isPaused) {
+                    controller.deleteModel(model.filename);
+                  }
+                },
                 icon: Icon(PhosphorIconsBold.x, size: 16),
-                label: const Text('Cancel'),
+                label: Text(isPaused ? 'Delete' : 'Cancel'),
                 style: TextButton.styleFrom(
                   foregroundColor: Theme.of(context).colorScheme.error,
+                  visualDensity: VisualDensity.compact,
                 ),
               ),
             ],
@@ -3676,19 +3702,23 @@ class ModelView extends GetView<ModelController> {
               Text(
                 '${DownloadService.formatWholeMb(dp.downloadedBytes.value)} / $totalLabel',
                 style: GoogleFonts.inter(
-                    fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               if (dp.totalBytes.value > 0)
                 Text(
                   '${DownloadService.formatWholeMb(remaining)} left',
                   style: GoogleFonts.inter(
-                      fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
-              Text(
-                'ETA: ${DownloadService.formatDuration(dp.eta)}',
-                style: GoogleFonts.inter(
-                    fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
-              ),
+              if (!isPaused)
+                Text(
+                  'ETA: ${DownloadService.formatDuration(dp.eta)}',
+                  style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
             ],
           ),
         ],
