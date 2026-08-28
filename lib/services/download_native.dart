@@ -70,7 +70,7 @@ Future<String> downloadModel({
   String? authToken,
   void Function(int received, int total, double bytesPerSecond)? onProgress,
 }) async {
-  return await _downloader.download(
+  return await _downloader.startDownload(
     url: url,
     savePath: savePath,
     authToken: authToken,
