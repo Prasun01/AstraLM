@@ -63,32 +63,19 @@ class ModelView extends GetView<ModelController> {
           }
         },
         color: Theme.of(context).colorScheme.primary,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          children: [
-            _buildScopeToggle(context),
-            const SizedBox(height: 14),
-            _buildActiveModelBanner(context),
-            const SizedBox(height: 16),
+        child: Obx(() {
+          final scope = controller.modelScope.value;
+          final isInstalled = scope == 'installed';
+          final isDiscover = scope == 'discover' || scope == 'local';
 
-            Obx(() {
-              final scope = controller.modelScope.value;
-              final isInstalled = scope == 'installed';
-              final isDiscover = scope == 'discover' || scope == 'local';
-
-              if (isInstalled) {
-                return _buildInstalledSection(context);
-              } else if (isDiscover) {
-                return _buildDiscoverSection(context);
-              } else {
-                return _buildOnlineProviders(context);
-              }
-            }),
-          ],
-        ),
+          if (isInstalled) {
+            return _buildInstalledScrollView(context);
+          } else if (isDiscover) {
+            return _buildDiscoverScrollView(context);
+          } else {
+            return _buildOnlineScrollView(context);
+          }
+        }),
       ),
     );
   }
@@ -238,121 +225,143 @@ class ModelView extends GetView<ModelController> {
   }
 
   // ── Tab 1: Installed Models View ──
-  Widget _buildInstalledSection(BuildContext context) {
+  Widget _buildInstalledScrollView(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final installed = controller.installedModels;
+    final downloading = controller.downloadingModels;
     final totalBytes = controller.totalInstalledBytes;
     final formattedSize = totalBytes > 0 ? DownloadService.formatBytes(totalBytes) : '0 MB';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Storage Footprint Summary
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF10121A) : const Color(0xFFF1F4F9),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              PhosphorIcon(
-                PhosphorIconsBold.hardDrives,
-                size: 20,
-                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${installed.length} ${installed.length == 1 ? "Model" : "Models"} Installed',
-                      style: GoogleFonts.manrope(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : const Color(0xFF0E1017),
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      '$formattedSize total local storage used',
-                      style: GoogleFonts.inter(
-                        fontSize: 11.5,
-                        color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              PressableScale(
-                onTap: () => controller.modelScope.value = 'discover',
-                pressedScale: 0.94,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildScopeToggle(context),
+                const SizedBox(height: 14),
+                _buildActiveModelBanner(context),
+                const SizedBox(height: 16),
+                // Storage Footprint Summary
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E222F) : Colors.white,
-                    borderRadius: BorderRadius.circular(10),
+                    color: isDark ? const Color(0xFF10121A) : const Color(0xFFF1F4F9),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       PhosphorIcon(
-                        PhosphorIconsBold.plus,
-                        size: 13,
-                        color: isDark ? Colors.white : Colors.black,
+                        PhosphorIconsBold.hardDrives,
+                        size: 20,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Add Model',
-                        style: GoogleFonts.manrope(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : Colors.black,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${installed.length} ${installed.length == 1 ? "Model" : "Models"} Installed',
+                              style: GoogleFonts.manrope(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : const Color(0xFF0E1017),
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              '$formattedSize total local storage used',
+                              style: GoogleFonts.inter(
+                                fontSize: 11.5,
+                                color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => controller.modelScope.value = 'discover',
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E222F) : Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              PhosphorIcon(
+                                PhosphorIconsBold.plus,
+                                size: 13,
+                                color: isDark ? Colors.white : Colors.black,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Add Model',
+                                style: GoogleFonts.manrope(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                // Section 1: Downloading & Paused Models
+                if (downloading.isNotEmpty) ...[
+                  Text(
+                    'DOWNLOADING (${downloading.length})',
+                    style: GoogleFonts.manrope(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074),
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...downloading.map((model) => _buildModelCard(context, model)),
+                  const SizedBox(height: 16),
+                ],
+                // Section 2: Installed Models Header or Empty State
+                if (installed.isEmpty && downloading.isEmpty)
+                  _buildEmptyInstalledState(context)
+                else if (installed.isNotEmpty)
+                  Text(
+                    'READY TO RUN (${installed.length})',
+                    style: GoogleFonts.manrope(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074),
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 16),
-
-        // Section 1: Downloading & Paused Models
-        if (controller.downloadingModels.isNotEmpty) ...[
-          Text(
-            'DOWNLOADING (${controller.downloadingModels.length})',
-            style: GoogleFonts.manrope(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-              color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074),
-              letterSpacing: 1.0,
+        if (installed.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+            sliver: SliverList.builder(
+              itemCount: installed.length,
+              itemBuilder: (context, index) {
+                return _buildModelCard(context, installed[index]);
+              },
             ),
           ),
-          const SizedBox(height: 12),
-          ...controller.downloadingModels
-              .map((model) => _buildModelCard(context, model)),
-          const SizedBox(height: 16),
-        ],
-
-        // Section 2: Installed Models or Empty State
-        if (installed.isEmpty && controller.downloadingModels.isEmpty)
-          _buildEmptyInstalledState(context)
-        else if (installed.isNotEmpty) ...[
-          Text(
-            'READY TO RUN (${installed.length})',
-            style: GoogleFonts.manrope(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-              color: isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074),
-              letterSpacing: 1.0,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...installed.map((model) => _buildModelCard(context, model)),
-        ],
       ],
     );
   }
@@ -369,46 +378,89 @@ class ModelView extends GetView<ModelController> {
     );
   }
 
-  Widget _buildDiscoverSection(BuildContext context) {
+  // ── Tab 2: Discover Catalog View ──
+  Widget _buildDiscoverScrollView(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final models = controller.filteredDisplayedModels;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildImportingProgress(context),
-        _buildRecommendedSection(context),
-        _buildLocalFilterChips(context),
-        const SizedBox(height: 14),
-        Obx(() {
-          final models = controller.filteredDisplayedModels;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'CATALOG MODELS (${models.length})',
-                    style: GoogleFonts.manrope(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
-                      color: isDark
-                          ? const Color(0xFF8E95A8)
-                          : const Color(0xFF5A6074),
-                      letterSpacing: 1.0,
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildScopeToggle(context),
+                const SizedBox(height: 14),
+                _buildActiveModelBanner(context),
+                const SizedBox(height: 16),
+                _buildImportingProgress(context),
+                _buildRecommendedSection(context),
+                _buildLocalFilterChips(context),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'CATALOG MODELS (${models.length})',
+                      style: GoogleFonts.manrope(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: isDark
+                            ? const Color(0xFF8E95A8)
+                            : const Color(0xFF5A6074),
+                        letterSpacing: 1.0,
+                      ),
                     ),
-                  ),
-                  _buildSortSelector(context),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (models.isEmpty)
-                _buildEmptyLocalState(context)
-              else
-                ...models.map((model) => _buildModelCard(context, model)),
-            ],
-          );
-        }),
+                    _buildSortSelector(context),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (models.isEmpty) _buildEmptyLocalState(context),
+              ],
+            ),
+          ),
+        ),
+        if (models.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+            sliver: SliverList.builder(
+              itemCount: models.length,
+              itemBuilder: (context, index) {
+                return _buildModelCard(context, models[index]);
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── Tab 3: Cloud Providers View ──
+  Widget _buildOnlineScrollView(BuildContext context) {
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildScopeToggle(context),
+                const SizedBox(height: 14),
+                _buildActiveModelBanner(context),
+                const SizedBox(height: 16),
+                _buildOnlineProviders(context),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -3075,10 +3127,13 @@ class ModelView extends GetView<ModelController> {
   }
 
   Widget _buildModelCard(BuildContext context, AiModel model) {
-    return ModelCardItem(
-      key: ValueKey('model_card_${model.filename}'),
-      model: model,
-      onDetailsTap: () => _showModelDetailSheet(context, model),
+    return RepaintBoundary(
+      key: ValueKey('model_boundary_${model.filename}'),
+      child: ModelCardItem(
+        key: ValueKey('model_card_${model.filename}'),
+        model: model,
+        onDetailsTap: () => _showModelDetailSheet(context, model),
+      ),
     );
   }
 

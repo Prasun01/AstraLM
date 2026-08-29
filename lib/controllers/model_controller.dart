@@ -40,7 +40,7 @@ class ModelController extends GetxController {
   final customModels = <AiModel>[].obs;
   final fileSizes = <String, int>{}.obs;
     final modelScope = 'local'.obs;
-  final localFilter = ''.obs;
+  final localFilter = 'all'.obs;
   final localEngineFilter = 'all'.obs; // 'all', 'litert', 'gguf', 'sd'
   final localSearchQuery = ''.obs;
   final localSizeFilter = 'all'.obs; // 'all', 'tiny', 'small', 'medium'
@@ -246,8 +246,7 @@ class ModelController extends GetxController {
         lower.contains('think');
   }
 
-  String get defaultLocalFilter =>
-      downloadedFiles.isNotEmpty ? 'downloaded' : 'all';
+  String get defaultLocalFilter => 'all';
 
   double get importProgress => importTotalBytes.value <= 0
       ? 0.0
