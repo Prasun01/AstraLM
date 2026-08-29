@@ -414,7 +414,6 @@ class ModelView extends GetView<ModelController> {
     );
   }
 
-  // ── Tab 2: Discover Catalog View ──
   Widget _buildDiscoverSection(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -425,28 +424,36 @@ class ModelView extends GetView<ModelController> {
         _buildRecommendedSection(context),
         _buildLocalFilterChips(context),
         const SizedBox(height: 14),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'CATALOG MODELS (${controller.filteredDisplayedModels.length})',
-              style: GoogleFonts.manrope(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w800,
-                color: isDark
-                    ? const Color(0xFF8E95A8)
-                    : const Color(0xFF5A6074),
-                letterSpacing: 1.0,
+        Obx(() {
+          final models = controller.filteredDisplayedModels;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'CATALOG MODELS (${models.length})',
+                    style: GoogleFonts.manrope(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: isDark
+                          ? const Color(0xFF8E95A8)
+                          : const Color(0xFF5A6074),
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  _buildSortSelector(context),
+                ],
               ),
-            ),
-            _buildSortSelector(context),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (controller.filteredDisplayedModels.isEmpty)
-          _buildEmptyLocalState(context)
-        else
-          ...controller.filteredDisplayedModels.map((model) => _buildModelCard(context, model)),
+              const SizedBox(height: 12),
+              if (models.isEmpty)
+                _buildEmptyLocalState(context)
+              else
+                ...models.map((model) => _buildModelCard(context, model)),
+            ],
+          );
+        }),
       ],
     );
   }
@@ -1462,27 +1469,32 @@ class ModelView extends GetView<ModelController> {
 
   Widget _buildOnlineProviders(BuildContext context) {
     final cloud = Get.find<CloudModelController>();
-    return Obx(() {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'PROVIDERS',
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              letterSpacing: 1.2,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'PROVIDERS',
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            letterSpacing: 1.2,
           ),
-          const SizedBox(height: 12),
-          for (final provider in cloud.providers)
-            _buildOnlineProviderRow(context, cloud, provider),
-          const SizedBox(height: 24),
-          _buildOnlineApiFaq(context),
-        ],
-      );
-    });
+        ),
+        const SizedBox(height: 12),
+        Obx(() {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final provider in cloud.providers)
+                _buildOnlineProviderRow(context, cloud, provider),
+            ],
+          );
+        }),
+        const SizedBox(height: 24),
+        _buildOnlineApiFaq(context),
+      ],
+    );
   }
 
   Widget _buildOnlineApiFaq(BuildContext context) {
@@ -3131,23 +3143,12 @@ class ModelView extends GetView<ModelController> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (ctx) => TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0.0, end: 1.0),
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-        builder: (context, animValue, child) => Opacity(
-          opacity: animValue,
-          child: Transform.translate(
-            offset: Offset(0, (1 - animValue) * 20),
-            child: child,
-          ),
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.88,
         ),
-        child: Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.88,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Column(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Top Bar with back button and header title
@@ -3360,7 +3361,6 @@ class ModelView extends GetView<ModelController> {
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -3538,45 +3538,9 @@ class ModelView extends GetView<ModelController> {
     });
   }
 
-  Widget _buildVerticalFadingEdge({required Widget child}) {
-    return ShaderMask(
-      shaderCallback: (Rect bounds) {
-        return const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.transparent,
-            Colors.black,
-            Colors.black,
-            Colors.transparent,
-          ],
-          stops: [0.0, 0.02, 0.98, 1.0],
-        ).createShader(bounds);
-      },
-      blendMode: BlendMode.dstIn,
-      child: child,
-    );
-  }
+  Widget _buildVerticalFadingEdge({required Widget child}) => child;
 
-  Widget _buildHorizontalFadingEdge({required Widget child}) {
-    return ShaderMask(
-      shaderCallback: (Rect bounds) {
-        return const LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            Colors.transparent,
-            Colors.black,
-            Colors.black,
-            Colors.transparent,
-          ],
-          stops: [0.0, 0.03, 0.97, 1.0],
-        ).createShader(bounds);
-      },
-      blendMode: BlendMode.dstIn,
-      child: child,
-    );
-  }
+  Widget _buildHorizontalFadingEdge({required Widget child}) => child;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
