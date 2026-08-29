@@ -35,36 +35,35 @@ class AstraCard extends StatelessWidget {
             ? (isDark ? const Color(0xFF161924) : const Color(0xFFEAEFF8))
             : (isDark ? const Color(0xFF0F1118) : const Color(0xFFF4F6FB)));
 
-    Widget content = Container(
-      padding: padding,
-      decoration: BoxDecoration(
+    return Padding(
+      padding: margin,
+      child: Material(
         color: bg,
         borderRadius: BorderRadius.circular(16),
-        border: isHighlighted
-            ? Border.all(
-                color: isDark ? const Color(0xFF2A3045) : const Color(0xFFCBD5E1),
-                width: 1,
-              )
-            : null,
-      ),
-      child: child,
-    );
-
-    if (onTap != null) {
-      content = PressableScale(
-        pressedScale: 0.98,
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap!();
-        },
-        child: content,
-      );
-    }
-
-    return RepaintBoundary(
-      child: Padding(
-        padding: margin,
-        child: content,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap != null
+              ? () {
+                  HapticFeedback.lightImpact();
+                  onTap!();
+                }
+              : null,
+          child: Container(
+            padding: padding,
+            decoration: isHighlighted
+                ? BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF2A3045)
+                          : const Color(0xFFCBD5E1),
+                      width: 1,
+                    ),
+                  )
+                : null,
+            child: child,
+          ),
+        ),
       ),
     );
   }

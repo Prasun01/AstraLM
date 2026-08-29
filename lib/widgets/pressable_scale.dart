@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 /// A highly polished, tactile pressable widget with fluid spring compression,
@@ -79,31 +80,42 @@ class _PressableScaleState extends State<PressableScale>
     }
   }
 
+  Timer? _downTimer;
+
   @override
   void dispose() {
+    _downTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
   void _handleTapDown(TapDownDetails _) {
     if (widget.onTap == null && widget.onLongPress == null) return;
-    _controller.forward();
+    _downTimer?.cancel();
+    // 35ms debounce prevents scroll flings from triggering compression animations
+    _downTimer = Timer(const Duration(milliseconds: 35), () {
+      if (mounted) {
+        _controller.forward();
+      }
+    });
   }
 
   void _handleTapUp(TapUpDetails _) {
+    _downTimer?.cancel();
     _release();
   }
 
   void _handleTapCancel() {
-    _release();
+    _downTimer?.cancel();
+    if (_controller.value > 0) {
+      _controller.reverse();
+    }
   }
 
   void _release() {
-    Future.delayed(const Duration(milliseconds: 80), () {
-      if (mounted && _controller.status != AnimationStatus.dismissed) {
-        _controller.reverse();
-      }
-    });
+    if (mounted && _controller.status != AnimationStatus.dismissed) {
+      _controller.reverse();
+    }
   }
 
   void _handleTap() {

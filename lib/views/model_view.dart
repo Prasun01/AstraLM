@@ -56,84 +56,39 @@ class ModelView extends GetView<ModelController> {
           }),
         ],
       ),
-      body: Stack(
-        children: [
-          RefreshIndicator(
-            onRefresh: () async {
-              if (controller.modelScope.value != 'online') {
-                await controller.refreshDownloaded();
+      body: RefreshIndicator(
+        onRefresh: () async {
+          if (controller.modelScope.value != 'online') {
+            await controller.refreshDownloaded();
+          }
+        },
+        color: Theme.of(context).colorScheme.primary,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          children: [
+            _buildScopeToggle(context),
+            const SizedBox(height: 14),
+            _buildActiveModelBanner(context),
+            const SizedBox(height: 16),
+
+            Obx(() {
+              final scope = controller.modelScope.value;
+              final isInstalled = scope == 'installed';
+              final isDiscover = scope == 'discover' || scope == 'local';
+
+              if (isInstalled) {
+                return _buildInstalledSection(context);
+              } else if (isDiscover) {
+                return _buildDiscoverSection(context);
+              } else {
+                return _buildOnlineProviders(context);
               }
-            },
-            color: Theme.of(context).colorScheme.primary,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-              children: [
-                _buildScopeToggle(context),
-                const SizedBox(height: 14),
-                _buildActiveModelBanner(context),
-                const SizedBox(height: 16),
-
-                Obx(() {
-                  final scope = controller.modelScope.value;
-                  final isInstalled = scope == 'installed';
-                  final isDiscover = scope == 'discover' || scope == 'local';
-
-                  if (isInstalled) {
-                    return _buildInstalledSection(context);
-                  } else if (isDiscover) {
-                    return _buildDiscoverSection(context);
-                  } else {
-                    return _buildOnlineProviders(context);
-                  }
-                }),
-              ],
-            ),
-          ),
-
-          // ── Top Subtle Gradient Fade ──
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 14,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      bgColor,
-                      bgColor.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // ── Bottom Subtle Gradient Fade ──
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 24,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      bgColor,
-                      bgColor.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+            }),
+          ],
+        ),
       ),
     );
   }
