@@ -146,16 +146,16 @@ class _ModelCardItemState extends State<ModelCardItem> {
             const SizedBox(height: 10),
             Row(
               children: [
-                PressableScale(
-                  pressedScale: 0.95,
+                InkWell(
                   onTap: () {
                     HapticFeedback.selectionClick();
                     setState(() {
                       _isAdvancedExpanded = !_isAdvancedExpanded;
                     });
                   },
+                  borderRadius: BorderRadius.circular(6),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

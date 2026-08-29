@@ -138,14 +138,19 @@ class _PressableScaleState extends State<PressableScale>
       behavior: HitTestBehavior.opaque,
       child: AnimatedBuilder(
         animation: _controller,
-        builder: (context, child) => Transform.scale(
-          scale: _scaleAnimation.value,
-          alignment: Alignment.center,
-          child: Opacity(
-            opacity: _opacityAnimation.value.clamp(0.0, 1.0),
-            child: child,
-          ),
-        ),
+        builder: (context, child) {
+          if (_controller.value == 0.0) {
+            return child!;
+          }
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            alignment: Alignment.center,
+            child: Opacity(
+              opacity: _opacityAnimation.value.clamp(0.0, 1.0),
+              child: child,
+            ),
+          );
+        },
         child: widget.child,
       ),
     );

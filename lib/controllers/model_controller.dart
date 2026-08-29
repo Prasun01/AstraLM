@@ -103,11 +103,13 @@ class ModelController extends GetxController {
     return availableModels.where((m) => isRecommendedModel(m)).take(6).toList();
   }
 
-  List<AiModel> get displayedModels {
-    return filteredDisplayedModels;
-  }
+  final _cachedFilteredModels = <AiModel>[].obs;
+  final _cachedCategoryCounts = <String, int>{}.obs;
 
-    List<AiModel> get filteredDisplayedModels {
+  List<AiModel> get displayedModels => _cachedFilteredModels;
+  List<AiModel> get filteredDisplayedModels => _cachedFilteredModels;
+
+  void _recomputeFilteredModels() {
     final filter =
         localFilter.value.isEmpty ? defaultLocalFilter : localFilter.value;
     final sizeFilter = localSizeFilter.value;
@@ -208,25 +210,31 @@ class ModelController extends GetxController {
       }
     });
 
-    return list;
+    _cachedFilteredModels.assignAll(list);
   }
 
-  int getCountForCategory(String category) {
-    return availableModels.where((m) {
-      switch (category) {
-        case 'all': return true;
-        case 'recommended': return isRecommendedModel(m);
-        case 'downloaded': return isDownloaded(m.filename);
-        case 'litert': return isLiteRtModel(m);
-        case 'gguf': return isLlamaModel(m);
-        case 'reasoning': return isReasoningModel(m);
-        case 'uncensored': return isUncensoredModel(m);
-        case 'vision': return isVisionModel(m);
-        case 'image': return isImageModel(m);
-        case 'general': default: return isGeneralModel(m);
-      }
-    }).length;
+  void _recomputeCategoryCounts() {
+    final Map<String, int> counts = {};
+    for (final cat in localFilters) {
+      counts[cat] = availableModels.where((m) {
+        switch (cat) {
+          case 'all': return true;
+          case 'recommended': return isRecommendedModel(m);
+          case 'downloaded': return isDownloaded(m.filename);
+          case 'litert': return isLiteRtModel(m);
+          case 'gguf': return isLlamaModel(m);
+          case 'reasoning': return isReasoningModel(m);
+          case 'uncensored': return isUncensoredModel(m);
+          case 'vision': return isVisionModel(m);
+          case 'image': return isImageModel(m);
+          case 'general': default: return isGeneralModel(m);
+        }
+      }).length;
+    }
+    _cachedCategoryCounts.assignAll(counts);
   }
+
+  int getCountForCategory(String category) => _cachedCategoryCounts[category] ?? 0;
 
   int getCountForEngine(String engine) {
     if (engine == 'all') return availableModels.length;
@@ -284,6 +292,25 @@ class ModelController extends GetxController {
         .map((m) => AiModel.fromMap(m))
         .toList()
       ..addAll(customModels);
+
+    _recomputeCategoryCounts();
+    _recomputeFilteredModels();
+
+    ever(localFilter, (_) => _recomputeFilteredModels());
+    ever(localSizeFilter, (_) => _recomputeFilteredModels());
+    ever(localEngineFilter, (_) => _recomputeFilteredModels());
+    ever(localSearchQuery, (_) => _recomputeFilteredModels());
+    ever(sortMode, (_) => _recomputeFilteredModels());
+    ever(availableModels, (_) {
+      _recomputeCategoryCounts();
+      _recomputeFilteredModels();
+    });
+    ever(downloadedFiles, (_) {
+      _recomputeCategoryCounts();
+      _recomputeFilteredModels();
+    });
+    ever(_inference.loadedModelName, (_) => _recomputeFilteredModels());
+
     _loadCatalogModels();
     refreshDownloaded();
   }

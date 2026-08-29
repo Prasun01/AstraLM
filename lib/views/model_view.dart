@@ -150,74 +150,67 @@ class ModelView extends GetView<ModelController> {
     required bool isDark,
   }) {
     return Expanded(
-      child: PressableScale(
-        onTap: onTap,
-        pressedScale: 0.96,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? (isDark ? Colors.white : Colors.black)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.10),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : [],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              PhosphorIcon(
-                icon,
-                size: 15,
-                color: isSelected
-                    ? (isDark ? Colors.black : Colors.white)
-                    : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
-              ),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  title,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.manrope(
-                    fontSize: 12.5,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                    color: isSelected
-                        ? (isDark ? Colors.black : Colors.white)
-                        : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155)),
-                  ),
+      child: Material(
+        color: isSelected
+            ? (isDark ? Colors.white : Colors.black)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                PhosphorIcon(
+                  icon,
+                  size: 15,
+                  color: isSelected
+                      ? (isDark ? Colors.black : Colors.white)
+                      : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
                 ),
-              ),
-              if (badge != null) ...[
                 const SizedBox(width: 5),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? (isDark ? const Color(0xFFE2E8F0) : const Color(0xFF333333))
-                        : (isDark ? const Color(0xFF1E222F) : const Color(0xFFDFE3EC)),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                Flexible(
                   child: Text(
-                    badge,
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.manrope(
+                      fontSize: 12.5,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
                       color: isSelected
                           ? (isDark ? Colors.black : Colors.white)
-                          : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
+                          : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155)),
                     ),
                   ),
                 ),
+                if (badge != null) ...[
+                  const SizedBox(width: 5),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? (isDark ? const Color(0xFFE2E8F0) : const Color(0xFF333333))
+                          : (isDark ? const Color(0xFF1E222F) : const Color(0xFFDFE3EC)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      badge,
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected
+                            ? (isDark ? Colors.black : Colors.white)
+                            : (isDark ? const Color(0xFF8E95A8) : const Color(0xFF5A6074)),
+                      ),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -602,28 +595,24 @@ class ModelView extends GetView<ModelController> {
               final inference = Get.find<InferenceService>();
               final isActive = inference.loadedModelName.value == m.filename;
 
-              return PressableScale(
-                onTap: () => _showModelDetailSheet(context, m),
-                child: Container(
-                  width: 220,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF141620)
-                        : const Color(0xFFF3F5F9),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
+              return Material(
+                color: isDark
+                    ? const Color(0xFF141620)
+                    : const Color(0xFFF3F5F9),
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    _showModelDetailSheet(context, m);
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: 220,
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -733,39 +722,36 @@ class ModelView extends GetView<ModelController> {
                   ? 'Name (A-Z)'
                   : 'Popular';
 
-      return PressableScale(
-        onTap: controller.toggleSort,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF161822) : const Color(0xFFECEFF6),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                PhosphorIconsBold.circle,
-                size: 14,
-                color: isDark ? Colors.white : const Color(0xFF141620),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: GoogleFonts.manrope(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
+      return Material(
+        color: isDark ? const Color(0xFF161822) : const Color(0xFFECEFF6),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            controller.toggleSort();
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  PhosphorIconsBold.circle,
+                  size: 14,
                   color: isDark ? Colors.white : const Color(0xFF141620),
                 ),
-              ),
-            ],
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: GoogleFonts.manrope(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF141620),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -795,42 +781,31 @@ class ModelView extends GetView<ModelController> {
 
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
-        child: _buildHorizontalFadingEdge(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            child: Row(
-              children: [
-                for (int i = 0; i < filterItems.length; i++) ...[
-                  Builder(builder: (ctx) {
-                    final item = filterItems[i];
-                    final isSel = selectedFilter == item.id;
-                    final count = controller.getCountForCategory(item.id);
-                    return PressableScale(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          child: Row(
+            children: [
+              for (int i = 0; i < filterItems.length; i++) ...[
+                Builder(builder: (ctx) {
+                  final item = filterItems[i];
+                  final isSel = selectedFilter == item.id;
+                  final count = controller.getCountForCategory(item.id);
+                  return Material(
+                    color: isSel
+                        ? (isDark ? Colors.white : Colors.black)
+                        : (isDark ? const Color(0xFF14161E) : const Color(0xFFF0F2F6)),
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
                       onTap: () {
+                        HapticFeedback.selectionClick();
                         controller.localEngineFilter.value = 'all';
                         controller.setLocalFilter(item.id);
                       },
-                      pressedScale: 0.94,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 160),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSel
-                              ? (isDark ? Colors.white : Colors.black)
-                              : (isDark ? const Color(0xFF14161E) : const Color(0xFFF0F2F6)),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: isSel
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.10),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : [],
-                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -842,22 +817,23 @@ class ModelView extends GetView<ModelController> {
                                 color: isSel
                                     ? (isDark ? Colors.black : Colors.white)
                                     : (isDark ? const Color(0xFFBAC0D0) : const Color(0xFF505462)),
-                            ),
-                          ),
-                          if (count > 0) ...[
-                            const SizedBox(width: 5),
-                            Text(
-                              '$count',
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: isSel
-                                    ? (isDark ? const Color(0xFF333333) : const Color(0xFFD0D0D0))
-                                    : (isDark ? const Color(0xFF7E8494) : const Color(0xFF8E95A4)),
                               ),
                             ),
+                            if (count > 0) ...[
+                              const SizedBox(width: 5),
+                              Text(
+                                '$count',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isSel
+                                      ? (isDark ? const Color(0xFF333333) : const Color(0xFFD0D0D0))
+                                      : (isDark ? const Color(0xFF7E8494) : const Color(0xFF8E95A4)),
+                                ),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   );
